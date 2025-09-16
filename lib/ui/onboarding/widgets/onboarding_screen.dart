@@ -194,16 +194,36 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '如何获取 steamID64：',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                const Text('1. 访问 steamid.io'),
+                const Text('2. 输入您的 Steam 个人资料链接或用户名'),
+                const Text('3. 复制 steamID64 (17位数字)'),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
         TextField(
           controller: steamIdController,
           decoration: InputDecoration(
-            labelText: 'Steam ID 或用户名',
+            labelText: 'steamID64',
             border: const OutlineInputBorder(),
-            helperText: '可以是 Steam ID 或自定义 URL 中的用户名',
+            helperText: '请输入17位数字的 steamID64',
             errorText: viewModel.state.errorMessage.isNotEmpty 
                 ? viewModel.state.errorMessage 
                 : null,
           ),
+          keyboardType: TextInputType.number,
           onSubmitted: (value) {
             viewModel.validateSteamIdCommand.execute(value);
           },

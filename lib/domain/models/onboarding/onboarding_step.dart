@@ -34,7 +34,7 @@ extension OnboardingStepExtension on OnboardingStep {
       case OnboardingStep.apiKeyGuide:
         return '请按照指引获取您的 Steam Web API Key';
       case OnboardingStep.steamIdInput:
-        return '输入您的 Steam ID 或用户名';
+        return '输入您的 Steam ID（steamID64）';
       case OnboardingStep.dataSync:
         return '正在同步您的游戏库数据，请稍候...';
       case OnboardingStep.gameTagging:
