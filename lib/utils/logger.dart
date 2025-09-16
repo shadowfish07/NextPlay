@@ -1,41 +1,23 @@
-import 'dart:developer' as developer;
-
 class AppLogger {
-  static const String _tag = 'NextPlay';
-
-  static void debug(String message, {String? tag}) {
-    developer.log(
-      message,
-      name: tag ?? _tag,
-      level: 500,
-    );
+  static void info(String message) {
+    print('[INFO] $message');
   }
 
-  static void info(String message, {String? tag}) {
-    developer.log(
-      message,
-      name: tag ?? _tag,
-      level: 800,
-    );
+  static void error(String message, [Object? error, StackTrace? stackTrace]) {
+    print('[ERROR] $message');
+    if (error != null) {
+      print('Error: $error');
+    }
+    if (stackTrace != null) {
+      print('StackTrace: $stackTrace');
+    }
   }
 
-  static void warning(String message, {String? tag}) {
-    developer.log(
-      message,
-      name: tag ?? _tag,
-      level: 900,
-    );
+  static void debug(String message) {
+    print('[DEBUG] $message');
   }
 
-  static void error(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
-    developer.log(
-      message,
-      name: tag ?? _tag,
-      level: 1000,
-      error: error,
-      stackTrace: stackTrace,
-    );
+  static void warning(String message) {
+    print('[WARNING] $message');
   }
 }
-
-final appLogger = AppLogger();

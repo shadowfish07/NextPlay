@@ -1,5 +1,3 @@
-import 'package:result_dart/result_dart.dart';
-
 abstract class AppException implements Exception {
   final String message;
   final String? code;

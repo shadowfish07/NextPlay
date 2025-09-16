@@ -12,7 +12,7 @@ class AppTheme {
         centerTitle: true,
         elevation: 0,
       ),
-      cardTheme: const CardTheme(
+      cardTheme: const CardThemeData(
         elevation: 2,
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -50,7 +50,7 @@ class AppTheme {
         centerTitle: true,
         elevation: 0,
       ),
-      cardTheme: const CardTheme(
+      cardTheme: const CardThemeData(
         elevation: 2,
       ),
       filledButtonTheme: FilledButtonThemeData(

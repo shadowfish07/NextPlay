@@ -1,43 +1,43 @@
 import 'package:go_router/go_router.dart';
+import 'package:flutter/material.dart';
 import 'routes.dart';
+import '../ui/onboarding/widgets/onboarding_screen.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
-    initialLocation: Routes.discover,
+    initialLocation: Routes.onboarding,
     routes: [
-      StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) {
-          return MainLayoutPage(navigationShell: navigationShell);
-        },
-        branches: [
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: Routes.discover,
-                name: 'discover',
-                builder: (context, state) => const DiscoverPage(),
-              ),
-            ],
+      GoRoute(
+        path: Routes.onboarding,
+        name: 'onboarding',
+        builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: Routes.discover,
+        name: 'discover',
+        builder: (context, state) => const Scaffold(
+          body: Center(
+            child: Text('Discover Page - Coming Soon'),
           ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: Routes.library,
-                name: 'library',
-                builder: (context, state) => const LibraryPage(),
-              ),
-            ],
+        ),
+      ),
+      GoRoute(
+        path: Routes.library,
+        name: 'library',
+        builder: (context, state) => const Scaffold(
+          body: Center(
+            child: Text('Library Page - Coming Soon'),
           ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: Routes.settings,
-                name: 'settings',
-                builder: (context, state) => const SettingsPage(),
-              ),
-            ],
+        ),
+      ),
+      GoRoute(
+        path: Routes.settings,
+        name: 'settings',
+        builder: (context, state) => const Scaffold(
+          body: Center(
+            child: Text('Settings Page - Coming Soon'),
           ),
-        ],
+        ),
       ),
     ],
   );
