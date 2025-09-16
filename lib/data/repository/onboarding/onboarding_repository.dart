@@ -3,11 +3,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../domain/models/onboarding/onboarding_state.dart';
 import '../../../domain/models/onboarding/onboarding_step.dart';
 import '../../service/steam_validation_service.dart';
+import '../../service/steam_api_service.dart';
 import '../../../utils/logger.dart';
 
 class OnboardingRepository {
   final SharedPreferences _prefs;
   final SteamValidationService _steamValidationService;
+  final SteamApiService _steamApiService;
   
   final StreamController<OnboardingState> _stateController = 
       StreamController<OnboardingState>.broadcast();
@@ -17,7 +19,10 @@ class OnboardingRepository {
   OnboardingRepository({
     required SharedPreferences sharedPreferences,
     required SteamValidationService steamValidationService,
-  }) : _prefs = sharedPreferences, _steamValidationService = steamValidationService {
+    SteamApiService? steamApiService,
+  }) : _prefs = sharedPreferences, 
+       _steamValidationService = steamValidationService,
+       _steamApiService = steamApiService ?? SteamApiService() {
     _loadState();
   }
 
@@ -159,21 +164,77 @@ class OnboardingRepository {
       );
       _stateController.add(_currentState);
       
-      // Simulate sync progress
-      for (int i = 0; i <= 100; i += 10) {
-        await Future.delayed(const Duration(milliseconds: 100));
+      // 获取存储的API Key和Steam ID
+      final apiKey = _currentState.apiKey;
+      final steamId = _currentState.steamId;
+      
+      if (apiKey.isEmpty || steamId.isEmpty) {
         _currentState = _currentState.copyWith(
-          syncProgress: i / 100.0,
+          isLoading: false,
+          errorMessage: 'API Key或Steam ID为空',
         );
         _stateController.add(_currentState);
+        return;
       }
       
-      // Simulate game library data
-      final gameLibrary = ['Game 1', 'Game 2', 'Game 3'];
+      // 首先验证凭据有效性
+      _currentState = _currentState.copyWith(syncProgress: 0.1);
+      _stateController.add(_currentState);
+      
+      final credentialsResult = await _steamValidationService.validateCredentials(
+        apiKey: apiKey,
+        steamId: steamId,
+      );
+      
+      if (!credentialsResult.isSuccess()) {
+        final error = credentialsResult.exceptionOrNull()!;
+        _currentState = _currentState.copyWith(
+          isLoading: false,
+          errorMessage: '凭据验证失败: ${error.message}',
+        );
+        _stateController.add(_currentState);
+        return;
+      }
+      
+      // 获取游戏库数据
+      _currentState = _currentState.copyWith(syncProgress: 0.3);
+      _stateController.add(_currentState);
+      
+      final gamesResult = await _steamApiService.getOwnedGames(
+        apiKey: apiKey,
+        steamId: steamId,
+        includeAppInfo: true,
+        includePlayedFreeGames: true,
+      );
+      
+      if (!gamesResult.isSuccess()) {
+        final error = gamesResult.exceptionOrNull()!;
+        _currentState = _currentState.copyWith(
+          isLoading: false,
+          errorMessage: '获取游戏库失败: $error',
+        );
+        _stateController.add(_currentState);
+        return;
+      }
+      
+      final games = gamesResult.getOrNull()!;
+      
+      // 模拟处理进度
+      _currentState = _currentState.copyWith(syncProgress: 0.6);
+      _stateController.add(_currentState);
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      _currentState = _currentState.copyWith(syncProgress: 0.8);
+      _stateController.add(_currentState);
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // 转换为游戏名称列表（保持与现有UI兼容）
+      final gameLibrary = games.map((game) => game.name).toList();
       
       _currentState = _currentState.copyWith(
         gameLibrary: gameLibrary,
         isLoading: false,
+        syncProgress: 1.0,
       );
       _stateController.add(_currentState);
       
@@ -182,7 +243,7 @@ class OnboardingRepository {
       AppLogger.error('Failed to sync game library', e, stackTrace);
       _stateController.add(_currentState.copyWith(
         isLoading: false,
-        errorMessage: 'Failed to sync game library',
+        errorMessage: 'Failed to sync game library: $e',
       ));
     }
   }
