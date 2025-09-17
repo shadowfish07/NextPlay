@@ -160,29 +160,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         const SizedBox(height: 24),
         TextField(
           controller: apiKeyController,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             labelText: 'Steam API Key',
-            border: const OutlineInputBorder(),
-            errorText: viewModel.state.errorMessage.isNotEmpty 
-                ? viewModel.state.errorMessage 
-                : null,
+            border: OutlineInputBorder(),
           ),
-          onSubmitted: (value) {
-            viewModel.validateApiKeyCommand.execute(value);
+          onChanged: (value) {
+            viewModel.saveApiKeyCommand.execute(value);
           },
-        ),
-        const SizedBox(height: 16),
-        FilledButton(
-          onPressed: viewModel.state.isLoading
-              ? null
-              : () => viewModel.validateApiKeyCommand.execute(apiKeyController.text),
-          child: viewModel.state.isLoading
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('验证 API Key'),
         ),
       ],
     );
@@ -220,31 +204,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         const SizedBox(height: 24),
         TextField(
           controller: steamIdController,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             labelText: 'steamID64',
-            border: const OutlineInputBorder(),
+            border: OutlineInputBorder(),
             helperText: '请输入17位数字的 steamID64',
-            errorText: viewModel.state.errorMessage.isNotEmpty 
-                ? viewModel.state.errorMessage 
-                : null,
           ),
           keyboardType: TextInputType.number,
-          onSubmitted: (value) {
-            viewModel.validateSteamIdCommand.execute(value);
+          onChanged: (value) {
+            viewModel.saveSteamIdCommand.execute(value);
           },
-        ),
-        const SizedBox(height: 16),
-        FilledButton(
-          onPressed: viewModel.state.isLoading
-              ? null
-              : () => viewModel.validateSteamIdCommand.execute(steamIdController.text),
-          child: viewModel.state.isLoading
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('验证 Steam ID'),
         ),
       ],
     );

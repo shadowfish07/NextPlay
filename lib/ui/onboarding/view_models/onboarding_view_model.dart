@@ -11,6 +11,8 @@ class OnboardingViewModel extends ChangeNotifier {
   
   late final Command<void, void> nextStepCommand;
   late final Command<void, void> previousStepCommand;
+  late final Command<String, void> saveApiKeyCommand;
+  late final Command<String, void> saveSteamIdCommand;
   late final Command<String, void> validateApiKeyCommand;
   late final Command<String, void> validateSteamIdCommand;
   late final Command<void, void> syncGameLibraryCommand;
@@ -38,6 +40,16 @@ class OnboardingViewModel extends ChangeNotifier {
       initialValue: null,
     );
     
+    saveApiKeyCommand = Command.createAsync<String, void>(
+      _handleSaveApiKey,
+      initialValue: null,
+    );
+    
+    saveSteamIdCommand = Command.createAsync<String, void>(
+      _handleSaveSteamId,
+      initialValue: null,
+    );
+    
     validateApiKeyCommand = Command.createAsync<String, void>(
       _handleValidateApiKey,
       initialValue: null,
@@ -61,6 +73,14 @@ class OnboardingViewModel extends ChangeNotifier {
     // Subscribe to command errors
     nextStepCommand.errors.listen((error, subscription) {
       AppLogger.error('Next step command error: $error');
+    });
+    
+    saveApiKeyCommand.errors.listen((error, subscription) {
+      AppLogger.error('Save API key command error: $error');
+    });
+    
+    saveSteamIdCommand.errors.listen((error, subscription) {
+      AppLogger.error('Save Steam ID command error: $error');
     });
     
     validateApiKeyCommand.errors.listen((error, subscription) {
@@ -100,6 +120,16 @@ class OnboardingViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> _handleSaveApiKey(String apiKey) async {
+    AppLogger.info('Saving API key without validation');
+    await _repository.saveApiKeyWithoutValidation(apiKey);
+  }
+
+  Future<void> _handleSaveSteamId(String steamId) async {
+    AppLogger.info('Saving Steam ID without validation');
+    await _repository.saveSteamIdWithoutValidation(steamId);
+  }
+
   Future<void> _handleValidateApiKey(String apiKey) async {
     AppLogger.info('Validating API key');
     await _repository.saveApiKey(apiKey);
@@ -127,9 +157,9 @@ class OnboardingViewModel extends ChangeNotifier {
       case OnboardingStep.steamConnection:
         return true;
       case OnboardingStep.apiKeyGuide:
-        return _state.isApiKeyValid;
+        return _state.apiKey.isNotEmpty;
       case OnboardingStep.steamIdInput:
-        return _state.isSteamIdValid;
+        return _state.steamId.isNotEmpty;
       case OnboardingStep.dataSync:
         return !_state.isLoading;
       case OnboardingStep.gameTagging:
@@ -150,6 +180,8 @@ class OnboardingViewModel extends ChangeNotifier {
     _stateSubscription?.cancel();
     nextStepCommand.dispose();
     previousStepCommand.dispose();
+    saveApiKeyCommand.dispose();
+    saveSteamIdCommand.dispose();
     validateApiKeyCommand.dispose();
     validateSteamIdCommand.dispose();
     syncGameLibraryCommand.dispose();

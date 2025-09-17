@@ -71,6 +71,42 @@ class OnboardingRepository {
     }
   }
 
+  Future<void> saveApiKeyWithoutValidation(String apiKey) async {
+    try {
+      AppLogger.info('Saving API key without validation');
+      await _prefs.setString('api_key', apiKey);
+      
+      _currentState = _currentState.copyWith(
+        apiKey: apiKey,
+        errorMessage: '',
+      );
+      _stateController.add(_currentState);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to save API key without validation', e, stackTrace);
+      _stateController.add(_currentState.copyWith(
+        errorMessage: 'Failed to save API key',
+      ));
+    }
+  }
+
+  Future<void> saveSteamIdWithoutValidation(String steamId) async {
+    try {
+      AppLogger.info('Saving Steam ID without validation');
+      await _prefs.setString('steam_id', steamId);
+      
+      _currentState = _currentState.copyWith(
+        steamId: steamId,
+        errorMessage: '',
+      );
+      _stateController.add(_currentState);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to save Steam ID without validation', e, stackTrace);
+      _stateController.add(_currentState.copyWith(
+        errorMessage: 'Failed to save Steam ID',
+      ));
+    }
+  }
+
   Future<void> saveApiKey(String apiKey) async {
     try {
       AppLogger.info('Saving API key');
