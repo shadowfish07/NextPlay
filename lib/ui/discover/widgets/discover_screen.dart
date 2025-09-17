@@ -72,6 +72,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (viewModel.hasGameLibrary && !viewModel.hasRecommendations) {
       viewModel.generateRecommendationsCommand.execute();
     }
+    // 启动Hero卡片动画
+    _heroCardAnimationController.forward();
   }
 
   @override
