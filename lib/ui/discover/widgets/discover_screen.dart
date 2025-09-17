@@ -9,7 +9,7 @@ import '../../core/ui/common_widgets.dart' as common_widgets;
 import '../../core/theme.dart';
 import 'new_game_recommendation_card.dart';
 import 'small_game_card.dart';
-import 'compact_game_card.dart';
+import 'empty_recommendations_list.dart';
 
 /// 发现页主屏幕
 class DiscoverScreen extends StatefulWidget {
