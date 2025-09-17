@@ -307,17 +307,16 @@ class SmallGameCard extends StatelessWidget {
     if (statusInfo != null) {
       infoText = statusInfo!;
     } else {
-      // 根据状态生成默认信息
-      status.when(
-        notStarted: () => infoText = '未开始',
-        playing: () {
-          final hours = (game.playtimeForever / 60).toInt();
-          infoText = hours > 0 ? '$hours小时' : '刚开始';
-        },
-        completed: () => infoText = '已完成',
-        abandoned: () => infoText = '已搁置', 
-        multiplayer: () => infoText = '多人游戏',
-      );
+      // 格式化游戏时间显示
+      final totalMinutes = game.playtimeForever;
+      if (totalMinutes == 0) {
+        infoText = '-';
+      } else if (totalMinutes < 60) {
+        infoText = '$totalMinutes分钟';
+      } else {
+        final hours = (totalMinutes / 60).toInt();
+        infoText = '$hours小时';
+      }
     }
     
     return SizedBox(
