@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../view_models/batch_status_view_model.dart';
 import '../../../domain/models/game_status/batch_operation_state.dart';
 import '../../../domain/models/game/game_status.dart';
-import '../../library/widgets/game_library_card.dart';
+import '../../core/ui/game_status_selector.dart';
 
 /// 第一步：0时长游戏确认界面
 class ZeroPlaytimeStep extends StatelessWidget {

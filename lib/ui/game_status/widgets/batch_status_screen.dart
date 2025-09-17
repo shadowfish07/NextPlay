@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../view_models/batch_status_view_model.dart';
 import '../../../domain/models/game_status/batch_operation_state.dart';
 import '../../../domain/models/game/game_status.dart';
+import '../../core/ui/game_status_selector.dart';
 
 /// 智能状态建议主屏幕 - 全新单页面设计
 class BatchStatusScreen extends StatefulWidget {
@@ -139,7 +140,6 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
             games: viewModel.state.zeroPlaytimeGames,
             isRecommended: false, // 不推荐操作，因为已经是正确状态
             onPreview: () => _showPreview(context, SuggestionType.zeroPlaytime, viewModel.state.zeroPlaytimeGames),
-            onApply: null, // 无需操作
           ),
           
           const SizedBox(height: 16),
@@ -154,7 +154,34 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
             games: viewModel.state.highPlaytimeGames,
             isRecommended: true,
             onPreview: () => _showPreview(context, SuggestionType.highPlaytime, viewModel.state.highPlaytimeGames),
-            onApply: () => _applySuggestions(context, viewModel, SuggestionType.highPlaytime),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // 已搁置游戏建议
+          _SmartSuggestionCard(
+            icon: Icons.pause_circle_filled,
+            title: '已搁置游戏',
+            subtitle: '${viewModel.state.abandonedGames.length}个游戏',
+            description: '长时间未玩，建议重新评估状态',
+            suggestionType: SuggestionType.abandoned,
+            games: viewModel.state.abandonedGames,
+            isRecommended: true,
+            onPreview: () => _showPreview(context, SuggestionType.abandoned, viewModel.state.abandonedGames),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // 手动修改过状态的游戏
+          _SmartSuggestionCard(
+            icon: Icons.edit,
+            title: '手动修改过的游戏',
+            subtitle: '${_getManuallyModifiedGames(viewModel).length}个游戏',
+            description: '查看已手动调整状态的游戏',
+            suggestionType: SuggestionType.manuallyModified,
+            games: _getManuallyModifiedGames(viewModel),
+            isRecommended: false,
+            onPreview: () => _showPreview(context, SuggestionType.manuallyModified, _getManuallyModifiedGames(viewModel)),
           ),
           
           const SizedBox(height: 32),
@@ -169,9 +196,13 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
   /// 构建底部操作栏
   Widget _buildBottomActions(BuildContext context, BatchStatusViewModel viewModel) {
     final theme = Theme.of(context);
-    final totalSuggestions = viewModel.state.highPlaytimeGames.where((game) => 
-      game.currentStatus != game.suggestedStatus
-    ).length;
+    
+    // 计算所有需要修改状态的游戏数量
+    final allChanges = [
+      ...viewModel.state.highPlaytimeGames.where((game) => game.currentStatus != game.suggestedStatus),
+      ...viewModel.state.abandonedGames.where((game) => game.currentStatus != game.suggestedStatus),
+    ];
+    final totalSuggestions = allChanges.length;
     
     return Column(
       children: [
@@ -348,6 +379,9 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
     // 应用高时长游戏建议
     viewModel.applyHighPlaytimeChangesCommand.execute();
     
+    // 应用搁置游戏建议
+    viewModel.applyAbandonedChangesCommand.execute();
+    
     // 显示完成对话框或直接完成
     if (widget.isFromOnboarding) {
       Future.delayed(const Duration(milliseconds: 500), () {
@@ -358,16 +392,19 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
     }
   }
 
-  /// 应用特定类型的建议
-  void _applySuggestions(BuildContext context, BatchStatusViewModel viewModel, SuggestionType type) {
-    switch (type) {
-      case SuggestionType.highPlaytime:
-        viewModel.applyHighPlaytimeChangesCommand.execute();
-        break;
-      case SuggestionType.zeroPlaytime:
-        viewModel.applyZeroPlaytimeChangesCommand.execute();
-        break;
-    }
+  /// 获取手动修改过状态的游戏
+  List<GameSelectionItem> _getManuallyModifiedGames(BatchStatusViewModel viewModel) {
+    final allGames = [
+      ...viewModel.state.zeroPlaytimeGames,
+      ...viewModel.state.highPlaytimeGames,
+      ...viewModel.state.abandonedGames,
+    ];
+    
+    // 筛选出当前状态与建议状态不同的游戏（表示用户手动修改过）
+    return allGames.where((game) => 
+      game.currentStatus != game.suggestedStatus && 
+      game.isSelected == false // 如果还在选中状态，说明还没有应用修改
+    ).toList();
   }
 
   /// 显示预览
@@ -447,6 +484,8 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
 enum SuggestionType {
   zeroPlaytime,
   highPlaytime,
+  abandoned,
+  manuallyModified,
 }
 
 /// 智能建议卡片组件
@@ -459,7 +498,6 @@ class _SmartSuggestionCard extends StatelessWidget {
   final List<GameSelectionItem> games;
   final bool isRecommended;
   final VoidCallback? onPreview;
-  final VoidCallback? onApply;
 
   const _SmartSuggestionCard({
     required this.icon,
@@ -470,7 +508,6 @@ class _SmartSuggestionCard extends StatelessWidget {
     required this.games,
     required this.isRecommended,
     this.onPreview,
-    this.onApply,
   });
 
   @override
@@ -576,58 +613,17 @@ class _SmartSuggestionCard extends StatelessWidget {
           if (games.isNotEmpty) ...[
             const SizedBox(height: 16),
             
-            // 操作按钮
-            Row(
-              children: [
-                // 预览按钮
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onPreview,
-                    icon: const Icon(Icons.visibility, size: 18),
-                    label: Text('预览 ${games.length}个'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 36),
-                    ),
-                  ),
+            // 预览按钮
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onPreview,
+                icon: const Icon(Icons.visibility, size: 18),
+                label: Text('预览 ${games.length}个游戏'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 36),
                 ),
-                
-                if (onApply != null) ...[
-                  const SizedBox(width: 12),
-                  
-                  // 应用建议按钮
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: onApply,
-                      icon: const Icon(Icons.check, size: 18),
-                      label: const Text('应用建议'),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 36),
-                      ),
-                    ),
-                  ),
-                ] else ...[
-                  const SizedBox(width: 12),
-                  
-                  // 无需操作提示
-                  Expanded(
-                    child: Container(
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '无需操作',
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
           ],
         ],
@@ -637,7 +633,7 @@ class _SmartSuggestionCard extends StatelessWidget {
 }
 
 /// 建议预览底部表单
-class _SuggestionPreviewSheet extends StatelessWidget {
+class _SuggestionPreviewSheet extends StatefulWidget {
   final SuggestionType type;
   final List<GameSelectionItem> games;
 
@@ -645,14 +641,39 @@ class _SuggestionPreviewSheet extends StatelessWidget {
     required this.type,
     required this.games,
   });
+  
+  @override
+  State<_SuggestionPreviewSheet> createState() => _SuggestionPreviewSheetState();
+}
+
+class _SuggestionPreviewSheetState extends State<_SuggestionPreviewSheet> {
+  GameStatus? _selectedStatusFilter;
+  
+  List<GameSelectionItem> get _filteredGames {
+    if (_selectedStatusFilter == null) {
+      return widget.games;
+    }
+    return widget.games.where((game) => 
+      game.suggestedStatus == _selectedStatusFilter
+    ).toList();
+  }
+  
+  Set<GameStatus> get _availableStatuses {
+    return widget.games.map((game) => game.suggestedStatus).toSet();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final title = type == SuggestionType.zeroPlaytime ? '0时长游戏' : '高游玩时长游戏';
+    final title = switch (widget.type) {
+      SuggestionType.zeroPlaytime => '0时长游戏',
+      SuggestionType.highPlaytime => '高游玩时长游戏',
+      SuggestionType.abandoned => '已搁置游戏',
+      SuggestionType.manuallyModified => '手动修改的游戏',
+    };
     
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: MediaQuery.of(context).size.height * 0.85,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -676,12 +697,56 @@ class _SuggestionPreviewSheet extends StatelessWidget {
           
           const SizedBox(height: 16),
           
+          // 状态筛选器
+          if (_availableStatuses.length > 1) ...[
+            Text(
+              '筛选状态',
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            
+            Wrap(
+              spacing: 8,
+              children: [
+                // 全部状态选项
+                FilterChip(
+                  label: Text('全部 (${widget.games.length})'),
+                  selected: _selectedStatusFilter == null,
+                  onSelected: (selected) {
+                    setState(() {
+                      _selectedStatusFilter = null;
+                    });
+                  },
+                ),
+                
+                // 各个状态选项
+                ..._availableStatuses.map((status) {
+                  final count = widget.games.where((game) => 
+                    game.suggestedStatus == status).length;
+                  return FilterChip(
+                    label: Text('${status.displayName} ($count)'),
+                    selected: _selectedStatusFilter == status,
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedStatusFilter = selected ? status : null;
+                      });
+                    },
+                  );
+                }),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+          ],
+          
           // 游戏列表
           Expanded(
             child: ListView.builder(
-              itemCount: games.length,
+              itemCount: _filteredGames.length,
               itemBuilder: (context, index) {
-                final gameItem = games[index];
+                final gameItem = _filteredGames[index];
                 final game = gameItem.game;
                 
                 return Container(
@@ -731,7 +796,8 @@ class _SuggestionPreviewSheet extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (type == SuggestionType.highPlaytime) ...[
+                            if (widget.type == SuggestionType.highPlaytime || 
+                                widget.type == SuggestionType.abandoned) ...[ 
                               const SizedBox(height: 4),
                               Text(
                                 '${(game.playtimeForever / 60.0).toStringAsFixed(1)}小时',
@@ -744,23 +810,44 @@ class _SuggestionPreviewSheet extends StatelessWidget {
                         ),
                       ),
                       
-                      // 状态变更指示
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            gameItem.currentStatus.displayName,
-                            style: theme.textTheme.labelSmall,
-                          ),
-                          const Icon(Icons.arrow_forward, size: 16),
-                          Text(
-                            gameItem.suggestedStatus.displayName,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.w600,
+                      // 状态选择器
+                      GestureDetector(
+                        onTap: () => _showStatusSelector(context, gameItem),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(gameItem.suggestedStatus).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: _getStatusColor(gameItem.suggestedStatus).withValues(alpha: 0.3),
+                              width: 1,
                             ),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _getStatusIcon(gameItem.suggestedStatus),
+                                size: 14,
+                                color: _getStatusColor(gameItem.suggestedStatus),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                gameItem.suggestedStatus.displayName,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: _getStatusColor(gameItem.suggestedStatus),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.keyboard_arrow_down,
+                                size: 14,
+                                color: _getStatusColor(gameItem.suggestedStatus),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -770,6 +857,45 @@ class _SuggestionPreviewSheet extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// 显示状态选择器
+  void _showStatusSelector(BuildContext context, GameSelectionItem gameItem) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => GameStatusSelector(
+        currentStatus: gameItem.suggestedStatus,
+        onStatusSelected: (status) {
+          Navigator.of(context).pop();
+          // 这里需要通过回调更新状态
+          // 实际实现中可能需要传递一个回调函数到这个组件
+        },
+      ),
+    );
+  }
+
+  /// 获取状态颜色
+  Color _getStatusColor(GameStatus status) {
+    return status.when(
+      notStarted: () => Colors.grey,
+      playing: () => Colors.blue,
+      completed: () => Colors.green,
+      abandoned: () => Colors.red,
+      multiplayer: () => Colors.purple,
+      paused: () => Colors.orange,
+    );
+  }
+
+  /// 获取状态图标
+  IconData _getStatusIcon(GameStatus status) {
+    return status.when(
+      notStarted: () => Icons.play_arrow,
+      playing: () => Icons.videogame_asset,
+      completed: () => Icons.check_circle,
+      abandoned: () => Icons.close,
+      multiplayer: () => Icons.group,
+      paused: () => Icons.pause,
     );
   }
 }

@@ -26,6 +26,7 @@ class BatchStatusViewModel extends ChangeNotifier {
   late Command<(int, GameStatus), void> updateGameStatusCommand;
   late Command<void, void> applyZeroPlaytimeChangesCommand;
   late Command<void, void> applyHighPlaytimeChangesCommand;
+  late Command<void, void> applyAbandonedChangesCommand;
   late Command<void, void> finishBatchOperationCommand;
   
   BatchStatusViewModel({required GameRepository gameRepository})
@@ -95,6 +96,7 @@ class BatchStatusViewModel extends ChangeNotifier {
               isLoading: false,
               zeroPlaytimeGames: [],
               highPlaytimeGames: [],
+              abandonedGames: [],
               totalCount: 0,
             ));
             return;
@@ -106,14 +108,18 @@ class BatchStatusViewModel extends ChangeNotifier {
           // 筛选高时长游戏
           final highPlaytimeGames = _findHighPlaytimeGames(gameLibrary, gameStatuses);
           
+          // 筛选已搁置游戏
+          final abandonedGames = _findAbandonedGames(gameLibrary, gameStatuses);
+          
           _setState(_state.copyWith(
             isLoading: false,
             zeroPlaytimeGames: zeroPlaytimeGames,
             highPlaytimeGames: highPlaytimeGames,
-            totalCount: zeroPlaytimeGames.length + highPlaytimeGames.length,
+            abandonedGames: abandonedGames,
+            totalCount: zeroPlaytimeGames.length + highPlaytimeGames.length + abandonedGames.length,
           ));
           
-          AppLogger.info('Batch status management initialized: ${zeroPlaytimeGames.length} zero-playtime games, ${highPlaytimeGames.length} high-playtime games');
+          AppLogger.info('Batch status management initialized: ${zeroPlaytimeGames.length} zero-playtime games, ${highPlaytimeGames.length} high-playtime games, ${abandonedGames.length} abandoned games');
         } catch (e, stackTrace) {
           final error = '初始化批量状态管理失败: $e';
           AppLogger.error(error, e, stackTrace);
@@ -199,6 +205,13 @@ class BatchStatusViewModel extends ChangeNotifier {
       },
     );
 
+    // 应用已搁置游戏更改
+    applyAbandonedChangesCommand = Command.createAsyncNoParamNoResult(
+      () async {
+        await _applySelectedChanges(_state.abandonedGames);
+      },
+    );
+
     // 完成批量操作
     finishBatchOperationCommand = Command.createAsyncNoParamNoResult(
       () async {
@@ -263,6 +276,68 @@ class BatchStatusViewModel extends ChangeNotifier {
             currentStatus: currentStatus,
             suggestedStatus: suggestedStatus,
             isSelected: currentStatus != suggestedStatus,
+            reason: reason,
+          );
+        })
+        .toList();
+  }
+
+  /// 查找已搁置游戏
+  List<GameSelectionItem> _findAbandonedGames(
+    List<Game> gameLibrary, 
+    Map<int, GameStatus> gameStatuses,
+  ) {
+    final now = DateTime.now();
+    
+    return gameLibrary
+        .where((game) {
+          // 排除0时长游戏
+          if (game.playtimeForever == 0) return false;
+          
+          final hoursPlayed = game.playtimeForever / 60.0;
+          final currentStatus = gameStatuses[game.appId] ?? const GameStatus.notStarted();
+          
+          // 只考虑游玩中或未开始状态的游戏
+          if (currentStatus != const GameStatus.playing() && 
+              currentStatus != const GameStatus.notStarted()) {
+            return false;
+          }
+          
+          // 游戏时长少于预估完成时间的50%，且已经开始游玩
+          if (hoursPlayed < game.estimatedCompletionHours * 0.5 && hoursPlayed > 1.0) {
+            // 检查最后游玩时间
+            if (game.lastPlayed != null) {
+              final daysSinceLastPlay = now.difference(game.lastPlayed!).inDays;
+              // 超过90天未玩
+              return daysSinceLastPlay > 90;
+            }
+            // 没有最后游玩时间记录，但有时长，可能是旧数据
+            return hoursPlayed > 2.0; // 至少玩了2小时但很久没碰
+          }
+          
+          return false;
+        })
+        .map((game) {
+          final currentStatus = gameStatuses[game.appId] ?? const GameStatus.notStarted();
+          final hoursPlayed = game.playtimeForever / 60.0;
+          final daysSinceLastPlay = game.lastPlayed != null 
+              ? now.difference(game.lastPlayed!).inDays 
+              : null;
+          
+          String reason;
+          if (daysSinceLastPlay != null) {
+            final completionPercent = (hoursPlayed / game.estimatedCompletionHours * 100).toInt();
+            reason = '已$daysSinceLastPlay天未玩，游戏进度$completionPercent%';
+          } else {
+            final completionPercent = (hoursPlayed / game.estimatedCompletionHours * 100).toInt();
+            reason = '游戏进度$completionPercent%，建议重新评估状态';
+          }
+          
+          return GameSelectionItem(
+            game: game,
+            currentStatus: currentStatus,
+            suggestedStatus: const GameStatus.abandoned(),
+            isSelected: currentStatus != const GameStatus.abandoned(),
             reason: reason,
           );
         })
@@ -385,6 +460,7 @@ class BatchStatusViewModel extends ChangeNotifier {
     updateGameStatusCommand.dispose();
     applyZeroPlaytimeChangesCommand.dispose();
     applyHighPlaytimeChangesCommand.dispose();
+    applyAbandonedChangesCommand.dispose();
     finishBatchOperationCommand.dispose();
     
     super.dispose();

@@ -77,6 +77,7 @@ class BatchOperationState with _$BatchOperationState {
     @Default(BatchOperationStep.zeroPlaytime) BatchOperationStep currentStep,
     @Default([]) List<GameSelectionItem> zeroPlaytimeGames,
     @Default([]) List<GameSelectionItem> highPlaytimeGames,
+    @Default([]) List<GameSelectionItem> abandonedGames,
     @Default(false) bool isLoading,
     @Default('') String errorMessage,
     @Default(0) int processedCount,

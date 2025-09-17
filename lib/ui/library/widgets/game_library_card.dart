@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/theme.dart';
+import '../../core/ui/game_status_selector.dart';
 
 /// 游戏库卡片组件 - 展示单个游戏信息
 class GameLibraryCard extends StatelessWidget {
@@ -528,63 +529,6 @@ class GameLibraryCard extends StatelessWidget {
         status: status,
         onStatusChanged: onStatusChanged,
       ),
-    );
-  }
-}
-
-/// 游戏状态选择器
-class GameStatusSelector extends StatelessWidget {
-  final GameStatus currentStatus;
-  final Function(GameStatus) onStatusSelected;
-
-  const GameStatusSelector({
-    super.key,
-    required this.currentStatus,
-    required this.onStatusSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '更改游戏状态',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ...GameStatusExtension.values.map((status) {
-            final isSelected = status == currentStatus;
-            return ListTile(
-              leading: _getStatusIcon(status),
-              title: Text(status.displayName),
-              subtitle: Text(status.description),
-              trailing: isSelected ? const Icon(Icons.check) : null,
-              selected: isSelected,
-              onTap: () => onStatusSelected(status),
-            );
-          }),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  Widget _getStatusIcon(GameStatus status) {
-    return status.when(
-      notStarted: () => const Icon(Icons.play_arrow),
-      playing: () => const Icon(Icons.pause),
-      completed: () => const Icon(Icons.check_circle),
-      abandoned: () => const Icon(Icons.cancel),
-      multiplayer: () => const Icon(Icons.people),
-      paused: () => const Icon(Icons.pause_circle_outline),
     );
   }
 }
