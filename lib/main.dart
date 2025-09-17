@@ -10,10 +10,14 @@ void main() async {
   
   final sharedPreferences = await SharedPreferences.getInstance();
   final providers = await Dependencies.providers;
+  final serviceProviders = await Dependencies.serviceProviders;
   
   runApp(
     MultiProvider(
-      providers: providers,
+      providers: [
+        ...serviceProviders,
+        ...providers,
+      ],
       child: NextPlayApp(sharedPreferences: sharedPreferences),
     ),
   );

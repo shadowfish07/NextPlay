@@ -11,14 +11,14 @@ import '../../domain/models/discover/game_recommendation.dart';
 import '../../domain/models/discover/discover_state.dart';
 import '../service/completion_time_service.dart';
 import '../service/steam_api_service.dart';
-import '../service/steam_store_service.dart';
+// import '../service/steam_store_service.dart'; // 暂时注释，按需加载时启用
 import '../../utils/logger.dart';
 
 /// 游戏仓库 - 管理游戏数据、状态和推荐算法
 class GameRepository {
   final SharedPreferences _prefs;
   final SteamApiService _steamApiService;
-  final SteamStoreService _steamStoreService;
+  // final SteamStoreService _steamStoreService; // 暂时注释，后续按需加载时启用
   
   // 内存缓存
   List<Game> _gameLibrary = [];
@@ -40,10 +40,10 @@ class GameRepository {
   GameRepository({
     required SharedPreferences prefs,
     required SteamApiService steamApiService,
-    required SteamStoreService steamStoreService,
+    // required SteamStoreService steamStoreService, // 暂时注释
   }) : _prefs = prefs,
-       _steamApiService = steamApiService,
-       _steamStoreService = steamStoreService {
+       _steamApiService = steamApiService {
+       // _steamStoreService = steamStoreService, // 暂时注释
     _loadFromStorage();
   }
 
@@ -53,8 +53,14 @@ class GameRepository {
   Stream<RecommendationResult> get recommendationStream => _recommendationController.stream;
 
   // Getters
-  List<Game> get gameLibrary => List.unmodifiable(_gameLibrary);
-  Map<int, GameStatus> get gameStatuses => Map.unmodifiable(_gameStatuses);
+  List<Game> get gameLibrary {
+    AppLogger.info('GameRepository.gameLibrary getter called: ${_gameLibrary.length} games');
+    return List.unmodifiable(_gameLibrary);
+  }
+  Map<int, GameStatus> get gameStatuses {
+    AppLogger.info('GameRepository.gameStatuses getter called: ${_gameStatuses.length} statuses');
+    return Map.unmodifiable(_gameStatuses);
+  }
   RecommendationStats get stats => _stats;
 
   /// 从本地存储加载数据
@@ -144,14 +150,9 @@ class GameRepository {
           
           List<Game> enhancedGames = games;
           
-          // 使用Steam Store API增强游戏数据
-          if (enhanceWithStoreData && games.isNotEmpty) {
-            final storeEnhancedGames = await _enhanceGamesWithStoreData(games);
-            if (storeEnhancedGames.isNotEmpty) {
-              enhancedGames = storeEnhancedGames;
-              AppLogger.info('Enhanced ${storeEnhancedGames.length} games with store data');
-            }
-          }
+          // Steam Store API数据改为按需异步加载，避免频控限制
+          // Store数据将在游戏卡片渲染时按需加载
+          AppLogger.info('Skipping store data enhancement during sync to avoid rate limits');
           
           // 增强游戏数据 - 预估完成时长
           enhancedGames = enhancedGames.map((game) {
@@ -187,7 +188,9 @@ class GameRepository {
     }
   }
 
-  /// 使用Steam Store API增强游戏数据
+  /// 使用Steam Store API增强游戏数据 - 暂时未使用，后续按需加载时启用
+  // TODO: 实现按需异步加载Store数据，避免频控限制
+  /*
   Future<List<Game>> _enhanceGamesWithStoreData(List<Game> games) async {
     try {
       if (games.isEmpty) return games;
@@ -231,6 +234,7 @@ class GameRepository {
       return games; // 返回原始数据，不影响主流程
     }
   }
+  */
 
   /// 推断游戏状态
   GameStatus _inferGameStatus(Game game) {

@@ -2,7 +2,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/service/steam_validation_service.dart';
 import '../data/service/steam_api_service.dart';
-import '../data/service/steam_store_service.dart';
+// import '../data/service/steam_store_service.dart'; // 暂时注释，按需加载时启用
 import '../data/repository/onboarding/onboarding_repository.dart';
 import '../data/repository/game_repository.dart';
 import '../ui/onboarding/view_models/onboarding_view_model.dart';
@@ -12,51 +12,62 @@ import '../ui/settings/view_models/settings_view_model.dart';
 import '../main_viewmodel.dart';
 
 class Dependencies {
+  // 单例实例缓存
+  static SharedPreferences? _sharedPreferences;
+  static SteamApiService? _steamApiService;
+  static SteamValidationService? _steamValidationService;
+  static GameRepository? _gameRepository;
+  static OnboardingRepository? _onboardingRepository;
+  
+  /// 初始化所有依赖
+  static Future<void> _initializeDependencies() async {
+    if (_sharedPreferences != null) return; // 已初始化
+    
+    _sharedPreferences = await SharedPreferences.getInstance();
+    _steamApiService = SteamApiService();
+    _steamValidationService = SteamValidationService(
+      steamApiService: _steamApiService!,
+    );
+    
+    _gameRepository = GameRepository(
+      prefs: _sharedPreferences!,
+      steamApiService: _steamApiService!,
+    );
+    
+    _onboardingRepository = OnboardingRepository(
+      sharedPreferences: _sharedPreferences!,
+      steamValidationService: _steamValidationService!,
+      gameRepository: _gameRepository!,
+    );
+  }
+
   static Future<List<ChangeNotifierProvider>> get providers async {
-    final sharedPreferences = await SharedPreferences.getInstance();
-    
-    final steamApiService = SteamApiService();
-    final steamStoreService = SteamStoreService();
-    final steamValidationService = SteamValidationService(
-      steamApiService: steamApiService,
-    );
-    
-    final onboardingRepository = OnboardingRepository(
-      sharedPreferences: sharedPreferences,
-      steamValidationService: steamValidationService,
-      steamApiService: steamApiService,
-    );
-    
-    final gameRepository = GameRepository(
-      prefs: sharedPreferences,
-      steamApiService: steamApiService,
-      steamStoreService: steamStoreService,
-    );
+    await _initializeDependencies();
 
     return [
       ChangeNotifierProvider<OnboardingViewModel>(
         create: (context) => OnboardingViewModel(
-          repository: onboardingRepository,
+          repository: _onboardingRepository!,
         ),
       ),
       
       ChangeNotifierProvider<DiscoverViewModel>(
         create: (context) => DiscoverViewModel(
-          gameRepository: gameRepository,
+          gameRepository: _gameRepository!,
         ),
       ),
       
       ChangeNotifierProvider<LibraryViewModel>(
         create: (context) => LibraryViewModel(
-          gameRepository: gameRepository,
+          gameRepository: _gameRepository!,
         ),
       ),
       
       ChangeNotifierProvider<SettingsViewModel>(
         create: (context) => SettingsViewModel(
-          onboardingRepository: onboardingRepository,
-          gameRepository: gameRepository,
-          prefs: sharedPreferences,
+          onboardingRepository: _onboardingRepository!,
+          gameRepository: _gameRepository!,
+          prefs: _sharedPreferences!,
         ),
       ),
       
@@ -68,32 +79,14 @@ class Dependencies {
   }
 
   static Future<List<Provider>> get serviceProviders async {
-    final sharedPreferences = await SharedPreferences.getInstance();
-    final steamApiService = SteamApiService();
-    final steamStoreService = SteamStoreService();
-    final steamValidationService = SteamValidationService(
-      steamApiService: steamApiService,
-    );
-    
-    final onboardingRepository = OnboardingRepository(
-      sharedPreferences: sharedPreferences,
-      steamValidationService: steamValidationService,
-      steamApiService: steamApiService,
-    );
-    
-    final gameRepository = GameRepository(
-      prefs: sharedPreferences,
-      steamApiService: steamApiService,
-      steamStoreService: steamStoreService,
-    );
+    await _initializeDependencies();
 
     return [
-      Provider<SharedPreferences>.value(value: sharedPreferences),
-      Provider<SteamApiService>.value(value: steamApiService),
-      Provider<SteamStoreService>.value(value: steamStoreService),
-      Provider<SteamValidationService>.value(value: steamValidationService),
-      Provider<OnboardingRepository>.value(value: onboardingRepository),
-      Provider<GameRepository>.value(value: gameRepository),
+      Provider<SharedPreferences>.value(value: _sharedPreferences!),
+      Provider<SteamApiService>.value(value: _steamApiService!),
+      Provider<SteamValidationService>.value(value: _steamValidationService!),
+      Provider<OnboardingRepository>.value(value: _onboardingRepository!),
+      Provider<GameRepository>.value(value: _gameRepository!),
     ];
   }
 }

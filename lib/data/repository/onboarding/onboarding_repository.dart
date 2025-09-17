@@ -3,13 +3,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../domain/models/onboarding/onboarding_state.dart';
 import '../../../domain/models/onboarding/onboarding_step.dart';
 import '../../service/steam_validation_service.dart';
-import '../../service/steam_api_service.dart';
+import '../game_repository.dart';
 import '../../../utils/logger.dart';
 
 class OnboardingRepository {
   final SharedPreferences _prefs;
   final SteamValidationService _steamValidationService;
-  final SteamApiService _steamApiService;
+  final GameRepository _gameRepository;
   
   final StreamController<OnboardingState> _stateController = 
       StreamController<OnboardingState>.broadcast();
@@ -19,10 +19,10 @@ class OnboardingRepository {
   OnboardingRepository({
     required SharedPreferences sharedPreferences,
     required SteamValidationService steamValidationService,
-    SteamApiService? steamApiService,
+    required GameRepository gameRepository,
   }) : _prefs = sharedPreferences, 
        _steamValidationService = steamValidationService,
-       _steamApiService = steamApiService ?? SteamApiService() {
+       _gameRepository = gameRepository {
     _loadState();
   }
 
@@ -196,19 +196,18 @@ class OnboardingRepository {
         return;
       }
       
-      // 获取游戏库数据
+      // 使用GameRepository同步游戏库数据
       _currentState = _currentState.copyWith(syncProgress: 0.3);
       _stateController.add(_currentState);
       
-      final gamesResult = await _steamApiService.getOwnedGames(
+      final syncResult = await _gameRepository.syncGameLibrary(
         apiKey: apiKey,
         steamId: steamId,
-        includeAppInfo: true,
-        includePlayedFreeGames: true,
+        enhanceWithStoreData: false, // 避免频控，改为按需加载
       );
       
-      if (!gamesResult.isSuccess()) {
-        final error = gamesResult.exceptionOrNull()!;
+      if (!syncResult.isSuccess()) {
+        final error = syncResult.exceptionOrNull()!;
         _currentState = _currentState.copyWith(
           isLoading: false,
           errorMessage: '获取游戏库失败: $error',
@@ -217,13 +216,11 @@ class OnboardingRepository {
         return;
       }
       
-      final games = gamesResult.getOrNull()!;
+      final games = syncResult.getOrNull()!;
+      
+      AppLogger.info('Successfully synced ${games.length} games to GameRepository');
       
       // 模拟处理进度
-      _currentState = _currentState.copyWith(syncProgress: 0.6);
-      _stateController.add(_currentState);
-      await Future.delayed(const Duration(milliseconds: 500));
-      
       _currentState = _currentState.copyWith(syncProgress: 0.8);
       _stateController.add(_currentState);
       await Future.delayed(const Duration(milliseconds: 500));

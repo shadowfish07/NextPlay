@@ -32,6 +32,14 @@ class BatchStatusViewModel extends ChangeNotifier {
   BatchStatusViewModel({required GameRepository gameRepository})
       : _gameRepository = gameRepository {
     _initializeCommands();
+    
+    // 监听GameRepository数据变化，自动重新初始化
+    _gameRepository.gameLibraryStream.listen((_) {
+      if (_state.totalCount == 0) {
+        initializeCommand.execute();
+      }
+    });
+    
     AppLogger.info('BatchStatusViewModel initialized');
   }
 
@@ -83,10 +91,16 @@ class BatchStatusViewModel extends ChangeNotifier {
           final gameLibrary = _gameRepository.gameLibrary;
           final gameStatuses = _gameRepository.gameStatuses;
           
+          AppLogger.info('GameRepository has ${gameLibrary.length} games loaded');
+          AppLogger.info('GameRepository has ${gameStatuses.length} game statuses');
+          
           if (gameLibrary.isEmpty) {
+            AppLogger.warning('Game library is empty, checking if data is being loaded...');
             _setState(_state.copyWith(
               isLoading: false,
-              errorMessage: '游戏库为空，请先同步Steam游戏库',
+              zeroPlaytimeGames: [],
+              highPlaytimeGames: [],
+              totalCount: 0,
             ));
             return;
           }

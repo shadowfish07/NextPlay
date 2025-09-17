@@ -24,6 +24,7 @@ class BatchStatusScreen extends StatefulWidget {
 class _BatchStatusScreenState extends State<BatchStatusScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
+  BatchStatusViewModel? _viewModel;
   
   @override
   void initState() {
@@ -37,13 +38,21 @@ class _BatchStatusScreenState extends State<BatchStatusScreen>
     
     // 初始化数据
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final viewModel = context.read<BatchStatusViewModel>();
-      viewModel.initializeCommand.execute();
+      _viewModel = context.read<BatchStatusViewModel>();
+      _viewModel!.addListener(_onViewModelChanged);
+      _viewModel!.initializeCommand.execute();
     });
+  }
+  
+  void _onViewModelChanged() {
+    if (_viewModel != null && mounted) {
+      _syncTabController(_viewModel!.state.currentStep);
+    }
   }
 
   @override
   void dispose() {
+    _viewModel?.removeListener(_onViewModelChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -52,9 +61,6 @@ class _BatchStatusScreenState extends State<BatchStatusScreen>
   Widget build(BuildContext context) {
     return Consumer<BatchStatusViewModel>(
       builder: (context, viewModel, child) {
-        // 同步TabController与ViewModel状态
-        _syncTabController(viewModel.state.currentStep);
-        
         return Scaffold(
           backgroundColor: Theme.of(context).colorScheme.surface,
           body: Column(
@@ -66,7 +72,9 @@ class _BatchStatusScreenState extends State<BatchStatusScreen>
               Expanded(
                 child: viewModel.state.isLoading && viewModel.state.zeroPlaytimeGames.isEmpty
                     ? _buildLoadingState(context)
-                    : _buildTabContent(context, viewModel),
+                    : viewModel.state.totalCount == 0
+                        ? _buildEmptyState(context)
+                        : _buildTabContent(context, viewModel),
               ),
             ],
           ),
@@ -267,6 +275,69 @@ class _BatchStatusScreenState extends State<BatchStatusScreen>
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+
+  /// 构建空状态
+  Widget _buildEmptyState(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.videogame_asset_off,
+              size: 64,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              '游戏库为空',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '看起来您还没有同步Steam游戏库。\n请先前往设置页面连接您的Steam账户。',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: () {
+                if (widget.isFromOnboarding) {
+                  // 引导模式：跳过当前步骤
+                  widget.onCompleted?.call();
+                } else {
+                  // 独立模式：返回上一页面
+                  Navigator.of(context).pop();
+                }
+              },
+              icon: widget.isFromOnboarding 
+                  ? const Icon(Icons.skip_next)
+                  : const Icon(Icons.arrow_back),
+              label: Text(widget.isFromOnboarding ? '跳过此步骤' : '返回'),
+            ),
+            if (!widget.isFromOnboarding) ...[
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () {
+                  // 回到主页面，用户可以通过底部导航前往设置
+                  Navigator.of(context).pop();
+                },
+                icon: const Icon(Icons.settings),
+                label: const Text('前往设置'),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
