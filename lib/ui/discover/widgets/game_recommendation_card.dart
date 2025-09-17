@@ -120,23 +120,23 @@ class GameRecommendationCard extends StatelessWidget {
             width: double.infinity,
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest,
-              image: DecorationImage(
-                image: NetworkImage(recommendation.game.coverImageUrl),
-                fit: BoxFit.cover,
-                onError: (exception, stackTrace) {
-                  // 图片加载失败时显示占位符
-                },
-              ),
             ),
-            child: recommendation.game.headerImage == null
-                ? Center(
-                    child: Icon(
-                      Icons.videogame_asset,
-                      size: 48,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  )
-                : null,
+            child: Image.network(
+              recommendation.game.coverImageUrl,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                // 图片加载失败时显示占位符
+                return Center(
+                  child: Icon(
+                    Icons.videogame_asset,
+                    size: 48,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                );
+              },
+            ),
           ),
           
           // 渐变遮罩
@@ -294,7 +294,6 @@ class GameRecommendationCard extends StatelessWidget {
 
   /// 构建游戏详细信息
   Widget _buildGameDetails(BuildContext context) {
-    final theme = Theme.of(context);
     final game = recommendation.game;
     
     return Column(

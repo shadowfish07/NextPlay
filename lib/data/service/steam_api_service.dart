@@ -49,17 +49,19 @@ class SteamApiService {
           }
 
           final games = gamesData.map((gameJson) {
+            final appId = gameJson['appid'] as int;
             return Game(
-              appId: gameJson['appid'] as int,
+              appId: appId,
               name: gameJson['name'] as String? ?? 'Unknown Game',
               playtimeForever: gameJson['playtime_forever'] as int? ?? 0,
               playtimeLastTwoWeeks: gameJson['playtime_2weeks'] as int? ?? 0,
               iconUrl: gameJson['img_icon_url'] != null 
-                  ? 'https://media.steampowered.com/steamcommunity/public/images/apps/${gameJson['appid']}/${gameJson['img_icon_url']}.jpg'
+                  ? 'https://media.steampowered.com/steamcommunity/public/images/apps/$appId/${gameJson['img_icon_url']}.jpg'
                   : null,
               logoUrl: gameJson['img_logo_url'] != null
-                  ? 'https://media.steampowered.com/steamcommunity/public/images/apps/${gameJson['appid']}/${gameJson['img_logo_url']}.jpg'
+                  ? 'https://media.steampowered.com/steamcommunity/public/images/apps/$appId/${gameJson['img_logo_url']}.jpg'
                   : null,
+              headerImage: 'https://cdn.akamai.steamstatic.com/steam/apps/$appId/header.jpg',
               lastPlayed: gameJson['rtime_last_played'] != null && gameJson['rtime_last_played'] > 0
                   ? DateTime.fromMillisecondsSinceEpoch((gameJson['rtime_last_played'] as int) * 1000)
                   : null,

@@ -26,6 +26,7 @@ class CompactGameCard extends StatelessWidget {
     
     return SizedBox(
       width: 160, // 固定宽度，适合横向滚动
+      height: 280, // 添加固定高度以防止溢出
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -73,6 +74,7 @@ class CompactGameCard extends StatelessWidget {
                     padding: const EdgeInsets.all(12.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         // 游戏名称
                         _buildGameTitle(context),
@@ -87,13 +89,15 @@ class CompactGameCard extends StatelessWidget {
                         // 游戏时长
                         _buildDuration(context),
                         
-                        const Spacer(),
+                        const SizedBox(height: 8),
                         
                         // 推荐理由
-                        _buildRecommendationReason(context),
+                        Expanded(
+                          child: _buildRecommendationReason(context),
+                        ),
                         
                         if (showQuickAction) ...[
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 8),
                           // 快速操作按钮
                           _buildQuickActionButton(context),
                         ],
@@ -122,25 +126,32 @@ class CompactGameCard extends StatelessWidget {
             width: double.infinity,
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest,
-              image: recommendation.game.headerImage != null
-                  ? DecorationImage(
-                      image: NetworkImage(recommendation.game.libraryImageUrl),
-                      fit: BoxFit.cover,
-                      onError: (exception, stackTrace) {
-                        // 图片加载失败时使用header图片
-                      },
-                    )
-                  : null,
             ),
-            child: recommendation.game.headerImage == null
-                ? Center(
-                    child: Icon(
-                      Icons.videogame_asset,
-                      size: 32,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  )
-                : null,
+            child: Image.network(
+              recommendation.game.libraryImageUrl,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                // 图片加载失败时，尝试使用header图片
+                return Image.network(
+                  recommendation.game.coverImageUrl,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  errorBuilder: (context, error, stackTrace) {
+                    // 如果两个图片都加载失败，显示占位符
+                    return Center(
+                      child: Icon(
+                        Icons.videogame_asset,
+                        size: 32,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
           
           // 状态指示器
@@ -310,14 +321,17 @@ class CompactGameCard extends StatelessWidget {
   Widget _buildRecommendationReason(BuildContext context) {
     final theme = Theme.of(context);
     
-    return Text(
-      recommendation.reason,
-      style: theme.textTheme.labelSmall?.copyWith(
-        color: AppTheme.accentColor,
-        fontWeight: FontWeight.w600,
+    return Container(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        recommendation.reason,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: AppTheme.accentColor,
+          fontWeight: FontWeight.w600,
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
       ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -393,7 +407,7 @@ class AlternativeRecommendationsList extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 240, // 固定高度，适合卡片内容
+          height: 260, // 增加高度以防止溢出
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,

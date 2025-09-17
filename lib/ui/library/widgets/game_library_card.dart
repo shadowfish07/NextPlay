@@ -287,6 +287,7 @@ class GameLibraryCard extends StatelessWidget {
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         // 游戏名称
         Text(
@@ -317,7 +318,7 @@ class GameLibraryCard extends StatelessWidget {
         if (game.genres.isNotEmpty)
           _buildGenreTags(context),
         
-        const Spacer(),
+        const Expanded(child: SizedBox()),
         
         // 游戏进度和评分
         _buildGameStats(context),
