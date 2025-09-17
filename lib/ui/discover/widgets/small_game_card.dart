@@ -39,15 +39,25 @@ class SmallGameCard extends StatelessWidget {
             ],
           ),
           border: Border.all(
-            color: AppTheme.accentColor.withValues(alpha: 0.3),
-            width: 1,
+            color: _getStatusBorderColor(),
+            width: 1.5,
           ),
           boxShadow: [
+            // 状态色彩主阴影
             BoxShadow(
-              color: AppTheme.accentColor.withValues(alpha: 0.2),
-              blurRadius: 8,
+              color: _getStatusBorderColor().withValues(alpha: 0.4),
+              blurRadius: 12,
               offset: const Offset(0, 4),
+              spreadRadius: 1,
             ),
+            // 状态色彩发光效果
+            BoxShadow(
+              color: _getStatusBorderColor().withValues(alpha: 0.6),
+              blurRadius: 6,
+              offset: const Offset(0, 0),
+              spreadRadius: 0,
+            ),
+            // 深度阴影
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 4,
@@ -55,45 +65,48 @@ class SmallGameCard extends StatelessWidget {
             ),
           ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            splashColor: AppTheme.accentColor.withValues(alpha: 0.2),
-            highlightColor: AppTheme.accentColor.withValues(alpha: 0.1),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 游戏封面 - 固定高度
-                _buildGameCover(),
-                
-                // 游戏信息 - 使用flex布局适配剩余空间
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // 游戏名称 - 固定高度避免长标题影响布局
-                        SizedBox(
-                          height: 32, // 固定高度
-                          child: _buildGameTitle(context),
-                        ),
-                        
-                        const SizedBox(height: 4),
-                        
-                        // 状态信息
-                        _buildStatusInfo(context),
-                        
-                        // 底部弹性空间，确保卡片高度一致
-                        const Spacer(),
-                      ],
+        clipBehavior: Clip.none,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14.5), // 略小于外部圆角，确保边框可见
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              splashColor: AppTheme.accentColor.withValues(alpha: 0.2),
+              highlightColor: AppTheme.accentColor.withValues(alpha: 0.1),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 游戏封面 - 固定高度
+                  _buildGameCover(),
+                  
+                  // 游戏信息 - 使用flex布局适配剩余空间
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 游戏名称 - 固定高度避免长标题影响布局
+                          SizedBox(
+                            height: 32, // 固定高度
+                            child: _buildGameTitle(context),
+                          ),
+                          
+                          const SizedBox(height: 4),
+                          
+                          // 状态信息
+                          _buildStatusInfo(context),
+                          
+                          // 底部弹性空间，确保卡片高度一致
+                          const Spacer(),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -116,8 +129,8 @@ class SmallGameCard extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
+                topLeft: Radius.circular(14.5),
+                topRight: Radius.circular(14.5),
               ),
               child: Image.network(
                 game.libraryImageUrl,
@@ -157,12 +170,6 @@ class SmallGameCard extends StatelessWidget {
             ),
           ),
 
-          // 状态徽章
-          Positioned(
-            top: 6,
-            right: 6,
-            child: _buildStatusBadge(),
-          ),
 
           // 队列位置徽章 (仅队列卡片)
           if (queuePosition != null)
@@ -196,58 +203,20 @@ class SmallGameCard extends StatelessWidget {
     );
   }
 
-  /// 构建状态徽章
-  Widget _buildStatusBadge() {
-    Color badgeColor = AppTheme.statusNotStarted;
-    IconData icon = Icons.help_outline;
+  /// 获取状态颜色用于边框
+  Color _getStatusBorderColor() {
+    Color statusColor = AppTheme.statusNotStarted;
     
     status.when(
-      notStarted: () {
-        badgeColor = AppTheme.statusNotStarted;
-        icon = Icons.fiber_new;
-      },
-      playing: () {
-        badgeColor = AppTheme.statusPlaying;
-        icon = Icons.play_circle_filled;
-      },
-      completed: () {
-        badgeColor = AppTheme.statusCompleted;
-        icon = Icons.check_circle;
-      },
-      abandoned: () {
-        badgeColor = AppTheme.statusAbandoned;
-        icon = Icons.pause_circle_filled;
-      },
-      multiplayer: () {
-        badgeColor = AppTheme.statusMultiplayer;
-        icon = Icons.people;
-      },
+      notStarted: () => statusColor = AppTheme.statusNotStarted,
+      playing: () => statusColor = AppTheme.statusPlaying,
+      completed: () => statusColor = AppTheme.statusCompleted,
+      abandoned: () => statusColor = AppTheme.statusAbandoned,
+      multiplayer: () => statusColor = AppTheme.statusMultiplayer,
     );
-
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: BoxDecoration(
-        color: badgeColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: badgeColor.withValues(alpha: 0.5),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Icon(
-        icon,
-        size: 12,
-        color: Colors.white,
-      ),
-    );
+    
+    // 增强颜色亮度，确保在深色背景下可见
+    return Color.lerp(statusColor, Colors.white, 0.2) ?? statusColor;
   }
 
   /// 构建队列位置徽章
