@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../view_models/discover_view_model.dart';
 import '../../../domain/models/discover/discover_state.dart';
 import '../../core/ui/common_widgets.dart' as common_widgets;
@@ -493,12 +494,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   /// 显示游戏详情
   void _showGameDetails(dynamic recommendation) {
-    // TODO: 实现游戏详情页导航
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('查看 ${recommendation.game.name} 详情'),
-        duration: const Duration(seconds: 2),
-      ),
+    context.pushNamed(
+      'gameDetails',
+      pathParameters: {'appId': '${recommendation.game.appId}'},
     );
   }
 }

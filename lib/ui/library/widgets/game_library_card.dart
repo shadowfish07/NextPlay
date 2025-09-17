@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 
@@ -556,16 +558,22 @@ class GameActionMenu extends StatelessWidget {
             title: const Text('查看详情'),
             onTap: () {
               Navigator.of(context).pop();
-              // TODO: 导航到游戏详情页
+              context.pushNamed(
+                'gameDetails',
+                pathParameters: {'appId': '${game.appId}'},
+              );
             },
           ),
           
           ListTile(
             leading: const Icon(Icons.store),
             title: const Text('打开Steam页面'),
-            onTap: () {
+            onTap: () async {
               Navigator.of(context).pop();
-              // TODO: 打开Steam商店页面
+              final steamUrl = Uri.parse('https://store.steampowered.com/app/${game.appId}/');
+              if (await canLaunchUrl(steamUrl)) {
+                await launchUrl(steamUrl, mode: LaunchMode.externalApplication);
+              }
             },
           ),
           
