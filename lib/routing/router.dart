@@ -1,5 +1,4 @@
 import 'package:go_router/go_router.dart';
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'routes.dart';
@@ -41,33 +40,6 @@ class AppRouter {
         path: Routes.main,
         name: 'main',
         builder: (context, state) => const MainScreen(),
-      ),
-      GoRoute(
-        path: Routes.discover,
-        name: 'discover',
-        builder: (context, state) => const Scaffold(
-          body: Center(
-            child: Text('Discover Page - Coming Soon'),
-          ),
-        ),
-      ),
-      GoRoute(
-        path: Routes.library,
-        name: 'library',
-        builder: (context, state) => const Scaffold(
-          body: Center(
-            child: Text('Library Page - Coming Soon'),
-          ),
-        ),
-      ),
-      GoRoute(
-        path: Routes.settings,
-        name: 'settings',
-        builder: (context, state) => const Scaffold(
-          body: Center(
-            child: Text('Settings Page - Coming Soon'),
-          ),
-        ),
       ),
       GoRoute(
         path: Routes.batchStatus,
