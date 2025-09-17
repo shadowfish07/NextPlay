@@ -1054,6 +1054,7 @@ class GameRecommendationCard extends StatelessWidget {
       completed: () => '重新体验',
       abandoned: () => '重新尝试',
       multiplayer: () => '在线游戏',
+      paused: () => '重新开始',
     );
   }
 

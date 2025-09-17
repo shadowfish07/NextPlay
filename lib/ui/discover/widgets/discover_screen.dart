@@ -306,7 +306,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       children: [
         // 推荐标题
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Row(
             children: [
               Container(

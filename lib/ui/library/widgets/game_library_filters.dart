@@ -401,6 +401,7 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
       completed: () => const Icon(Icons.check_circle, size: 16),
       abandoned: () => const Icon(Icons.cancel, size: 16),
       multiplayer: () => const Icon(Icons.people, size: 16),
+      paused: () => const Icon(Icons.pause_circle_outline, size: 16),
     );
   }
 

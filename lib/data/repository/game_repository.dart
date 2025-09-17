@@ -573,6 +573,7 @@ class GameRepository {
       playing: () => reasons.add('继续冒险'),
       completed: () => reasons.add('值得重玩'),
       abandoned: () => {},
+      paused: () => reasons.add('重新出发'),
       multiplayer: () => reasons.add('在线体验'),
     );
 
@@ -806,6 +807,7 @@ class GameRepository {
         playing: () => stats['playing'] = stats['playing']! + 1,
         completed: () => stats['completed'] = stats['completed']! + 1,
         abandoned: () => stats['abandoned'] = stats['abandoned']! + 1,
+        paused: () => stats['paused'] = (stats['paused'] ?? 0) + 1,
         multiplayer: () => stats['multiplayer'] = stats['multiplayer']! + 1,
       );
       

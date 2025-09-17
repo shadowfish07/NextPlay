@@ -38,6 +38,7 @@ class MockGameRecommendationDemo extends StatelessWidget {
                   completed: () => statusText = '已完成',
                   abandoned: () => statusText = '已放弃',
                   multiplayer: () => statusText = '多人游戏',
+                  paused: () => statusText = '暂时搁置',
                 );
                 _showSnackbar(context, '状态更新为: $statusText');
               },
@@ -62,6 +63,7 @@ class MockGameRecommendationDemo extends StatelessWidget {
                   completed: () => statusText = '已完成',
                   abandoned: () => statusText = '已放弃',
                   multiplayer: () => statusText = '多人游戏',
+                  paused: () => statusText = '暂时搁置',
                 );
                 _showSnackbar(context, '状态更新为: $statusText');
               },

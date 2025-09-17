@@ -223,6 +223,10 @@ class GameLibraryCard extends StatelessWidget {
         backgroundColor: AppTheme.statusMultiplayer,
         textColor: Colors.white,
       ),
+      paused: () => (
+        backgroundColor: AppTheme.statusPaused,
+        textColor: Colors.white,
+      ),
     );
     
     return Container(
@@ -497,6 +501,7 @@ class GameLibraryCard extends StatelessWidget {
       completed: () => const Icon(Icons.check_circle, size: 16),
       abandoned: () => const Icon(Icons.cancel, size: 16),
       multiplayer: () => const Icon(Icons.people, size: 16),
+      paused: () => const Icon(Icons.pause_circle_outline, size: 16),
     );
   }
 
@@ -579,6 +584,7 @@ class GameStatusSelector extends StatelessWidget {
       completed: () => const Icon(Icons.check_circle),
       abandoned: () => const Icon(Icons.cancel),
       multiplayer: () => const Icon(Icons.people),
+      paused: () => const Icon(Icons.pause_circle_outline),
     );
   }
 }

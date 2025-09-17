@@ -262,6 +262,10 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard>
         statusText = '多人游戏';
         statusColor = AppTheme.statusMultiplayer;
       },
+      paused: () {
+        statusText = '暂时搁置';
+        statusColor = AppTheme.statusPaused;
+      },
     );
 
     return Container(
@@ -667,6 +671,7 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard>
             const GameStatus.completed(),
             const GameStatus.abandoned(),
             const GameStatus.multiplayer(),
+            const GameStatus.paused(),
           ].map((status) {
             String statusText = '';
             status.when(
@@ -675,6 +680,7 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard>
               completed: () => statusText = '已完成',
               abandoned: () => statusText = '已放弃',
               multiplayer: () => statusText = '多人游戏',
+              paused: () => statusText = '暂时搁置',
             );
 
             return DropdownMenuItem<GameStatus>(

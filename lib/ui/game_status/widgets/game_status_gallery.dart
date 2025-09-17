@@ -387,6 +387,9 @@ class _GameCard extends StatelessWidget {
       multiplayer: () => isText 
           ? colorScheme.secondary
           : colorScheme.secondaryContainer,
+      paused: () => isText 
+          ? colorScheme.outline
+          : colorScheme.outlineVariant,
     );
   }
 }

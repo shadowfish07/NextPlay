@@ -263,6 +263,11 @@ class CompactGameCard extends StatelessWidget {
         color = AppTheme.statusAbandoned;
         label = 'PAUSE';
       },
+      paused: () {
+        icon = Icons.pause_circle_outline;
+        color = AppTheme.statusPaused;
+        label = 'BREAK';
+      },
       multiplayer: () {
         icon = Icons.people;
         color = AppTheme.statusMultiplayer;
@@ -507,6 +512,7 @@ class CompactGameCard extends StatelessWidget {
       playing: () => '继续',
       completed: () => '重玩',
       abandoned: () => '重试',
+      paused: () => '重启',
       multiplayer: () => '在线',
     );
   }

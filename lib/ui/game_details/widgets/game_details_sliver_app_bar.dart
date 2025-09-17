@@ -165,6 +165,7 @@ class GameDetailsSliverAppBar extends StatelessWidget {
       playing: () => badgeColor = theme.colorScheme.secondary,
       completed: () => badgeColor = theme.colorScheme.tertiary,
       abandoned: () => badgeColor = theme.colorScheme.error,
+      paused: () => badgeColor = theme.colorScheme.outline,
       multiplayer: () => badgeColor = theme.colorScheme.primaryContainer,
     );
     
@@ -241,6 +242,7 @@ class GameDetailsSliverAppBar extends StatelessWidget {
       playing: () => '继续游戏',
       completed: () => '重新体验',
       abandoned: () => '重新尝试',
+      paused: () => '重新开始',
       multiplayer: () => '在线游戏',
     );
   }

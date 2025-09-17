@@ -291,6 +291,7 @@ class GameDetailsViewModel extends ChangeNotifier {
       playing: () => '继续游戏',
       completed: () => '重新体验',
       abandoned: () => '重新尝试',
+      paused: () => '重新开始',
       multiplayer: () => '在线游戏',
     );
   }

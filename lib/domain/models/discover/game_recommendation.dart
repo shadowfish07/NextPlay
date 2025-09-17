@@ -99,6 +99,7 @@ extension GameRecommendationExtension on GameRecommendation {
       completed: () => baseTags.add('值得重玩'),
       abandoned: () => {},
       multiplayer: () => baseTags.add('在线游戏'),
+      paused: () => baseTags.add('重新开始'),
     );
 
     // 基于游戏特性添加标签

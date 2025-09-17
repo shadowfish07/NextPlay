@@ -748,6 +748,7 @@ class _StatusChip extends StatelessWidget {
       completed: () => Colors.green,
       abandoned: () => Colors.red,
       multiplayer: () => Colors.purple,
+      paused: () => Colors.orange,
     );
   }
 }
@@ -806,6 +807,7 @@ class _StatusSelectorSheet extends StatelessWidget {
       completed: () => '已经通关或完成',
       abandoned: () => '已放弃或不再游玩',
       multiplayer: () => '多人游戏或在线游戏',
+      paused: () => '暂时搁置，可能稍后继续',
     );
   }
 }

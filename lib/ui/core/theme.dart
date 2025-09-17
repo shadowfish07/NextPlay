@@ -18,6 +18,7 @@ class AppTheme {
   static const Color _statusCompleted = Color(0xFF2196F3);
   static const Color _statusNotStarted = Color(0xFFFF9800);
   static const Color _statusAbandoned = Color(0xFFF44336);
+  static const Color _statusPaused = Color(0xFFFF5722);
   static const Color _statusMultiplayer = Color(0xFF9C27B0);
   
   // Enhanced light theme for consistency
@@ -205,6 +206,7 @@ class AppTheme {
   static Color get statusCompleted => _statusCompleted;
   static Color get statusNotStarted => _statusNotStarted;
   static Color get statusAbandoned => _statusAbandoned;
+  static Color get statusPaused => _statusPaused;
   static Color get statusMultiplayer => _statusMultiplayer;
   
   // Gaming surface colors (public accessors)

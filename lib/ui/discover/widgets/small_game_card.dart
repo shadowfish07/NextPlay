@@ -217,6 +217,10 @@ class SmallGameCard extends StatelessWidget {
         icon = Icons.pause_circle_filled;
         color = AppTheme.statusAbandoned;
       },
+      paused: () {
+        icon = Icons.pause_circle_outline;
+        color = AppTheme.statusPaused;
+      },
       multiplayer: () {
         icon = Icons.people;
         color = AppTheme.statusMultiplayer;
@@ -378,7 +382,7 @@ class HorizontalGameList extends StatelessWidget {
       children: [
         // 标题
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Row(
             children: [
               Container(
@@ -433,7 +437,7 @@ class HorizontalGameList extends StatelessWidget {
           ),
         ),
         
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
       ],
     );
   }

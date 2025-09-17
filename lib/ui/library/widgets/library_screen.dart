@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../view_models/library_view_model.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/ui/common_widgets.dart' as common_widgets;
-import 'game_library_card.dart';
+import 'gallery_game_card.dart';
 import 'game_library_filters.dart';
 
 /// 游戏库页面 - 展示和管理用户的游戏库
@@ -270,7 +270,7 @@ class _LibraryScreenState extends State<LibraryScreen>
             final status = viewModel.getGameStatus(game.appId);
             final isSelected = viewModel.isGameSelected(game.appId);
             
-            return GameLibraryCard(
+            return GalleryGameCard(
               game: game,
               status: status,
               isSelected: isSelected,
@@ -284,9 +284,9 @@ class _LibraryScreenState extends State<LibraryScreen>
         ),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.75,
+          childAspectRatio: 0.65, // 调整比例适配新卡片高度 (300px)
           crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+          mainAxisSpacing: 16,
         ),
       ),
     );
@@ -306,8 +306,8 @@ class _LibraryScreenState extends State<LibraryScreen>
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: SizedBox(
-                height: 120,
-                child: GameLibraryCard(
+                height: 160, // 增加高度适配新卡片
+                child: GalleryGameCard(
                   game: game,
                   status: status,
                   isSelected: isSelected,
@@ -402,6 +402,7 @@ class _LibraryScreenState extends State<LibraryScreen>
       playing: () => theme.colorScheme.primary,
       completed: () => theme.colorScheme.tertiary,
       abandoned: () => theme.colorScheme.error,
+      paused: () => theme.colorScheme.outline,
       multiplayer: () => theme.colorScheme.inversePrimary,
     );
   }
@@ -413,6 +414,7 @@ class _LibraryScreenState extends State<LibraryScreen>
       playing: () => const Icon(Icons.pause, size: 20),
       completed: () => const Icon(Icons.check_circle, size: 20),
       abandoned: () => const Icon(Icons.cancel, size: 20),
+      paused: () => const Icon(Icons.pause_circle_outline, size: 20),
       multiplayer: () => const Icon(Icons.people, size: 20),
     );
   }
