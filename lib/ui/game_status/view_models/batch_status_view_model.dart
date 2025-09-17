@@ -26,7 +26,6 @@ class BatchStatusViewModel extends ChangeNotifier {
   late Command<(int, GameStatus), void> updateGameStatusCommand;
   late Command<void, void> applyZeroPlaytimeChangesCommand;
   late Command<void, void> applyHighPlaytimeChangesCommand;
-  late Command<BulkOperationType, void> performBulkOperationCommand;
   late Command<void, void> finishBatchOperationCommand;
   
   BatchStatusViewModel({required GameRepository gameRepository})
@@ -51,8 +50,6 @@ class BatchStatusViewModel extends ChangeNotifier {
         return _state.zeroPlaytimeGames;
       case BatchOperationStep.highPlaytime:
         return _state.highPlaytimeGames;
-      case BatchOperationStep.bulkOperations:
-        return [];
     }
   }
   
@@ -61,8 +58,6 @@ class BatchStatusViewModel extends ChangeNotifier {
       case BatchOperationStep.zeroPlaytime:
       case BatchOperationStep.highPlaytime:
         return true;
-      case BatchOperationStep.bulkOperations:
-        return false;
     }
   }
   
@@ -204,13 +199,6 @@ class BatchStatusViewModel extends ChangeNotifier {
       },
     );
 
-    // 执行批量操作
-    performBulkOperationCommand = Command.createAsyncNoResult<BulkOperationType>(
-      (operationType) async {
-        await _performBulkOperation(operationType);
-      },
-    );
-
     // 完成批量操作
     finishBatchOperationCommand = Command.createAsyncNoParamNoResult(
       () async {
@@ -233,7 +221,7 @@ class BatchStatusViewModel extends ChangeNotifier {
             game: game,
             currentStatus: currentStatus,
             suggestedStatus: const GameStatus.notStarted(),
-            isSelected: currentStatus != const GameStatus.notStarted(),
+            isSelected: false, // 默认不选中，因为游戏默认状态就是未开始
             reason: '游戏时长为0，建议标记为未开始',
           );
         })
@@ -326,8 +314,6 @@ class BatchStatusViewModel extends ChangeNotifier {
       case BatchOperationStep.highPlaytime:
         _setState(_state.copyWith(highPlaytimeGames: updatedGames));
         break;
-      case BatchOperationStep.bulkOperations:
-        break;
     }
   }
 
@@ -368,107 +354,7 @@ class BatchStatusViewModel extends ChangeNotifier {
     }
   }
 
-  /// 执行批量操作
-  Future<void> _performBulkOperation(BulkOperationType operationType) async {
-    _setState(_state.copyWith(isLoading: true, errorMessage: ''));
-    
-    try {
-      final gameLibrary = _gameRepository.gameLibrary;
-      int processedCount = 0;
-      
-      switch (operationType) {
-        case BulkOperationType.markMultiplayer:
-          for (final game in gameLibrary) {
-            if (game.isMultiplayer || game.genres.any((g) => ['Multiplayer', 'MMO', 'Co-op'].contains(g))) {
-              final result = await _gameRepository.updateGameStatus(
-                game.appId, 
-                const GameStatus.multiplayer(),
-              );
-              if (result.isSuccess()) processedCount++;
-            }
-          }
-          break;
-          
-        case BulkOperationType.markCompleted:
-          for (final game in gameLibrary) {
-            final hoursPlayed = game.playtimeForever / 60.0;
-            if (hoursPlayed >= game.estimatedCompletionHours && hoursPlayed > 5.0) {
-              final result = await _gameRepository.updateGameStatus(
-                game.appId, 
-                const GameStatus.completed(),
-              );
-              if (result.isSuccess()) processedCount++;
-            }
-          }
-          break;
-          
-        case BulkOperationType.markAbandoned:
-          for (final game in gameLibrary) {
-            if (game.lastPlayed != null) {
-              final daysSinceLastPlay = DateTime.now().difference(game.lastPlayed!).inDays;
-              final hoursPlayed = game.playtimeForever / 60.0;
-              if (daysSinceLastPlay > 180 && hoursPlayed > 1.0 && hoursPlayed < game.estimatedCompletionHours * 0.3) {
-                final result = await _gameRepository.updateGameStatus(
-                  game.appId, 
-                  const GameStatus.abandoned(),
-                );
-                if (result.isSuccess()) processedCount++;
-              }
-            }
-          }
-          break;
-          
-        case BulkOperationType.clearAllStatuses:
-          for (final game in gameLibrary) {
-            final result = await _gameRepository.updateGameStatus(
-              game.appId, 
-              const GameStatus.notStarted(),
-            );
-            if (result.isSuccess()) processedCount++;
-          }
-          break;
-          
-        case BulkOperationType.markByGenre:
-          // 这个操作比较复杂，可以根据类型自动推荐状态
-          for (final game in gameLibrary) {
-            GameStatus suggestedStatus = const GameStatus.notStarted();
-            
-            if (game.isMultiplayer) {
-              suggestedStatus = const GameStatus.multiplayer();
-            } else {
-              final hoursPlayed = game.playtimeForever / 60.0;
-              if (hoursPlayed >= game.estimatedCompletionHours) {
-                suggestedStatus = const GameStatus.completed();
-              } else if (hoursPlayed > 1.0) {
-                suggestedStatus = const GameStatus.playing();
-              }
-            }
-            
-            final result = await _gameRepository.updateGameStatus(
-              game.appId, 
-              suggestedStatus,
-            );
-            if (result.isSuccess()) processedCount++;
-          }
-          break;
-      }
-      
-      _setState(_state.copyWith(
-        isLoading: false,
-        processedCount: _state.processedCount + processedCount,
-      ));
-      
-      AppLogger.info('Bulk operation ${operationType.displayName} completed: $processedCount games processed');
-    } catch (e, stackTrace) {
-      final error = '批量操作失败: $e';
-      AppLogger.error(error, e, stackTrace);
-      _setState(_state.copyWith(
-        isLoading: false,
-        errorMessage: error,
-      ));
-    }
-  }
-
+  
   /// 设置状态并通知监听器
   void _setState(BatchOperationState newState) {
     if (_state != newState) {
@@ -499,7 +385,6 @@ class BatchStatusViewModel extends ChangeNotifier {
     updateGameStatusCommand.dispose();
     applyZeroPlaytimeChangesCommand.dispose();
     applyHighPlaytimeChangesCommand.dispose();
-    performBulkOperationCommand.dispose();
     finishBatchOperationCommand.dispose();
     
     super.dispose();

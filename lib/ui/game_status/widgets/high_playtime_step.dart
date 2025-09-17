@@ -400,41 +400,110 @@ class HighPlaytimeStep extends StatelessWidget {
             
             if (selectedCount > 0) const SizedBox(height: 16),
             
-            // 按钮行
+            // 跳过所有识别提示（突出显示）
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.colorScheme.secondary.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.skip_next,
+                    color: theme.colorScheme.onSecondaryContainer,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '不想现在整理状态？',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: theme.colorScheme.onSecondaryContainer,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '可以跳过识别，保持默认状态，稍后在游戏库中手动调整',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // 按钮行 - 重新设计为突出跳过选项
             Row(
               children: [
-                // 跳过按钮
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: isLoading ? null : onSkip,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                // 返回按钮
+                SizedBox(
+                  width: 48,
+                  child: IconButton(
+                    onPressed: isLoading ? null : onPrevious,
+                    icon: const Icon(Icons.arrow_back),
+                    style: IconButton.styleFrom(
+                      backgroundColor: theme.colorScheme.surfaceContainerHigh,
                     ),
-                    child: const Text('跳过此步骤'),
                   ),
                 ),
                 
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
+                
+                // 跳过所有识别按钮（突出显示）
+                Expanded(
+                  flex: 2,
+                  child: OutlinedButton.icon(
+                    onPressed: isLoading ? null : () {
+                      _skipAllRecognition(context, viewModel);
+                    },
+                    icon: const Icon(Icons.skip_next),
+                    label: const Text('跳过所有识别'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: BorderSide(
+                        color: theme.colorScheme.secondary,
+                        width: 2,
+                      ),
+                      foregroundColor: theme.colorScheme.secondary,
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(width: 12),
                 
                 // 应用更改按钮
                 Expanded(
                   flex: 2,
-                  child: FilledButton(
+                  child: FilledButton.icon(
                     onPressed: isLoading ? null : () {
                       _applyChanges(context, viewModel);
                     },
+                    icon: isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check),
+                    label: Text(selectedCount > 0 ? '应用更改' : '完成设置'),
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
-                    child: isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : selectedCount > 0
-                            ? Text('应用更改 ($selectedCount)')
-                            : const Text('下一步'),
                   ),
                 ),
               ],
@@ -472,6 +541,39 @@ class HighPlaytimeStep extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  /// 跳过所有识别
+  void _skipAllRecognition(BuildContext context, BatchStatusViewModel viewModel) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(
+          Icons.skip_next,
+          color: Theme.of(context).colorScheme.secondary,
+          size: 48,
+        ),
+        title: const Text('跳过所有识别'),
+        content: const Text(
+          '您选择跳过游戏状态识别，所有游戏将保持默认的"未开始"状态。\n\n您随时可以在游戏库中手动调整游戏状态。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // 直接完成，不做任何状态更改
+              onSkip?.call();
+            },
+            icon: const Icon(Icons.check),
+            label: const Text('确认跳过'),
+          ),
+        ],
       ),
     );
   }
