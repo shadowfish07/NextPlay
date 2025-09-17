@@ -6,6 +6,7 @@ import '../data/repository/onboarding/onboarding_repository.dart';
 import '../data/repository/game_repository.dart';
 import '../ui/onboarding/view_models/onboarding_view_model.dart';
 import '../ui/discover/view_models/discover_view_model.dart';
+import '../ui/settings/view_models/settings_view_model.dart';
 import '../main_viewmodel.dart';
 
 class Dependencies {
@@ -38,6 +39,14 @@ class Dependencies {
       ChangeNotifierProvider<DiscoverViewModel>(
         create: (context) => DiscoverViewModel(
           gameRepository: gameRepository,
+        ),
+      ),
+      
+      ChangeNotifierProvider<SettingsViewModel>(
+        create: (context) => SettingsViewModel(
+          onboardingRepository: onboardingRepository,
+          gameRepository: gameRepository,
+          prefs: sharedPreferences,
         ),
       ),
       
