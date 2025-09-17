@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../../domain/models/onboarding/onboarding_step.dart';
 import '../view_models/onboarding_view_model.dart';
+import '../../../routing/routes.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -309,7 +311,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         const SizedBox(height: 32),
         FilledButton(
           onPressed: () {
-            // Navigate to main app
+            viewModel.completeOnboardingCommand.execute();
+            context.go(Routes.main);
           },
           child: const Text('开始使用'),
         ),

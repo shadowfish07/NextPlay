@@ -3,7 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/service/steam_validation_service.dart';
 import '../data/service/steam_api_service.dart';
 import '../data/repository/onboarding/onboarding_repository.dart';
+import '../data/repository/game_repository.dart';
 import '../ui/onboarding/view_models/onboarding_view_model.dart';
+import '../ui/discover/view_models/discover_view_model.dart';
 import '../main_viewmodel.dart';
 
 class Dependencies {
@@ -20,11 +22,22 @@ class Dependencies {
       steamValidationService: steamValidationService,
       steamApiService: steamApiService,
     );
+    
+    final gameRepository = GameRepository(
+      prefs: sharedPreferences,
+      steamApiService: steamApiService,
+    );
 
     return [
       ChangeNotifierProvider<OnboardingViewModel>(
         create: (context) => OnboardingViewModel(
           repository: onboardingRepository,
+        ),
+      ),
+      
+      ChangeNotifierProvider<DiscoverViewModel>(
+        create: (context) => DiscoverViewModel(
+          gameRepository: gameRepository,
         ),
       ),
       
@@ -47,12 +60,18 @@ class Dependencies {
       steamValidationService: steamValidationService,
       steamApiService: steamApiService,
     );
+    
+    final gameRepository = GameRepository(
+      prefs: sharedPreferences,
+      steamApiService: steamApiService,
+    );
 
     return [
       Provider<SharedPreferences>.value(value: sharedPreferences),
       Provider<SteamApiService>.value(value: steamApiService),
       Provider<SteamValidationService>.value(value: steamValidationService),
       Provider<OnboardingRepository>.value(value: onboardingRepository),
+      Provider<GameRepository>.value(value: gameRepository),
     ];
   }
 }

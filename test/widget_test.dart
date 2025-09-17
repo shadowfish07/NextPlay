@@ -7,13 +7,18 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:nextplay/main.dart';
 
 void main() {
   testWidgets('NextPlay App loads', (WidgetTester tester) async {
+    // Mock SharedPreferences
+    SharedPreferences.setMockInitialValues({});
+    final sharedPreferences = await SharedPreferences.getInstance();
+    
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const NextPlayApp());
+    await tester.pumpWidget(NextPlayApp(sharedPreferences: sharedPreferences));
 
     // Verify that the app loads without errors
     expect(find.byType(MaterialApp), findsOneWidget);
