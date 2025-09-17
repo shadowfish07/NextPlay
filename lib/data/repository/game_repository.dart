@@ -702,6 +702,16 @@ class GameRepository {
     return const GameStatus.notStarted();
   }
 
+  /// 根据AppId获取游戏
+  Game? getGameByAppId(int appId) {
+    try {
+      return _gameLibrary.firstWhere((game) => game.appId == appId);
+    } catch (e) {
+      AppLogger.warning('Game not found for appId: $appId');
+      return null;
+    }
+  }
+
   /// 按条件筛选游戏
   List<Game> filterGames({
     int? minPlaytime,
@@ -784,6 +794,35 @@ class GameRepository {
     }
     
     return stats;
+  }
+
+  /// 更新用户游戏笔记
+  Future<Result<void, String>> updateGameNotes(int appId, String notes) async {
+    try {
+      final gameIndex = _gameLibrary.indexWhere((game) => game.appId == appId);
+      if (gameIndex == -1) {
+        return const Failure('Game not found');
+      }
+
+      final updatedGame = _gameLibrary[gameIndex].copyWith(userNotes: notes);
+      _gameLibrary[gameIndex] = updatedGame;
+      
+      await _saveToStorage();
+      _gameLibraryController.add(_gameLibrary);
+      
+      AppLogger.info('Updated notes for game $appId');
+      return const Success(());
+    } catch (e, stackTrace) {
+      final error = 'Failed to update game notes: $e';
+      AppLogger.error(error, e, stackTrace);
+      return Failure(error);
+    }
+  }
+
+  /// 获取游戏用户笔记
+  String getGameNotes(int appId) {
+    final game = getGameByAppId(appId);
+    return game?.userNotes ?? '';
   }
 
   /// 清理资源

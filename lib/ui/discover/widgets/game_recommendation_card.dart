@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../domain/models/discover/game_recommendation.dart';
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
@@ -34,7 +35,8 @@ class GameRecommendationCard extends StatelessWidget {
       elevation: 8,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: isLoading ? null : onTap,
+        onTap: isLoading ? null : (onTap ?? () => 
+            context.pushNamed('gameDetails', pathParameters: {'appId': recommendation.game.appId.toString()})),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

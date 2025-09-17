@@ -48,6 +48,9 @@ dependencies:
   # 网络请求
   dio: ^5.4.0                          # HTTP客户端
   
+  # 外部集成
+  url_launcher: ^6.2.2                 # URL启动器
+  
   # UI组件
   cupertino_icons: ^1.0.8
   cached_network_image: ^3.3.0         # 网络图片缓存

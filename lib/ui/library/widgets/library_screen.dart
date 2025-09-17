@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../view_models/library_view_model.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/ui/common_widgets.dart' as common_widgets;
@@ -421,13 +422,8 @@ class _LibraryScreenState extends State<LibraryScreen>
     if (viewModel.isInSelectionMode) {
       viewModel.toggleGameSelectionCommand.execute(appId);
     } else {
-      // TODO: 导航到游戏详情页
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('查看游戏详情 (App ID: $appId)'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      // 导航到游戏详情页
+      context.pushNamed('gameDetails', pathParameters: {'appId': appId.toString()});
     }
   }
 

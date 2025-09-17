@@ -32,6 +32,8 @@ class Game with _$Game {
     @Default(false) bool isSinglePlayer,
     @Default(false) bool hasControllerSupport,
     String? metacriticScore,
+    // 用户数据
+    @Default('') String userNotes,
   }) = _Game;
 
   factory Game.fromJson(Map<String, dynamic> json) => _$GameFromJson(json);

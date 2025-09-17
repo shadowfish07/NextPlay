@@ -6,6 +6,8 @@ import '../ui/onboarding/widgets/onboarding_screen.dart';
 import '../ui/main_screen.dart';
 import '../ui/game_status/widgets/batch_status_screen.dart';
 import '../ui/game_status/view_models/batch_status_view_model.dart';
+import '../ui/game_details/widgets/game_details_screen.dart';
+import '../ui/game_details/view_models/game_details_view_model.dart';
 import '../data/repository/game_repository.dart';
 
 class AppRouter {
@@ -52,6 +54,20 @@ class AppRouter {
             isFromOnboarding: false,
           ),
         ),
+      ),
+      GoRoute(
+        path: '${Routes.gameDetails}/:appId',
+        name: 'gameDetails',
+        builder: (context, state) {
+          final appId = int.parse(state.pathParameters['appId']!);
+          return ChangeNotifierProvider(
+            create: (context) => GameDetailsViewModel(
+              gameRepository: context.read<GameRepository>(),
+              gameAppId: appId,
+            ),
+            child: const GameDetailsScreen(),
+          );
+        },
       ),
     ],
     );
