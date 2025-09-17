@@ -56,4 +56,13 @@ extension GameStatusExtension on GameStatus {
       multiplayer: () => true,
     );
   }
+
+  /// 获取所有可能的游戏状态
+  static List<GameStatus> get values => [
+    const GameStatus.notStarted(),
+    const GameStatus.playing(),
+    const GameStatus.completed(),
+    const GameStatus.abandoned(),
+    const GameStatus.multiplayer(),
+  ];
 }

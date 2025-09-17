@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../../domain/models/onboarding/onboarding_step.dart';
 import '../view_models/onboarding_view_model.dart';
 import '../../../routing/routes.dart';
+import '../../../data/repository/game_repository.dart';
+import '../../game_status/view_models/batch_status_view_model.dart';
+import '../../game_status/widgets/batch_status_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -292,31 +295,71 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
-          Icons.check_circle,
+          Icons.auto_awesome,
           size: 100,
           color: Theme.of(context).colorScheme.primary,
         ),
         const SizedBox(height: 24),
         Text(
-          '设置完成！',
+          '游戏状态智能标记',
           style: Theme.of(context).textTheme.headlineMedium,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
         Text(
-          '您的游戏库已同步完成。\n现在可以开始使用 NextPlay 来发现您的下一款游戏了！',
+          '让我们为您的游戏库设置合适的状态标记\n这将帮助推荐系统为您提供更精准的建议',
           style: Theme.of(context).textTheme.bodyLarge,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 32),
-        FilledButton(
-          onPressed: () {
-            viewModel.completeOnboardingCommand.execute();
-            context.go(Routes.main);
-          },
-          child: const Text('开始使用'),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () {
+                  // 跳过批量标记，直接完成引导
+                  viewModel.completeOnboardingCommand.execute();
+                  context.go(Routes.main);
+                },
+                child: const Text('跳过此步骤'),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 2,
+              child: FilledButton(
+                onPressed: () {
+                  // 进入批量状态管理
+                  _startBatchStatusManagement(context, viewModel);
+                },
+                child: const Text('开始智能标记'),
+              ),
+            ),
+          ],
         ),
       ],
+    );
+  }
+
+  /// 启动批量状态管理
+  void _startBatchStatusManagement(BuildContext context, OnboardingViewModel viewModel) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ChangeNotifierProvider(
+          create: (context) => BatchStatusViewModel(
+            gameRepository: context.read<GameRepository>(),
+          ),
+          child: BatchStatusScreen(
+            isFromOnboarding: true,
+            onCompleted: () {
+              // 批量状态管理完成后，完成引导流程
+              Navigator.of(context).pop(); // 关闭批量状态管理页面
+              viewModel.completeOnboardingCommand.execute();
+              context.go(Routes.main);
+            },
+          ),
+        ),
+      ),
     );
   }
 

@@ -548,6 +548,181 @@ class GameRepository {
     }
   }
 
+  /// 批量更新游戏状态
+  Future<Result<int, String>> batchUpdateGameStatuses(Map<int, GameStatus> updates) async {
+    try {
+      int successCount = 0;
+      final errors = <String>[];
+      
+      for (final entry in updates.entries) {
+        final appId = entry.key;
+        final status = entry.value;
+        
+        final result = await updateGameStatus(appId, status);
+        if (result.isSuccess()) {
+          successCount++;
+        } else {
+          errors.add('Failed to update game $appId: ${result.exceptionOrNull()}');
+        }
+      }
+      
+      AppLogger.info('Batch update completed: $successCount/${updates.length} games updated');
+      
+      if (errors.isNotEmpty) {
+        AppLogger.warning('Batch update had ${errors.length} errors');
+      }
+      
+      return Success(successCount);
+    } catch (e, stackTrace) {
+      final error = 'Batch update failed: $e';
+      AppLogger.error(error, e, stackTrace);
+      return Failure(error);
+    }
+  }
+
+  /// 获取需要状态确认的游戏（用于批量操作）
+  List<Game> getGamesNeedingStatusConfirmation() {
+    return _gameLibrary.where((game) {
+      final status = _gameStatuses[game.appId] ?? const GameStatus.notStarted();
+      final hoursPlayed = game.playtimeForever / 60.0;
+      
+      // 0时长但不是未开始状态
+      if (game.playtimeForever == 0 && status != const GameStatus.notStarted()) {
+        return true;
+      }
+      
+      // 高时长但状态可能不准确
+      if (hoursPlayed > game.estimatedCompletionHours * 0.8 && hoursPlayed > 5.0) {
+        if (hoursPlayed >= game.estimatedCompletionHours && status != const GameStatus.completed()) {
+          return true;
+        }
+        if (game.isMultiplayer && status != const GameStatus.multiplayer()) {
+          return true;
+        }
+        if (!game.isMultiplayer && hoursPlayed < game.estimatedCompletionHours && status == const GameStatus.notStarted()) {
+          return true;
+        }
+      }
+      
+      return false;
+    }).toList();
+  }
+
+  /// 根据游戏特征智能推荐状态
+  GameStatus suggestGameStatus(Game game) {
+    final hoursPlayed = game.playtimeForever / 60.0;
+    
+    // 0时长游戏
+    if (game.playtimeForever == 0) {
+      return const GameStatus.notStarted();
+    }
+    
+    // 多人游戏
+    if (game.isMultiplayer || game.genres.any((g) => ['Multiplayer', 'MMO', 'Co-op'].contains(g))) {
+      return const GameStatus.multiplayer();
+    }
+    
+    // 基于时长判断
+    if (hoursPlayed >= game.estimatedCompletionHours) {
+      return const GameStatus.completed();
+    } else if (hoursPlayed > 1.0) {
+      // 检查是否长期未玩
+      if (game.lastPlayed != null) {
+        final daysSinceLastPlay = DateTime.now().difference(game.lastPlayed!).inDays;
+        if (daysSinceLastPlay > 180 && hoursPlayed < game.estimatedCompletionHours * 0.3) {
+          return const GameStatus.abandoned();
+        }
+      }
+      return const GameStatus.playing();
+    }
+    
+    return const GameStatus.notStarted();
+  }
+
+  /// 按条件筛选游戏
+  List<Game> filterGames({
+    int? minPlaytime,
+    int? maxPlaytime,
+    double? minCompletionHours,
+    double? maxCompletionHours,
+    List<String>? genres,
+    List<GameStatus>? statuses,
+    bool? isMultiplayer,
+    DateTime? lastPlayedAfter,
+    DateTime? lastPlayedBefore,
+  }) {
+    return _gameLibrary.where((game) {
+      // 游戏时长筛选
+      if (minPlaytime != null && game.playtimeForever < minPlaytime) return false;
+      if (maxPlaytime != null && game.playtimeForever > maxPlaytime) return false;
+      
+      // 完成时长筛选
+      if (minCompletionHours != null && game.estimatedCompletionHours < minCompletionHours) return false;
+      if (maxCompletionHours != null && game.estimatedCompletionHours > maxCompletionHours) return false;
+      
+      // 类型筛选
+      if (genres != null && genres.isNotEmpty) {
+        if (!game.genres.any((genre) => genres.contains(genre))) return false;
+      }
+      
+      // 状态筛选
+      if (statuses != null && statuses.isNotEmpty) {
+        final currentStatus = _gameStatuses[game.appId] ?? const GameStatus.notStarted();
+        if (!statuses.contains(currentStatus)) return false;
+      }
+      
+      // 多人游戏筛选
+      if (isMultiplayer != null && game.isMultiplayer != isMultiplayer) return false;
+      
+      // 最后游玩时间筛选
+      if (lastPlayedAfter != null && (game.lastPlayed == null || game.lastPlayed!.isBefore(lastPlayedAfter))) return false;
+      if (lastPlayedBefore != null && (game.lastPlayed == null || game.lastPlayed!.isAfter(lastPlayedBefore))) return false;
+      
+      return true;
+    }).toList();
+  }
+
+  /// 获取游戏库统计信息
+  Map<String, int> getGameLibraryStats() {
+    final stats = <String, int>{
+      'total': _gameLibrary.length,
+      'notStarted': 0,
+      'playing': 0,
+      'completed': 0,
+      'abandoned': 0,
+      'multiplayer': 0,
+      'withPlaytime': 0,
+      'recentlyPlayed': 0,
+    };
+    
+    final now = DateTime.now();
+    final twoWeeksAgo = now.subtract(const Duration(days: 14));
+    
+    for (final game in _gameLibrary) {
+      final status = _gameStatuses[game.appId] ?? const GameStatus.notStarted();
+      
+      // 按状态统计
+      status.when(
+        notStarted: () => stats['notStarted'] = stats['notStarted']! + 1,
+        playing: () => stats['playing'] = stats['playing']! + 1,
+        completed: () => stats['completed'] = stats['completed']! + 1,
+        abandoned: () => stats['abandoned'] = stats['abandoned']! + 1,
+        multiplayer: () => stats['multiplayer'] = stats['multiplayer']! + 1,
+      );
+      
+      // 其他统计
+      if (game.playtimeForever > 0) {
+        stats['withPlaytime'] = stats['withPlaytime']! + 1;
+      }
+      
+      if (game.lastPlayed != null && game.lastPlayed!.isAfter(twoWeeksAgo)) {
+        stats['recentlyPlayed'] = stats['recentlyPlayed']! + 1;
+      }
+    }
+    
+    return stats;
+  }
+
   /// 清理资源
   void dispose() {
     _gameLibraryController.close();

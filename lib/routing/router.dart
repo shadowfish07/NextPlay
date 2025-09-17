@@ -1,9 +1,13 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'routes.dart';
 import '../ui/onboarding/widgets/onboarding_screen.dart';
 import '../ui/main_screen.dart';
+import '../ui/game_status/widgets/batch_status_screen.dart';
+import '../ui/game_status/view_models/batch_status_view_model.dart';
+import '../data/repository/game_repository.dart';
 
 class AppRouter {
   static GoRouter createRouter(SharedPreferences prefs) {
@@ -62,6 +66,18 @@ class AppRouter {
         builder: (context, state) => const Scaffold(
           body: Center(
             child: Text('Settings Page - Coming Soon'),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: Routes.batchStatus,
+        name: 'batchStatus',
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => BatchStatusViewModel(
+            gameRepository: context.read<GameRepository>(),
+          ),
+          child: const BatchStatusScreen(
+            isFromOnboarding: false,
           ),
         ),
       ),
