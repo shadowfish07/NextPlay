@@ -11,12 +11,14 @@ import '../../domain/models/discover/game_recommendation.dart';
 import '../../domain/models/discover/discover_state.dart';
 import '../service/completion_time_service.dart';
 import '../service/steam_api_service.dart';
+import '../service/steam_store_service.dart';
 import '../../utils/logger.dart';
 
 /// 游戏仓库 - 管理游戏数据、状态和推荐算法
 class GameRepository {
   final SharedPreferences _prefs;
   final SteamApiService _steamApiService;
+  final SteamStoreService _steamStoreService;
   
   // 内存缓存
   List<Game> _gameLibrary = [];
@@ -38,8 +40,10 @@ class GameRepository {
   GameRepository({
     required SharedPreferences prefs,
     required SteamApiService steamApiService,
+    required SteamStoreService steamStoreService,
   }) : _prefs = prefs,
-       _steamApiService = steamApiService {
+       _steamApiService = steamApiService,
+       _steamStoreService = steamStoreService {
     _loadFromStorage();
   }
 
@@ -124,6 +128,7 @@ class GameRepository {
   Future<Result<List<Game>, String>> syncGameLibrary({
     required String apiKey,
     required String steamId,
+    bool enhanceWithStoreData = true,
   }) async {
     try {
       AppLogger.info('Starting game library sync');
@@ -135,8 +140,21 @@ class GameRepository {
 
       return result.fold(
         (games) async {
-          // 增强游戏数据
-          final enhancedGames = games.map((game) {
+          AppLogger.info('Got ${games.length} games from Steam Web API');
+          
+          List<Game> enhancedGames = games;
+          
+          // 使用Steam Store API增强游戏数据
+          if (enhanceWithStoreData && games.isNotEmpty) {
+            final storeEnhancedGames = await _enhanceGamesWithStoreData(games);
+            if (storeEnhancedGames.isNotEmpty) {
+              enhancedGames = storeEnhancedGames;
+              AppLogger.info('Enhanced ${storeEnhancedGames.length} games with store data');
+            }
+          }
+          
+          // 增强游戏数据 - 预估完成时长
+          enhancedGames = enhancedGames.map((game) {
             final estimatedTime = CompletionTimeService.estimateCompletionTime(game);
             return game.copyWith(estimatedCompletionHours: estimatedTime);
           }).toList();
@@ -166,6 +184,51 @@ class GameRepository {
       final error = 'Game library sync error: $e';
       AppLogger.error(error, e, stackTrace);
       return Failure(error);
+    }
+  }
+
+  /// 使用Steam Store API增强游戏数据
+  Future<List<Game>> _enhanceGamesWithStoreData(List<Game> games) async {
+    try {
+      if (games.isEmpty) return games;
+      
+      AppLogger.info('Starting store data enhancement for ${games.length} games');
+      
+      // 获取所有游戏的AppID
+      final appIds = games.map((game) => game.appId).toList();
+      
+      // 分批获取Steam Store数据，避免API限制
+      final storeDataResult = await _steamStoreService.getBatchAppDetails(
+        appIds,
+        batchSize: 20, // 减小批次大小，避免超时
+        delayBetweenBatches: const Duration(milliseconds: 200),
+      );
+      
+      if (storeDataResult.isError()) {
+        AppLogger.warning('Failed to fetch store data: ${storeDataResult.exceptionOrNull()}');
+        return games;
+      }
+      
+      final storeDataMap = storeDataResult.getOrNull()!;
+      AppLogger.info('Successfully fetched store data for ${storeDataMap.length} games');
+      
+      // 增强游戏数据
+      final enhancedGames = <Game>[];
+      for (final game in games) {
+        final storeData = storeDataMap[game.appId];
+        if (storeData != null) {
+          enhancedGames.add(_steamStoreService.enhanceGameWithStoreData(game, storeData));
+        } else {
+          enhancedGames.add(game);
+        }
+      }
+      
+      AppLogger.info('Enhanced ${enhancedGames.where((g) => g.genres.isNotEmpty).length}/${games.length} games with store data');
+      return enhancedGames;
+      
+    } catch (e, stackTrace) {
+      AppLogger.error('Error enhancing games with store data', e, stackTrace);
+      return games; // 返回原始数据，不影响主流程
     }
   }
 

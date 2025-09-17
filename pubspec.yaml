@@ -50,6 +50,7 @@ dependencies:
   
   # UI组件
   cupertino_icons: ^1.0.8
+  cached_network_image: ^3.3.0         # 网络图片缓存
 
 dev_dependencies:
   flutter_test:
