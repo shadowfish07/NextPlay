@@ -10,7 +10,6 @@ import '../../core/theme.dart';
 import 'new_game_recommendation_card.dart';
 import 'small_game_card.dart';
 import 'compact_game_card.dart';
-import 'discover_filters.dart';
 
 /// 发现页主屏幕
 class DiscoverScreen extends StatefulWidget {
@@ -22,11 +21,8 @@ class DiscoverScreen extends StatefulWidget {
 
 class _DiscoverScreenState extends State<DiscoverScreen>
     with TickerProviderStateMixin {
-  bool _isFiltersExpanded = false;
   late AnimationController _heroCardAnimationController;
-  late AnimationController _filtersAnimationController;
   late Animation<double> _heroCardScaleAnimation;
-  late Animation<double> _filtersOpacityAnimation;
 
   @override
   void initState() {
@@ -44,11 +40,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
-    _filtersAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 200),
-      vsync: this,
-    );
 
     _heroCardScaleAnimation = Tween<double>(
       begin: 0.8,
@@ -56,14 +47,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     ).animate(CurvedAnimation(
       parent: _heroCardAnimationController,
       curve: Curves.easeOutBack,
-    ));
-
-    _filtersOpacityAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _filtersAnimationController,
-      curve: Curves.easeInOut,
     ));
   }
 
@@ -79,7 +62,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   @override
   void dispose() {
     _heroCardAnimationController.dispose();
-    _filtersAnimationController.dispose();
     super.dispose();
   }
 
@@ -92,12 +74,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             slivers: [
               // 应用栏
               _buildSliverAppBar(context, viewModel),
-              
-              // 筛选器状态指示器
-              _buildFilterStatusIndicator(context, viewModel),
-              
-              // 快速筛选器
-              _buildQuickFilters(context, viewModel),
               
               // 主要内容区域
               _buildMainContent(context, viewModel),
@@ -211,166 +187,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           ],
         ),
       ),
-      actions: [
-        
-        // 刷新按钮 - 现代化设计
-        Container(
-          margin: const EdgeInsets.only(right: 8),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AppTheme.gameMetaBackground.withValues(alpha: 0.8),
-                AppTheme.gamingElevated.withValues(alpha: 0.6),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppTheme.accentColor.withValues(alpha: 0.3),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.accentColor.withValues(alpha: 0.2),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: viewModel.isLoading ? null : () {
-                viewModel.refreshRecommendationsCommand.execute();
-              },
-              borderRadius: BorderRadius.circular(12),
-              splashColor: AppTheme.accentColor.withValues(alpha: 0.2),
-              highlightColor: AppTheme.accentColor.withValues(alpha: 0.1),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                child: AnimatedRotation(
-                  turns: viewModel.isLoading ? 1 : 0,
-                  duration: const Duration(seconds: 1),
-                  child: Icon(
-                    Icons.refresh,
-                    color: viewModel.isLoading ? AppTheme.gameHighlight : AppTheme.accentColor,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        
-        // 筛选器展开按钮 - 现代化设计
-        Container(
-          margin: const EdgeInsets.only(right: 16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: _isFiltersExpanded
-                ? [
-                    AppTheme.accentColor.withValues(alpha: 0.3),
-                    AppTheme.gameHighlight.withValues(alpha: 0.2),
-                  ]
-                : [
-                    AppTheme.gameMetaBackground.withValues(alpha: 0.8),
-                    AppTheme.gamingElevated.withValues(alpha: 0.6),
-                  ],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _isFiltersExpanded
-                ? AppTheme.accentColor.withValues(alpha: 0.6)
-                : AppTheme.accentColor.withValues(alpha: 0.3),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: _isFiltersExpanded
-                  ? AppTheme.accentColor.withValues(alpha: 0.3)
-                  : AppTheme.accentColor.withValues(alpha: 0.2),
-                blurRadius: _isFiltersExpanded ? 12 : 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _toggleFiltersExpanded,
-              borderRadius: BorderRadius.circular(12),
-              splashColor: AppTheme.accentColor.withValues(alpha: 0.2),
-              highlightColor: AppTheme.accentColor.withValues(alpha: 0.1),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                child: Icon(
-                  _isFiltersExpanded ? Icons.filter_alt : Icons.filter_alt_outlined,
-                  color: _isFiltersExpanded ? AppTheme.gameHighlight : AppTheme.accentColor,
-                  size: 20,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
-
-  /// 构建筛选器状态指示器
-  Widget _buildFilterStatusIndicator(BuildContext context, DiscoverViewModel viewModel) {
-    return SliverToBoxAdapter(
-      child: FadeTransition(
-        opacity: _filtersOpacityAnimation,
-        child: FilterStatusIndicator(
-          criteria: viewModel.filterCriteria,
-          onTap: _toggleFiltersExpanded,
-        ),
-      ),
-    );
-  }
-
-  /// 构建快速筛选器
-  Widget _buildQuickFilters(BuildContext context, DiscoverViewModel viewModel) {
-    return SliverToBoxAdapter(
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          QuickDiscoverFilters(
-            criteria: viewModel.filterCriteria,
-            onFiltersChanged: (criteria) {
-              viewModel.applyFiltersCommand.execute(criteria);
-            },
-            onShowMore: _toggleFiltersExpanded,
-          ),
-          
-          // 展开的详细筛选器
-          if (_isFiltersExpanded) ...[
-            const SizedBox(height: 16),
-            FadeTransition(
-              opacity: _filtersOpacityAnimation,
-              child: DiscoverFilters(
-                criteria: viewModel.filterCriteria,
-                isExpanded: _isFiltersExpanded,
-                onFiltersChanged: (criteria) {
-                  viewModel.applyFiltersCommand.execute(criteria);
-                },
-                onClear: () {
-                  viewModel.clearFilters();
-                },
-                onToggleExpanded: _toggleFiltersExpanded,
-              ),
-            ),
-          ],
-          
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
 
   /// 构建主要内容区域
   Widget _buildMainContent(BuildContext context, DiscoverViewModel viewModel) {
@@ -419,7 +238,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       games: playingGames,
       statuses: playingGames.map((game) => const GameStatus.playing()).toList(),
       onGameTap: (game) => _onGameTap(game),
-      showProgress: true,
     );
   }
 
@@ -607,19 +425,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         onRefresh: () => viewModel.generateRecommendationsCommand.execute(),
       ),
     );
-  }
-
-  /// 切换筛选器展开状态
-  void _toggleFiltersExpanded() {
-    setState(() {
-      _isFiltersExpanded = !_isFiltersExpanded;
-    });
-    
-    if (_isFiltersExpanded) {
-      _filtersAnimationController.forward();
-    } else {
-      _filtersAnimationController.reverse();
-    }
   }
 
   /// 显示游戏详情

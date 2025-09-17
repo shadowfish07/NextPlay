@@ -10,7 +10,6 @@ class SmallGameCard extends StatelessWidget {
   final GameStatus status;
   final String? statusInfo; // 额外状态信息，如"15小时"、"队列第2位"
   final VoidCallback? onTap;
-  final bool showProgress; // 是否显示游戏进度条
   final int? queuePosition; // 队列位置（仅队列卡片需要）
 
   const SmallGameCard({
@@ -19,7 +18,6 @@ class SmallGameCard extends StatelessWidget {
     required this.status,
     this.statusInfo,
     this.onTap,
-    this.showProgress = false,
     this.queuePosition,
   });
 
@@ -27,7 +25,7 @@ class SmallGameCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 130, // 固定宽度
-      height: 180, // 固定高度
+      height: 200, // 增加高度以容纳所有内容
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -67,29 +65,30 @@ class SmallGameCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 游戏封面
+                // 游戏封面 - 固定高度
                 _buildGameCover(),
                 
-                // 游戏信息
+                // 游戏信息 - 使用flex布局适配剩余空间
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // 游戏名称
-                        _buildGameTitle(context),
+                        // 游戏名称 - 固定高度避免长标题影响布局
+                        SizedBox(
+                          height: 32, // 固定高度
+                          child: _buildGameTitle(context),
+                        ),
                         
                         const SizedBox(height: 4),
                         
                         // 状态信息
                         _buildStatusInfo(context),
                         
-                        // 进度条 (可选)
-                        if (showProgress) ...[
-                          const SizedBox(height: 6),
-                          _buildProgressBar(),
-                        ],
+                        // 底部弹性空间，确保卡片高度一致
+                        const Spacer(),
                       ],
                     ),
                   ),
@@ -104,8 +103,9 @@ class SmallGameCard extends StatelessWidget {
 
   /// 构建游戏封面
   Widget _buildGameCover() {
-    return AspectRatio(
-      aspectRatio: 1, // 正方形封面
+    return SizedBox(
+      height: 120, // 固定封面高度而不是使用AspectRatio
+      width: double.infinity,
       child: Stack(
         children: [
           // 封面图片
@@ -277,14 +277,19 @@ class SmallGameCard extends StatelessWidget {
   Widget _buildGameTitle(BuildContext context) {
     final theme = Theme.of(context);
     
-    return Text(
-      game.name,
-      style: theme.textTheme.labelMedium?.copyWith(
-        fontWeight: FontWeight.w600,
-        color: Colors.white,
+    return Align(
+      alignment: Alignment.topLeft,
+      child: Text(
+        game.name,
+        style: theme.textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+          height: 1.2, // 设置行高
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.left,
       ),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -309,66 +314,33 @@ class SmallGameCard extends StatelessWidget {
       );
     }
     
-    return Row(
-      children: [
-        Icon(
-          Icons.schedule,
-          size: 12,
-          color: AppTheme.gameHighlight,
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            infoText,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: AppTheme.gameHighlight,
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+    return SizedBox(
+      height: 16, // 固定高度确保布局一致
+      child: Row(
+        children: [
+          Icon(
+            Icons.schedule,
+            size: 12,
+            color: AppTheme.gameHighlight,
           ),
-        ),
-      ],
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              infoText,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: AppTheme.gameHighlight,
+                fontWeight: FontWeight.w500,
+                height: 1.0,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  /// 构建进度条
-  Widget _buildProgressBar() {
-    final progress = game.completionProgress;
-    
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '进度',
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.white70,
-              ),
-            ),
-            Text(
-              '${(progress * 100).toInt()}%',
-              style: TextStyle(
-                fontSize: 10,
-                color: AppTheme.gameHighlight,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        LinearProgressIndicator(
-          value: progress,
-          backgroundColor: AppTheme.gameMetaBackground,
-          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.gameHighlight),
-          minHeight: 3,
-          borderRadius: BorderRadius.circular(1.5),
-        ),
-      ],
-    );
-  }
 }
 
 /// 横向游戏列表组件
@@ -377,7 +349,6 @@ class HorizontalGameList extends StatelessWidget {
   final List<Game> games;
   final List<GameStatus> statuses;
   final Function(Game)? onGameTap;
-  final bool showProgress;
   final List<int>? queuePositions; // 队列位置列表（仅队列列表需要）
 
   const HorizontalGameList({
@@ -386,7 +357,6 @@ class HorizontalGameList extends StatelessWidget {
     required this.games,
     required this.statuses,
     this.onGameTap,
-    this.showProgress = false,
     this.queuePositions,
   });
 
@@ -436,7 +406,7 @@ class HorizontalGameList extends StatelessWidget {
         
         // 横向列表
         SizedBox(
-          height: 180,
+          height: 200, // 增加高度以匹配卡片高度
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
@@ -452,7 +422,6 @@ class HorizontalGameList extends StatelessWidget {
                 game: game,
                 status: status,
                 onTap: () => onGameTap?.call(game),
-                showProgress: showProgress,
                 queuePosition: queuePositions?[index],
               );
             },
