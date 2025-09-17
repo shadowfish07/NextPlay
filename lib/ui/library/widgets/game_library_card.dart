@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
+import '../../core/theme.dart';
 
 /// 游戏库卡片组件 - 展示单个游戏信息
 class GameLibraryCard extends StatelessWidget {
@@ -28,58 +29,94 @@ class GameLibraryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     
-    return Card(
-      elevation: isSelected ? 8 : 2,
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          // 主要内容
-          InkWell(
-            onTap: onTap,
-            onLongPress: onLongPress,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 游戏封面图
-                _buildGameCover(context),
-                
-                // 游戏信息
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: _buildGameInfo(context),
-                  ),
-                ),
-                
-                // 底部操作栏
-                if (!isInSelectionMode)
-                  _buildActionBar(context),
-              ],
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.gamingCard,
+            AppTheme.gamingElevated.withValues(alpha: 0.9),
+          ],
+        ),
+        border: Border.all(
+          color: isSelected 
+            ? AppTheme.accentColor 
+            : AppTheme.gamingElevated.withValues(alpha: 0.3),
+          width: isSelected ? 2 : 0.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isSelected 
+              ? AppTheme.accentColor.withValues(alpha: 0.2)
+              : AppTheme.accentColor.withValues(alpha: 0.05),
+            blurRadius: isSelected ? 16 : 8,
+            offset: const Offset(0, 4),
+            spreadRadius: 0,
           ),
-          
-          // 选择状态指示器
-          if (isInSelectionMode)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: CircleAvatar(
-                radius: 12,
-                backgroundColor: isSelected 
-                    ? theme.colorScheme.primary 
-                    : theme.colorScheme.outline,
-                child: Icon(
-                  isSelected ? Icons.check : Icons.circle,
-                  size: 16,
-                  color: isSelected 
-                      ? theme.colorScheme.onPrimary 
-                      : theme.colorScheme.surface,
-                ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: Stack(
+          children: [
+            // 主要内容
+            InkWell(
+              onTap: onTap,
+              onLongPress: onLongPress,
+              splashColor: AppTheme.accentColor.withValues(alpha: 0.1),
+              highlightColor: AppTheme.accentColor.withValues(alpha: 0.05),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 游戏封面图
+                  _buildGameCover(context),
+                  
+                  // 游戏信息
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: _buildGameInfo(context),
+                    ),
+                  ),
+                  
+                  // 底部操作栏
+                  if (!isInSelectionMode)
+                    _buildActionBar(context),
+                ],
               ),
             ),
-        ],
+            
+            // 选择状态指示器
+            if (isInSelectionMode)
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: isSelected 
+                        ? AppTheme.accentColor 
+                        : Colors.transparent,
+                    child: Icon(
+                      isSelected ? Icons.check : Icons.radio_button_unchecked,
+                      size: 18,
+                      color: isSelected 
+                          ? Colors.white 
+                          : Colors.white.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -96,20 +133,20 @@ class GameLibraryCard extends StatelessWidget {
             imageUrl: game.coverImageUrl,
             fit: BoxFit.cover,
             placeholder: (context, url) => Container(
-              color: Theme.of(context).colorScheme.surfaceVariant,
+              color: AppTheme.gamingElevated,
               child: const Center(
                 child: CircularProgressIndicator(),
               ),
             ),
             errorWidget: (context, url, error) => Container(
-              color: Theme.of(context).colorScheme.surfaceVariant,
+              color: AppTheme.gamingElevated,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.videogame_asset,
                     size: 32,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: AppTheme.gameHighlight,
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -118,7 +155,7 @@ class GameLibraryCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: AppTheme.gameHighlight,
                     ),
                   ),
                 ],
@@ -167,38 +204,46 @@ class GameLibraryCard extends StatelessWidget {
     
     final colors = status.when(
       notStarted: () => (
-        backgroundColor: theme.colorScheme.secondary,
-        textColor: theme.colorScheme.onSecondary,
+        backgroundColor: AppTheme.statusNotStarted,
+        textColor: Colors.white,
       ),
       playing: () => (
-        backgroundColor: theme.colorScheme.primary,
-        textColor: theme.colorScheme.onPrimary,
+        backgroundColor: AppTheme.statusPlaying,
+        textColor: Colors.white,
       ),
       completed: () => (
-        backgroundColor: theme.colorScheme.tertiary,
-        textColor: theme.colorScheme.onTertiary,
+        backgroundColor: AppTheme.statusCompleted,
+        textColor: Colors.white,
       ),
       abandoned: () => (
-        backgroundColor: theme.colorScheme.error,
-        textColor: theme.colorScheme.onError,
+        backgroundColor: AppTheme.statusAbandoned,
+        textColor: Colors.white,
       ),
       multiplayer: () => (
-        backgroundColor: theme.colorScheme.inversePrimary,
-        textColor: theme.colorScheme.onSurface,
+        backgroundColor: AppTheme.statusMultiplayer,
+        textColor: Colors.white,
       ),
     );
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: colors.backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: colors.backgroundColor.withValues(alpha: 0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Text(
         status.displayName,
         style: theme.textTheme.labelSmall?.copyWith(
           color: colors.textColor,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
+          fontSize: 11,
         ),
       ),
     );
@@ -327,7 +372,7 @@ class GameLibraryCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 LinearProgressIndicator(
                   value: game.completionProgress,
-                  backgroundColor: theme.colorScheme.surfaceVariant,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -377,16 +422,22 @@ class GameLibraryCard extends StatelessWidget {
 
   /// 构建操作栏
   Widget _buildActionBar(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.transparent,
+            AppTheme.gameMetaBackground.withValues(alpha: 0.8),
+          ],
+        ),
         border: Border(
           top: BorderSide(
-            color: theme.colorScheme.outline.withValues(alpha: 0.2),
+            color: AppTheme.gamingElevated.withValues(alpha: 0.3),
+            width: 0.5,
           ),
         ),
       ),
@@ -397,13 +448,22 @@ class GameLibraryCard extends StatelessWidget {
             child: _buildStatusButton(context),
           ),
           
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           
           // 更多操作按钮
-          IconButton(
-            onPressed: () => _showGameMenu(context),
-            icon: const Icon(Icons.more_vert),
-            iconSize: 20,
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.accentColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: IconButton(
+              onPressed: () => _showGameMenu(context),
+              icon: Icon(
+                Icons.more_vert,
+                color: AppTheme.accentColor,
+              ),
+              iconSize: 20,
+            ),
           ),
         ],
       ),

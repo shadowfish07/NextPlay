@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../domain/models/discover/game_recommendation.dart';
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
+import '../../core/theme.dart';
 
 /// Hero推荐游戏大卡片组件
 class GameRecommendationCard extends StatelessWidget {
@@ -29,53 +30,78 @@ class GameRecommendationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Card(
-      elevation: 8,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: isLoading ? null : (onTap ?? () => 
-            context.pushNamed('gameDetails', pathParameters: {'appId': recommendation.game.appId.toString()})),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 游戏封面图
-            _buildGameCover(context),
-            
-            // 游戏信息区域
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 游戏名称和推荐强度
-                  _buildGameTitle(context),
-                  
-                  const SizedBox(height: 8),
-                  
-                  // 游戏类型标签
-                  _buildGenreTags(context),
-                  
-                  const SizedBox(height: 12),
-                  
-                  // 游戏详细信息
-                  _buildGameDetails(context),
-                  
-                  const SizedBox(height: 12),
-                  
-                  // 推荐理由
-                  _buildRecommendationReason(context),
-                  
-                  if (showActions) ...[
-                    const SizedBox(height: 16),
-                    // 操作按钮
-                    _buildActionButtons(context),
-                  ],
-                ],
-              ),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.gamingCard,
+            AppTheme.gamingElevated.withValues(alpha: 0.8),
           ],
+        ),
+        border: Border.all(
+          color: AppTheme.accentColor.withValues(alpha: 0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.accentColor.withValues(alpha: 0.1),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: isLoading ? null : (onTap ?? () => 
+              context.pushNamed('gameDetails', pathParameters: {'appId': recommendation.game.appId.toString()})),
+          splashColor: AppTheme.accentColor.withValues(alpha: 0.1),
+          highlightColor: AppTheme.accentColor.withValues(alpha: 0.05),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 游戏封面图
+              _buildGameCover(context),
+              
+              // 游戏信息区域
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 游戏名称和推荐强度
+                    _buildGameTitle(context),
+                    
+                    const SizedBox(height: 12),
+                    
+                    // 游戏类型标签
+                    _buildGenreTags(context),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // 游戏详细信息
+                    _buildGameDetails(context),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // 推荐理由
+                    _buildRecommendationReason(context),
+                    
+                    if (showActions) ...[
+                      const SizedBox(height: 20),
+                      // 操作按钮
+                      _buildActionButtons(context),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -93,7 +119,7 @@ class GameRecommendationCard extends StatelessWidget {
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceVariant,
+              color: theme.colorScheme.surfaceContainerHighest,
               image: DecorationImage(
                 image: NetworkImage(recommendation.game.coverImageUrl),
                 fit: BoxFit.cover,
@@ -126,7 +152,7 @@ class GameRecommendationCard extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    Colors.black.withOpacity(0.7),
+                    Colors.black.withValues(alpha: 0.8),
                   ],
                 ),
               ),
@@ -151,7 +177,7 @@ class GameRecommendationCard extends StatelessWidget {
           if (isLoading)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.4),
                 child: const Center(
                   child: CircularProgressIndicator(
                     color: Colors.white,
@@ -206,7 +232,7 @@ class GameRecommendationCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.7),
+        color: Colors.black.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -349,35 +375,56 @@ class GameRecommendationCard extends StatelessWidget {
     
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(8),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.gameMetaBackground,
+            AppTheme.gameTagBackground.withValues(alpha: 0.6),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppTheme.accentColor.withValues(alpha: 0.1),
+          width: 0.5,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.psychology,
-                size: 16,
-                color: theme.colorScheme.primary,
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.psychology_outlined,
+                  size: 16,
+                  color: AppTheme.accentColor,
+                ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 8),
               Text(
                 '推荐理由',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: AppTheme.accentColor,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 10),
           Text(
             recommendation.reason,
-            style: theme.textTheme.bodyMedium,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.white.withValues(alpha: 0.9),
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -386,7 +433,6 @@ class GameRecommendationCard extends StatelessWidget {
 
   /// 构建操作按钮
   Widget _buildActionButtons(BuildContext context) {
-    final theme = Theme.of(context);
     
     return Column(
       children: [

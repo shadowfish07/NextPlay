@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../domain/models/discover/game_recommendation.dart';
 import '../../../domain/models/game/game.dart';
+import '../../core/theme.dart';
 
 /// 紧凑型游戏推荐卡片 - 用于备选推荐列表
 class CompactGameCard extends StatelessWidget {
@@ -22,57 +23,86 @@ class CompactGameCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     
     return SizedBox(
       width: 160, // 固定宽度，适合横向滚动
-      child: Card(
-        elevation: isSelected ? 8 : 2,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              isSelected ? AppTheme.accentColor.withValues(alpha: 0.2) : AppTheme.gamingCard,
+              isSelected ? AppTheme.accentColor.withValues(alpha: 0.1) : AppTheme.gamingElevated,
+            ],
+          ),
+          border: Border.all(
+            color: isSelected 
+              ? AppTheme.accentColor 
+              : AppTheme.gamingElevated.withValues(alpha: 0.3),
+            width: isSelected ? 1.5 : 0.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                ? AppTheme.accentColor.withValues(alpha: 0.3)
+                : AppTheme.accentColor.withValues(alpha: 0.1),
+              blurRadius: isSelected ? 12 : 6,
+              offset: const Offset(0, 4),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
         clipBehavior: Clip.antiAlias,
-        color: isSelected ? colorScheme.primaryContainer : null,
-        child: InkWell(
-          onTap: onTap,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 游戏封面
-              _buildGameCover(context),
-              
-              // 游戏信息
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 游戏名称
-                      _buildGameTitle(context),
-                      
-                      const SizedBox(height: 4),
-                      
-                      // 主要类型
-                      _buildPrimaryGenre(context),
-                      
-                      const SizedBox(height: 8),
-                      
-                      // 游戏时长
-                      _buildDuration(context),
-                      
-                      const Spacer(),
-                      
-                      // 推荐理由
-                      _buildRecommendationReason(context),
-                      
-                      if (showQuickAction) ...[
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            splashColor: AppTheme.accentColor.withValues(alpha: 0.1),
+            highlightColor: AppTheme.accentColor.withValues(alpha: 0.05),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 游戏封面
+                _buildGameCover(context),
+                
+                // 游戏信息
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 游戏名称
+                        _buildGameTitle(context),
+                        
+                        const SizedBox(height: 6),
+                        
+                        // 主要类型
+                        _buildPrimaryGenre(context),
+                        
                         const SizedBox(height: 8),
-                        // 快速操作按钮
-                        _buildQuickActionButton(context),
+                        
+                        // 游戏时长
+                        _buildDuration(context),
+                        
+                        const Spacer(),
+                        
+                        // 推荐理由
+                        _buildRecommendationReason(context),
+                        
+                        if (showQuickAction) ...[
+                          const SizedBox(height: 10),
+                          // 快速操作按钮
+                          _buildQuickActionButton(context),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -133,37 +163,36 @@ class CompactGameCard extends StatelessWidget {
 
   /// 构建状态指示器
   Widget _buildStatusIndicator(BuildContext context) {
-    final theme = Theme.of(context);
     IconData icon = Icons.help_outline; // 默认图标
-    Color color = theme.colorScheme.onSurface; // 默认颜色
+    Color color = AppTheme.gameHighlight; // 默认颜色
     
     recommendation.status.when(
       notStarted: () {
         icon = Icons.fiber_new;
-        color = theme.colorScheme.primary;
+        color = AppTheme.statusNotStarted;
       },
       playing: () {
         icon = Icons.play_arrow;
-        color = theme.colorScheme.secondary;
+        color = AppTheme.statusPlaying;
       },
       completed: () {
         icon = Icons.check_circle;
-        color = theme.colorScheme.tertiary;
+        color = AppTheme.statusCompleted;
       },
       abandoned: () {
         icon = Icons.pause_circle;
-        color = theme.colorScheme.error;
+        color = AppTheme.statusAbandoned;
       },
       multiplayer: () {
         icon = Icons.people;
-        color = theme.colorScheme.primary;
+        color = AppTheme.statusMultiplayer;
       },
     );
 
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.7),
+        color: Colors.black.withValues(alpha: 0.8),
         shape: BoxShape.circle,
       ),
       child: Icon(
@@ -176,7 +205,6 @@ class CompactGameCard extends StatelessWidget {
 
   /// 构建分数指示器
   Widget _buildScoreIndicator(BuildContext context) {
-    final theme = Theme.of(context);
     final score = recommendation.score;
     
     if (score < 70) return const SizedBox.shrink();
@@ -185,15 +213,24 @@ class CompactGameCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: score >= 90 
-            ? theme.colorScheme.primary
-            : theme.colorScheme.secondary,
+            ? AppTheme.accentColor
+            : AppTheme.gameHighlight,
         borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: (score >= 90 ? AppTheme.accentColor : AppTheme.gameHighlight)
+                .withValues(alpha: 0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Text(
         score >= 90 ? '★' : '☆',
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onPrimary,
+        style: TextStyle(
+          color: Colors.white,
           fontWeight: FontWeight.bold,
+          fontSize: 10,
         ),
       ),
     );
@@ -220,15 +257,21 @@ class CompactGameCard extends StatelessWidget {
     final primaryGenre = recommendation.game.primaryGenre;
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(4),
+        color: AppTheme.gameTagBackground,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: AppTheme.gamingElevated.withValues(alpha: 0.5),
+          width: 0.5,
+        ),
       ),
       child: Text(
         primaryGenre,
         style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
+          color: Colors.white.withValues(alpha: 0.9),
+          fontWeight: FontWeight.w500,
+          fontSize: 10,
         ),
       ),
     );
@@ -244,7 +287,7 @@ class CompactGameCard extends StatelessWidget {
         Icon(
           Icons.schedule,
           size: 12,
-          color: theme.colorScheme.onSurfaceVariant,
+          color: AppTheme.gameHighlight,
         ),
         const SizedBox(width: 4),
         Expanded(
@@ -255,7 +298,7 @@ class CompactGameCard extends StatelessWidget {
                     ? '${game.estimatedCompletionHours.toInt()}h+'
                     : '${game.estimatedCompletionHours.toInt()}h',
             style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+              color: Colors.white.withValues(alpha: 0.8),
             ),
           ),
         ),
@@ -270,8 +313,8 @@ class CompactGameCard extends StatelessWidget {
     return Text(
       recommendation.reason,
       style: theme.textTheme.labelSmall?.copyWith(
-        color: theme.colorScheme.primary,
-        fontWeight: FontWeight.w500,
+        color: AppTheme.accentColor,
+        fontWeight: FontWeight.w600,
       ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,

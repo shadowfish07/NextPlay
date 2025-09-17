@@ -37,7 +37,7 @@ class NextPlayApp extends StatelessWidget {
       title: 'NextPlay',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.dark,
       routerConfig: AppRouter.createRouter(sharedPreferences),
       debugShowCheckedModeBanner: false,
     );
