@@ -67,6 +67,9 @@ class DiscoverViewModel extends ChangeNotifier {
     }).toList();
   }
   List<Game> get playQueueGames => _gameRepository.playQueue;
+  
+  /// 获取游戏状态映射
+  Map<int, GameStatus> get gameStatuses => _gameRepository.gameStatuses;
 
   /// 初始化Commands
   void _initializeCommands() {

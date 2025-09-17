@@ -233,10 +233,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       return const SizedBox.shrink();
     }
     
+    // 获取每个游戏的真实状态
+    final gameStatuses = viewModel.gameStatuses;
+    final statuses = playingGames.map((game) {
+      return gameStatuses[game.appId] ?? const GameStatus.notStarted();
+    }).toList();
+    
     return HorizontalGameList(
       title: '正在游玩',
       games: playingGames,
-      statuses: playingGames.map((game) => const GameStatus.playing()).toList(),
+      statuses: statuses,
       onGameTap: (game) => _onGameTap(game),
     );
   }
@@ -250,10 +256,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       return const SizedBox.shrink(); 
     }
     
+    // 获取每个游戏的真实状态
+    final gameStatuses = viewModel.gameStatuses;
+    final statuses = queueGames.map((game) {
+      return gameStatuses[game.appId] ?? const GameStatus.notStarted();
+    }).toList();
+    
     return HorizontalGameList(
       title: '待玩队列',
       games: queueGames,
-      statuses: queueGames.map((game) => const GameStatus.notStarted()).toList(),
+      statuses: statuses,
       onGameTap: (game) => _onGameTap(game),
       queuePositions: List.generate(queueGames.length, (index) => index + 1),
     );

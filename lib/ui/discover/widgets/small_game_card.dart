@@ -38,26 +38,12 @@ class SmallGameCard extends StatelessWidget {
               AppTheme.gameMetaBackground.withValues(alpha: 0.9),
             ],
           ),
-          border: Border.all(
-            color: _getStatusBorderColor(),
-            width: 1.5,
-          ),
           boxShadow: [
-            // 状态色彩主阴影
             BoxShadow(
-              color: _getStatusBorderColor().withValues(alpha: 0.4),
-              blurRadius: 12,
+              color: AppTheme.accentColor.withValues(alpha: 0.1),
+              blurRadius: 8,
               offset: const Offset(0, 4),
-              spreadRadius: 1,
             ),
-            // 状态色彩发光效果
-            BoxShadow(
-              color: _getStatusBorderColor().withValues(alpha: 0.6),
-              blurRadius: 6,
-              offset: const Offset(0, 0),
-              spreadRadius: 0,
-            ),
-            // 深度阴影
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 4,
@@ -65,9 +51,8 @@ class SmallGameCard extends StatelessWidget {
             ),
           ],
         ),
-        clipBehavior: Clip.none,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(14.5), // 略小于外部圆角，确保边框可见
+          borderRadius: BorderRadius.circular(16),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
@@ -129,8 +114,8 @@ class SmallGameCard extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(14.5),
-                topRight: Radius.circular(14.5),
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
               ),
               child: Image.network(
                 game.libraryImageUrl,
@@ -179,6 +164,13 @@ class SmallGameCard extends StatelessWidget {
               child: _buildQueuePositionBadge(),
             ),
 
+          // 状态角标 (右下角)
+          Positioned(
+            bottom: 6,
+            right: 6,
+            child: _buildStatusBadge(),
+          ),
+
           // 渐变遮罩
           Positioned(
             bottom: 0,
@@ -203,20 +195,65 @@ class SmallGameCard extends StatelessWidget {
     );
   }
 
-  /// 获取状态颜色用于边框
-  Color _getStatusBorderColor() {
-    Color statusColor = AppTheme.statusNotStarted;
+  /// 获取状态图标和颜色
+  ({IconData icon, Color color}) _getStatusIconAndColor() {
+    IconData icon = Icons.help_outline; // 默认图标
+    Color color = AppTheme.statusNotStarted; // 默认颜色
     
     status.when(
-      notStarted: () => statusColor = AppTheme.statusNotStarted,
-      playing: () => statusColor = AppTheme.statusPlaying,
-      completed: () => statusColor = AppTheme.statusCompleted,
-      abandoned: () => statusColor = AppTheme.statusAbandoned,
-      multiplayer: () => statusColor = AppTheme.statusMultiplayer,
+      notStarted: () {
+        icon = Icons.fiber_new;
+        color = AppTheme.statusNotStarted;
+      },
+      playing: () {
+        icon = Icons.play_circle_filled;
+        color = AppTheme.statusPlaying;
+      },
+      completed: () {
+        icon = Icons.check_circle;
+        color = AppTheme.statusCompleted;
+      },
+      abandoned: () {
+        icon = Icons.pause_circle_filled;
+        color = AppTheme.statusAbandoned;
+      },
+      multiplayer: () {
+        icon = Icons.people;
+        color = AppTheme.statusMultiplayer;
+      },
     );
     
-    // 增强颜色亮度，确保在深色背景下可见
-    return Color.lerp(statusColor, Colors.white, 0.2) ?? statusColor;
+    return (icon: icon, color: color);
+  }
+
+  /// 构建状态角标
+  Widget _buildStatusBadge() {
+    final statusData = _getStatusIconAndColor();
+    
+    return Container(
+      width: 20,
+      height: 20,
+      decoration: BoxDecoration(
+        color: statusData.color,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Icon(
+        statusData.icon,
+        size: 12,
+        color: Colors.white,
+      ),
+    );
   }
 
   /// 构建队列位置徽章
