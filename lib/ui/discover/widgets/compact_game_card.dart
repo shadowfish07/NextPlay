@@ -26,86 +26,150 @@ class CompactGameCard extends StatelessWidget {
     
     return SizedBox(
       width: 160, // 固定宽度，适合横向滚动
-      height: 280, // 添加固定高度以防止溢出
+      height: 300, // 增加高度以容纳新设计
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              isSelected ? AppTheme.accentColor.withValues(alpha: 0.2) : AppTheme.gamingCard,
-              isSelected ? AppTheme.accentColor.withValues(alpha: 0.1) : AppTheme.gamingElevated,
+              isSelected 
+                ? AppTheme.accentColor.withValues(alpha: 0.25) 
+                : AppTheme.gamingCard,
+              isSelected 
+                ? AppTheme.gameHighlight.withValues(alpha: 0.15) 
+                : AppTheme.gamingElevated.withValues(alpha: 0.9),
+              isSelected 
+                ? AppTheme.accentColor.withValues(alpha: 0.2) 
+                : AppTheme.gameMetaBackground.withValues(alpha: 0.8),
             ],
+            stops: const [0.0, 0.6, 1.0],
           ),
           border: Border.all(
             color: isSelected 
-              ? AppTheme.accentColor 
-              : AppTheme.gamingElevated.withValues(alpha: 0.3),
-            width: isSelected ? 1.5 : 0.5,
+              ? AppTheme.accentColor.withValues(alpha: 0.8)
+              : AppTheme.gamingElevated.withValues(alpha: 0.4),
+            width: isSelected ? 2 : 1,
           ),
           boxShadow: [
+            // 主阴影
             BoxShadow(
               color: isSelected
-                ? AppTheme.accentColor.withValues(alpha: 0.3)
-                : AppTheme.accentColor.withValues(alpha: 0.1),
-              blurRadius: isSelected ? 12 : 6,
+                ? AppTheme.accentColor.withValues(alpha: 0.4)
+                : AppTheme.accentColor.withValues(alpha: 0.15),
+              blurRadius: isSelected ? 20 : 12,
+              offset: const Offset(0, 8),
+              spreadRadius: isSelected ? 2 : 0,
+            ),
+            // 内层发光
+            if (isSelected)
+              BoxShadow(
+                color: AppTheme.gameHighlight.withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 0),
+                spreadRadius: 0,
+              ),
+            // 深度阴影
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 6,
               offset: const Offset(0, 4),
-              spreadRadius: 0,
+              spreadRadius: -2,
             ),
           ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            splashColor: AppTheme.accentColor.withValues(alpha: 0.1),
-            highlightColor: AppTheme.accentColor.withValues(alpha: 0.05),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 游戏封面
-                _buildGameCover(context),
-                
-                // 游戏信息
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // 游戏名称
-                        _buildGameTitle(context),
-                        
-                        const SizedBox(height: 6),
-                        
-                        // 主要类型
-                        _buildPrimaryGenre(context),
-                        
-                        const SizedBox(height: 8),
-                        
-                        // 游戏时长
-                        _buildDuration(context),
-                        
-                        const SizedBox(height: 8),
-                        
-                        // 推荐理由
-                        Expanded(
-                          child: _buildRecommendationReason(context),
+        // 添加渐变边框效果
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: isSelected 
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppTheme.accentColor.withValues(alpha: 0.3),
+                    AppTheme.gameHighlight.withValues(alpha: 0.4),
+                    AppTheme.accentColor.withValues(alpha: 0.2),
+                  ],
+                  stops: const [0.0, 0.5, 1.0],
+                )
+              : null,
+          ),
+          child: Container(
+            margin: isSelected ? const EdgeInsets.all(1.5) : EdgeInsets.zero,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18.5),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  isSelected 
+                    ? AppTheme.gamingCard.withValues(alpha: 0.95)
+                    : AppTheme.gamingCard,
+                  isSelected 
+                    ? AppTheme.gamingElevated.withValues(alpha: 0.9)
+                    : AppTheme.gamingElevated.withValues(alpha: 0.9),
+                  isSelected 
+                    ? AppTheme.gameMetaBackground.withValues(alpha: 0.85)
+                    : AppTheme.gameMetaBackground.withValues(alpha: 0.8),
+                ],
+                stops: const [0.0, 0.6, 1.0],
+              ),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onTap,
+                splashColor: AppTheme.accentColor.withValues(alpha: 0.2),
+                highlightColor: AppTheme.accentColor.withValues(alpha: 0.1),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 游戏封面
+                    _buildGameCover(context),
+                    
+                    // 游戏信息
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // 游戏名称
+                            _buildGameTitle(context),
+                            
+                            const SizedBox(height: 8),
+                            
+                            // 主要类型
+                            _buildPrimaryGenre(context),
+                            
+                            const SizedBox(height: 10),
+                            
+                            // 游戏时长
+                            _buildDuration(context),
+                            
+                            const SizedBox(height: 10),
+                            
+                            // 推荐理由
+                            Expanded(
+                              child: _buildRecommendationReason(context),
+                            ),
+                            
+                            if (showQuickAction) ...[
+                              const SizedBox(height: 10),
+                              // 快速操作按钮
+                              _buildQuickActionButton(context),
+                            ],
+                          ],
                         ),
-                        
-                        if (showQuickAction) ...[
-                          const SizedBox(height: 8),
-                          // 快速操作按钮
-                          _buildQuickActionButton(context),
-                        ],
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -176,40 +240,80 @@ class CompactGameCard extends StatelessWidget {
   Widget _buildStatusIndicator(BuildContext context) {
     IconData icon = Icons.help_outline; // 默认图标
     Color color = AppTheme.gameHighlight; // 默认颜色
+    String label = ''; // 状态标签
     
     recommendation.status.when(
       notStarted: () {
         icon = Icons.fiber_new;
         color = AppTheme.statusNotStarted;
+        label = 'NEW';
       },
       playing: () {
-        icon = Icons.play_arrow;
+        icon = Icons.play_circle_filled;
         color = AppTheme.statusPlaying;
+        label = 'PLAY';
       },
       completed: () {
         icon = Icons.check_circle;
         color = AppTheme.statusCompleted;
+        label = 'DONE';
       },
       abandoned: () {
-        icon = Icons.pause_circle;
+        icon = Icons.pause_circle_filled;
         color = AppTheme.statusAbandoned;
+        label = 'PAUSE';
       },
       multiplayer: () {
         icon = Icons.people;
         color = AppTheme.statusMultiplayer;
+        label = 'MULTI';
       },
     );
 
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.8),
-        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withValues(alpha: 0.9),
+            color.withValues(alpha: 0.7),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: 0.8),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.4),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+            spreadRadius: 0,
+          ),
+        ],
       ),
-      child: Icon(
-        icon,
-        size: 16,
-        color: color,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 10,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -220,29 +324,67 @@ class CompactGameCard extends StatelessWidget {
     
     if (score < 70) return const SizedBox.shrink();
     
+    Color primaryColor;
+    Color secondaryColor;
+    String displayText;
+    IconData icon;
+    
+    if (score >= 90) {
+      primaryColor = AppTheme.accentColor;
+      secondaryColor = AppTheme.gameHighlight;
+      displayText = '$score%';
+      icon = Icons.whatshot;
+    } else {
+      primaryColor = AppTheme.gameHighlight;
+      secondaryColor = AppTheme.accentColor;
+      displayText = '$score%';
+      icon = Icons.thumb_up;
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: score >= 90 
-            ? AppTheme.accentColor
-            : AppTheme.gameHighlight,
-        borderRadius: BorderRadius.circular(8),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            primaryColor,
+            secondaryColor.withValues(alpha: 0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: primaryColor.withValues(alpha: 0.8),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: (score >= 90 ? AppTheme.accentColor : AppTheme.gameHighlight)
-                .withValues(alpha: 0.3),
-            blurRadius: 4,
+            color: primaryColor.withValues(alpha: 0.5),
+            blurRadius: 8,
             offset: const Offset(0, 2),
+            spreadRadius: 0,
           ),
         ],
       ),
-      child: Text(
-        score >= 90 ? '★' : '☆',
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 10,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 12,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            displayText,
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 9,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -3,8 +3,12 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../view_models/discover_view_model.dart';
 import '../../../domain/models/discover/discover_state.dart';
+import '../../../domain/models/game/game.dart';
+import '../../../domain/models/game/game_status.dart';
 import '../../core/ui/common_widgets.dart' as common_widgets;
-import 'game_recommendation_card.dart';
+import '../../core/theme.dart';
+import 'new_game_recommendation_card.dart';
+import 'small_game_card.dart';
 import 'compact_game_card.dart';
 import 'discover_filters.dart';
 
@@ -107,87 +111,212 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final theme = Theme.of(context);
     
     return SliverAppBar(
-      expandedHeight: 120,
+      expandedHeight: 140,
       floating: true,
       pinned: true,
-      backgroundColor: theme.colorScheme.surface,
       elevation: 0,
+      backgroundColor: AppTheme.gamingSurface,
+      surfaceTintColor: Colors.transparent,
       flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
+        titlePadding: const EdgeInsets.only(left: 20, bottom: 20),
         title: Text(
           '发现游戏',
           style: theme.textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.bold,
+            color: Colors.white,
+            letterSpacing: 0.5,
           ),
         ),
-        background: Container(
+        background: Stack(
+          children: [
+            // 基础渐变背景
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppTheme.gamingSurface,
+                    AppTheme.gameMetaBackground.withValues(alpha: 0.8),
+                    AppTheme.gamingElevated.withValues(alpha: 0.6),
+                  ],
+                  stops: const [0.0, 0.6, 1.0],
+                ),
+              ),
+            ),
+            
+            // 动态粒子背景效果
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(0.8, -0.6),
+                    radius: 1.2,
+                    colors: [
+                      AppTheme.accentColor.withValues(alpha: 0.15),
+                      AppTheme.gameHighlight.withValues(alpha: 0.08),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.5, 1.0],
+                  ),
+                ),
+              ),
+            ),
+            
+            // 科技感网格效果
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.transparent,
+                      AppTheme.accentColor.withValues(alpha: 0.05),
+                      Colors.transparent,
+                      AppTheme.gameHighlight.withValues(alpha: 0.03),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                  ),
+                ),
+              ),
+            ),
+            
+            // 底部边缘发光
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 2,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.transparent,
+                      AppTheme.accentColor.withValues(alpha: 0.4),
+                      AppTheme.gameHighlight.withValues(alpha: 0.6),
+                      AppTheme.accentColor.withValues(alpha: 0.4),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        
+        // 刷新按钮 - 现代化设计
+        Container(
+          margin: const EdgeInsets.only(right: 8),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-                theme.colorScheme.surface,
+                AppTheme.gameMetaBackground.withValues(alpha: 0.8),
+                AppTheme.gamingElevated.withValues(alpha: 0.6),
               ],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppTheme.accentColor.withValues(alpha: 0.3),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.accentColor.withValues(alpha: 0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: viewModel.isLoading ? null : () {
+                viewModel.refreshRecommendationsCommand.execute();
+              },
+              borderRadius: BorderRadius.circular(12),
+              splashColor: AppTheme.accentColor.withValues(alpha: 0.2),
+              highlightColor: AppTheme.accentColor.withValues(alpha: 0.1),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                child: AnimatedRotation(
+                  turns: viewModel.isLoading ? 1 : 0,
+                  duration: const Duration(seconds: 1),
+                  child: Icon(
+                    Icons.refresh,
+                    color: viewModel.isLoading ? AppTheme.gameHighlight : AppTheme.accentColor,
+                    size: 20,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
-      ),
-      actions: [
-        // 游戏库统计
-        _buildGameLibraryStats(context, viewModel),
         
-        // 刷新按钮
-        IconButton(
-          onPressed: viewModel.isLoading ? null : () {
-            viewModel.refreshRecommendationsCommand.execute();
-          },
-          icon: AnimatedRotation(
-            turns: viewModel.isLoading ? 1 : 0,
-            duration: const Duration(seconds: 1),
-            child: const Icon(Icons.refresh),
+        // 筛选器展开按钮 - 现代化设计
+        Container(
+          margin: const EdgeInsets.only(right: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: _isFiltersExpanded
+                ? [
+                    AppTheme.accentColor.withValues(alpha: 0.3),
+                    AppTheme.gameHighlight.withValues(alpha: 0.2),
+                  ]
+                : [
+                    AppTheme.gameMetaBackground.withValues(alpha: 0.8),
+                    AppTheme.gamingElevated.withValues(alpha: 0.6),
+                  ],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _isFiltersExpanded
+                ? AppTheme.accentColor.withValues(alpha: 0.6)
+                : AppTheme.accentColor.withValues(alpha: 0.3),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _isFiltersExpanded
+                  ? AppTheme.accentColor.withValues(alpha: 0.3)
+                  : AppTheme.accentColor.withValues(alpha: 0.2),
+                blurRadius: _isFiltersExpanded ? 12 : 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ),
-        
-        // 筛选器展开按钮
-        IconButton(
-          onPressed: _toggleFiltersExpanded,
-          icon: Icon(
-            _isFiltersExpanded ? Icons.filter_alt : Icons.filter_alt_outlined,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _toggleFiltersExpanded,
+              borderRadius: BorderRadius.circular(12),
+              splashColor: AppTheme.accentColor.withValues(alpha: 0.2),
+              highlightColor: AppTheme.accentColor.withValues(alpha: 0.1),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                child: Icon(
+                  _isFiltersExpanded ? Icons.filter_alt : Icons.filter_alt_outlined,
+                  color: _isFiltersExpanded ? AppTheme.gameHighlight : AppTheme.accentColor,
+                  size: 20,
+                ),
+              ),
+            ),
           ),
         ),
       ],
     );
   }
 
-  /// 构建游戏库统计信息
-  Widget _buildGameLibraryStats(BuildContext context, DiscoverViewModel viewModel) {
-    if (!viewModel.hasGameLibrary) {
-      return const SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Center(
-        child: Tooltip(
-          message: viewModel.gameLibrarySummary,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '${viewModel.currentRecommendations?.totalGamesCount ?? 0}',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   /// 构建筛选器状态指示器
   Widget _buildFilterStatusIndicator(BuildContext context, DiscoverViewModel viewModel) {
@@ -245,10 +374,192 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Widget _buildMainContent(BuildContext context, DiscoverViewModel viewModel) {
     return viewModel.state.when(
       loading: () => _buildLoadingState(),
-      loaded: () => _buildLoadedState(context, viewModel),
+      loaded: () => _buildNewLoadedState(context, viewModel),
       error: (message) => _buildErrorState(context, message, viewModel),
       empty: (message) => _buildEmptyState(context, message, viewModel),
-      refreshing: () => _buildLoadedState(context, viewModel, isRefreshing: true),
+      refreshing: () => _buildNewLoadedState(context, viewModel, isRefreshing: true),
+    );
+  }
+
+  /// 构建新的已加载状态 - 三层布局
+  Widget _buildNewLoadedState(
+    BuildContext context, 
+    DiscoverViewModel viewModel, {
+    bool isRefreshing = false,
+  }) {
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        // 1. 正在游玩的游戏 (横向列表)
+        _buildCurrentlyPlayingSection(context, viewModel),
+        
+        // 2. 待玩队列 (横向列表)  
+        _buildPlayQueueSection(context, viewModel),
+        
+        // 3. 推荐游戏 (大卡片)
+        _buildRecommendationSection(context, viewModel, isRefreshing),
+        
+        const SizedBox(height: 32),
+      ]),
+    );
+  }
+
+  /// 构建正在游玩区域
+  Widget _buildCurrentlyPlayingSection(BuildContext context, DiscoverViewModel viewModel) {
+    // 从viewModel获取正在游玩的游戏
+    final playingGames = viewModel.playingGames;
+    
+    if (playingGames.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    return HorizontalGameList(
+      title: '正在游玩',
+      games: playingGames,
+      statuses: playingGames.map((game) => const GameStatus.playing()).toList(),
+      onGameTap: (game) => _onGameTap(game),
+      showProgress: true,
+    );
+  }
+
+  /// 构建待玩队列区域  
+  Widget _buildPlayQueueSection(BuildContext context, DiscoverViewModel viewModel) {
+    // 从viewModel获取待玩队列
+    final queueGames = viewModel.playQueueGames;
+    
+    if (queueGames.isEmpty) {
+      return const SizedBox.shrink(); 
+    }
+    
+    return HorizontalGameList(
+      title: '待玩队列',
+      games: queueGames,
+      statuses: queueGames.map((game) => const GameStatus.notStarted()).toList(),
+      onGameTap: (game) => _onGameTap(game),
+      queuePositions: List.generate(queueGames.length, (index) => index + 1),
+    );
+  }
+
+  /// 处理游戏卡片点击
+  void _onGameTap(Game game) {
+    context.pushNamed(
+      'gameDetails',
+      pathParameters: {'appId': '${game.appId}'},
+    );
+  }
+
+  /// 构建推荐区域
+  Widget _buildRecommendationSection(
+    BuildContext context, 
+    DiscoverViewModel viewModel, 
+    bool isRefreshing,
+  ) {
+    final heroRecommendation = viewModel.heroRecommendation;
+    
+    if (heroRecommendation == null) {
+      return const SliverToBoxAdapter(
+        child: SizedBox(
+          height: 200,
+          child: Center(
+            child: Text(
+              '暂无推荐游戏',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 推荐标题
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                width: 3,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: AppTheme.accentColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '为你推荐',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        // 推荐卡片
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: ScaleTransition(
+            scale: _heroCardScaleAnimation,
+            child: NewGameRecommendationCard(
+              game: heroRecommendation.game,
+              gameStatus: heroRecommendation.status,
+              rating: heroRecommendation.score / 20, // 转换为5分制
+              similarGames: _getMockSimilarGames(), // 临时Mock数据
+              onAddToQueue: () => _handleAddToQueue(heroRecommendation),
+              onSkip: () => _handleSkipRecommendation(viewModel, heroRecommendation),
+              onViewDetails: () => _showGameDetails(heroRecommendation),
+              onStatusChange: (status) => _handleStatusChange(viewModel, heroRecommendation, status),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 获取Mock相似游戏数据（临时）
+  List<Game> _getMockSimilarGames() {
+    // 临时返回空列表，后续可以从推荐算法获取
+    return [];
+  }
+
+  /// 处理加入队列操作
+  void _handleAddToQueue(dynamic recommendation) {
+    final viewModel = context.read<DiscoverViewModel>();
+    viewModel.addToPlayQueueCommand.execute(recommendation.game.appId);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${recommendation.game.name} 已加入待玩队列'),
+        backgroundColor: AppTheme.accentColor,
+      ),
+    );
+  }
+
+  /// 处理跳过推荐
+  void _handleSkipRecommendation(DiscoverViewModel viewModel, dynamic recommendation) {
+    viewModel.handleRecommendationActionCommand.execute(
+      GameRecommendationAction(
+        gameAppId: recommendation.game.appId,
+        action: RecommendationAction.skipped,
+      ),
+    );
+    
+    // 触发Hero卡片重新生成动画
+    _heroCardAnimationController.reset();
+    _heroCardAnimationController.forward();
+  }
+
+  /// 处理状态更改
+  void _handleStatusChange(DiscoverViewModel viewModel, dynamic recommendation, GameStatus newStatus) {
+    viewModel.updateGameStatusCommand.execute((recommendation.game.appId, newStatus));
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${recommendation.game.name} 状态已更新'),
+        backgroundColor: AppTheme.gameHighlight,
+      ),
     );
   }
 
@@ -259,75 +570,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         message: '正在生成推荐...',
         size: 48,
       ),
-    );
-  }
-
-  /// 构建已加载状态
-  Widget _buildLoadedState(
-    BuildContext context, 
-    DiscoverViewModel viewModel, {
-    bool isRefreshing = false,
-  }) {
-    final heroRecommendation = viewModel.heroRecommendation;
-    final alternatives = viewModel.alternativeRecommendations;
-
-    return SliverList(
-      delegate: SliverChildListDelegate([
-        // Hero推荐卡片
-        if (heroRecommendation != null) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ScaleTransition(
-              scale: _heroCardScaleAnimation,
-              child: GameRecommendationCard(
-                recommendation: heroRecommendation,
-                isLoading: isRefreshing,
-                onTap: () => _showGameDetails(heroRecommendation),
-                onPlay: () => _handleRecommendationAction(
-                  viewModel, 
-                  heroRecommendation, 
-                  RecommendationAction.accepted,
-                ),
-                onDismiss: () => _handleRecommendationAction(
-                  viewModel, 
-                  heroRecommendation, 
-                  RecommendationAction.dismissed,
-                ),
-                onWishlist: () => _handleRecommendationAction(
-                  viewModel, 
-                  heroRecommendation, 
-                  RecommendationAction.wishlisted,
-                ),
-                onSkip: () => _handleRecommendationAction(
-                  viewModel, 
-                  heroRecommendation, 
-                  RecommendationAction.skipped,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-
-        // 备选推荐列表
-        if (alternatives.isNotEmpty) ...[
-          AlternativeRecommendationsList(
-            recommendations: alternatives,
-            onRecommendationTap: _showGameDetails,
-            onQuickAction: (recommendation) => _handleRecommendationAction(
-              viewModel,
-              recommendation,
-              RecommendationAction.accepted,
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-
-        // 推荐统计信息
-        _buildRecommendationStats(context, viewModel),
-        
-        const SizedBox(height: 32),
-      ]),
     );
   }
 
@@ -365,101 +607,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
-  /// 构建推荐统计信息
-  Widget _buildRecommendationStats(BuildContext context, DiscoverViewModel viewModel) {
-    final theme = Theme.of(context);
-    final stats = viewModel.recommendationStats;
-    final currentRec = viewModel.currentRecommendations;
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '推荐统计',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              
-              if (currentRec != null) ...[
-                _buildStatRow(
-                  context,
-                  '总游戏数',
-                  '${currentRec.totalGamesCount}',
-                  Icons.videogame_asset,
-                ),
-                _buildStatRow(
-                  context,
-                  '可推荐',
-                  '${currentRec.recommendableGamesCount}',
-                  Icons.thumb_up,
-                ),
-              ],
-              
-              _buildStatRow(
-                context,
-                '推荐总数',
-                '${stats.totalRecommendations}',
-                Icons.casino,
-              ),
-              
-              if (stats.totalRecommendations > 0)
-                _buildStatRow(
-                  context,
-                  '接受率',
-                  '${((stats.acceptedRecommendations / stats.totalRecommendations) * 100).toStringAsFixed(1)}%',
-                  Icons.trending_up,
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// 构建统计行
-  Widget _buildStatRow(
-    BuildContext context,
-    String label,
-    String value,
-    IconData icon,
-  ) {
-    final theme = Theme.of(context);
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 16,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// 切换筛选器展开状态
   void _toggleFiltersExpanded() {
     setState(() {
@@ -471,25 +618,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     } else {
       _filtersAnimationController.reverse();
     }
-  }
-
-  /// 处理推荐操作
-  void _handleRecommendationAction(
-    DiscoverViewModel viewModel,
-    dynamic recommendation,
-    RecommendationAction action,
-  ) {
-    final gameAppId = recommendation.game.appId;
-    viewModel.handleRecommendationActionCommand.execute(
-      GameRecommendationAction(
-        gameAppId: gameAppId,
-        action: action,
-      ),
-    );
-    
-    // 触发Hero卡片重新生成动画
-    _heroCardAnimationController.reset();
-    _heroCardAnimationController.forward();
   }
 
   /// 显示游戏详情

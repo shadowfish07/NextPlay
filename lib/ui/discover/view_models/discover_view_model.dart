@@ -5,6 +5,7 @@ import 'package:flutter_command/flutter_command.dart';
 import '../../../domain/models/discover/discover_state.dart';
 import '../../../domain/models/discover/filter_criteria.dart';
 import '../../../domain/models/discover/game_recommendation.dart';
+import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../../data/repository/game_repository.dart';
 import '../../../utils/logger.dart';
@@ -24,6 +25,7 @@ class DiscoverViewModel extends ChangeNotifier {
   late Command<GameRecommendationAction, void> handleRecommendationActionCommand;
   late Command<(int, GameStatus), void> updateGameStatusCommand;
   late Command<void, void> refreshRecommendationsCommand;
+  late Command<int, void> addToPlayQueueCommand;
   
   // 流订阅
   StreamSubscription? _recommendationSubscription;
@@ -54,6 +56,17 @@ class DiscoverViewModel extends ChangeNotifier {
     error: (message) => message,
     orElse: () => null,
   );
+
+  // 游戏库相关getters
+  bool get hasGameLibrary => _gameRepository.gameLibrary.isNotEmpty;
+  List<Game> get playingGames {
+    final gameStatuses = _gameRepository.gameStatuses;
+    return _gameRepository.gameLibrary.where((game) {
+      final status = gameStatuses[game.appId] ?? const GameStatus.notStarted();
+      return status == const GameStatus.playing();
+    }).toList();
+  }
+  List<Game> get playQueueGames => _gameRepository.playQueue;
 
   /// 初始化Commands
   void _initializeCommands() {
@@ -219,6 +232,28 @@ class DiscoverViewModel extends ChangeNotifier {
         );
       },
     );
+
+    // 添加到待玩队列Command
+    addToPlayQueueCommand = Command.createAsyncNoResult<int>(
+      (appId) async {
+        AppLogger.info('Adding game $appId to play queue');
+        
+        final result = await _gameRepository.addToPlayQueue(appId);
+        
+        result.fold(
+          (_) {
+            AppLogger.info('Game $appId added to play queue successfully');
+            // 可选：自动生成新推荐
+            if (hasRecommendations && heroRecommendation?.game.appId == appId) {
+              generateRecommendationsCommand.execute();
+            }
+          },
+          (error) {
+            AppLogger.error('Failed to add game to play queue: $error');
+          },
+        );
+      },
+    );
   }
 
   /// 订阅数据流
@@ -291,9 +326,6 @@ class DiscoverViewModel extends ChangeNotifier {
 
   /// 获取推荐统计信息
   RecommendationStats get recommendationStats => _gameRepository.stats;
-
-  /// 是否有游戏库数据
-  bool get hasGameLibrary => _gameRepository.gameLibrary.isNotEmpty;
 
   /// 游戏库统计
   String get gameLibrarySummary {

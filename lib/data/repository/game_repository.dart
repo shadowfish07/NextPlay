@@ -24,18 +24,21 @@ class GameRepository {
   List<Game> _gameLibrary = [];
   Map<int, GameStatus> _gameStatuses = {};
   List<GameRecommendation> _recentRecommendations = [];
+  List<int> _playQueue = []; // 待玩队列 - 存储游戏AppID
   RecommendationStats _stats = const RecommendationStats();
   
   // 数据变更流
   final _gameLibraryController = StreamController<List<Game>>.broadcast();
   final _gameStatusController = StreamController<Map<int, GameStatus>>.broadcast();
   final _recommendationController = StreamController<RecommendationResult>.broadcast();
+  final _playQueueController = StreamController<List<Game>>.broadcast();
   
   // 配置
   static const String _gameLibraryKey = 'game_library';
   static const String _gameStatusesKey = 'game_statuses';
   static const String _recommendationStatsKey = 'recommendation_stats';
   static const String _recentRecommendationsKey = 'recent_recommendations';
+  static const String _playQueueKey = 'play_queue';
   
   GameRepository({
     required SharedPreferences prefs,
@@ -51,6 +54,7 @@ class GameRepository {
   Stream<List<Game>> get gameLibraryStream => _gameLibraryController.stream;
   Stream<Map<int, GameStatus>> get gameStatusStream => _gameStatusController.stream;
   Stream<RecommendationResult> get recommendationStream => _recommendationController.stream;
+  Stream<List<Game>> get playQueueStream => _playQueueController.stream;
 
   // Getters
   List<Game> get gameLibrary {
@@ -60,6 +64,20 @@ class GameRepository {
   Map<int, GameStatus> get gameStatuses {
     AppLogger.info('GameRepository.gameStatuses getter called: ${_gameStatuses.length} statuses');
     return Map.unmodifiable(_gameStatuses);
+  }
+  List<Game> get playQueue {
+    final queueGames = <Game>[];
+    for (final appId in _playQueue) {
+      try {
+        final game = _gameLibrary.firstWhere((game) => game.appId == appId);
+        queueGames.add(game);
+      } catch (e) {
+        // 忽略找不到的游戏，可能已被删除
+        AppLogger.warning('Game not found in library for play queue appId: $appId');
+      }
+    }
+    AppLogger.info('GameRepository.playQueue getter called: ${queueGames.length} games in queue');
+    return List.unmodifiable(queueGames);
   }
   RecommendationStats get stats => _stats;
 
@@ -99,6 +117,14 @@ class GameRepository {
         AppLogger.info('Loaded ${_recentRecommendations.length} recent recommendations');
       }
 
+      // 加载待玩队列
+      final playQueueJson = _prefs.getString(_playQueueKey);
+      if (playQueueJson != null) {
+        final playQueueList = json.decode(playQueueJson) as List;
+        _playQueue = playQueueList.cast<int>();
+        AppLogger.info('Loaded ${_playQueue.length} games in play queue');
+      }
+
     } catch (e, stackTrace) {
       AppLogger.error('Error loading data from storage', e, stackTrace);
     }
@@ -123,6 +149,10 @@ class GameRepository {
       final recentToSave = _recentRecommendations.take(20).toList();
       final recentJson = json.encode(recentToSave.map((rec) => rec.toJson()).toList());
       await _prefs.setString(_recentRecommendationsKey, recentJson);
+
+      // 保存待玩队列
+      final playQueueJson = json.encode(_playQueue);
+      await _prefs.setString(_playQueueKey, playQueueJson);
 
       AppLogger.info('Saved repository data to storage');
     } catch (e, stackTrace) {
@@ -346,16 +376,8 @@ class GameRepository {
     return _gameLibrary.where((game) {
       final status = _gameStatuses[game.appId] ?? const GameStatus.notStarted();
       
-      // 排除已放弃的游戏
-      if (!status.isRecommendable) return false;
-      
-      // 仅未玩过的游戏
-      if (criteria.onlyUnplayed) {
-        return status == const GameStatus.notStarted();
-      }
-      
-      // 包含已通关的游戏
-      if (!criteria.includeCompleted && status == const GameStatus.completed()) {
+      // 新的推荐策略：只推荐未开始和暂时搁置的游戏
+      if (status != const GameStatus.notStarted() && status != const GameStatus.abandoned()) {
         return false;
       }
       
@@ -829,11 +851,104 @@ class GameRepository {
     return game?.userNotes ?? '';
   }
 
+  /// 添加游戏到待玩队列
+  Future<Result<void, String>> addToPlayQueue(int appId) async {
+    try {
+      // 检查游戏是否存在
+      final game = getGameByAppId(appId);
+      if (game == null) {
+        return const Failure('游戏不存在');
+      }
+
+      // 检查是否已在队列中
+      if (_playQueue.contains(appId)) {
+        return const Failure('游戏已在待玩队列中');
+      }
+
+      // 添加到队列末尾
+      _playQueue.add(appId);
+      
+      await _saveToStorage();
+      _playQueueController.add(playQueue);
+      
+      AppLogger.info('Added game $appId (${game.name}) to play queue');
+      return const Success(());
+    } catch (e, stackTrace) {
+      final error = 'Failed to add game to play queue: $e';
+      AppLogger.error(error, e, stackTrace);
+      return Failure(error);
+    }
+  }
+
+  /// 从待玩队列移除游戏
+  Future<Result<void, String>> removeFromPlayQueue(int appId) async {
+    try {
+      final removed = _playQueue.remove(appId);
+      if (!removed) {
+        return const Failure('游戏不在待玩队列中');
+      }
+
+      await _saveToStorage();
+      _playQueueController.add(playQueue);
+      
+      AppLogger.info('Removed game $appId from play queue');
+      return const Success(());
+    } catch (e, stackTrace) {
+      final error = 'Failed to remove game from play queue: $e';
+      AppLogger.error(error, e, stackTrace);
+      return Failure(error);
+    }
+  }
+
+  /// 调整待玩队列中游戏的位置
+  Future<Result<void, String>> reorderPlayQueue(int appId, int newPosition) async {
+    try {
+      final currentIndex = _playQueue.indexOf(appId);
+      if (currentIndex == -1) {
+        return const Failure('游戏不在待玩队列中');
+      }
+
+      final clampedPosition = newPosition.clamp(0, _playQueue.length - 1);
+      
+      // 移动游戏到新位置
+      _playQueue.removeAt(currentIndex);
+      _playQueue.insert(clampedPosition, appId);
+
+      await _saveToStorage();
+      _playQueueController.add(playQueue);
+      
+      AppLogger.info('Reordered game $appId to position $clampedPosition in play queue');
+      return const Success(());
+    } catch (e, stackTrace) {
+      final error = 'Failed to reorder play queue: $e';
+      AppLogger.error(error, e, stackTrace);
+      return Failure(error);
+    }
+  }
+
+  /// 清空待玩队列
+  Future<Result<void, String>> clearPlayQueue() async {
+    try {
+      _playQueue.clear();
+      
+      await _saveToStorage();
+      _playQueueController.add(playQueue);
+      
+      AppLogger.info('Cleared play queue');
+      return const Success(());
+    } catch (e, stackTrace) {
+      final error = 'Failed to clear play queue: $e';
+      AppLogger.error(error, e, stackTrace);
+      return Failure(error);
+    }
+  }
+
   /// 清理资源
   void dispose() {
     _gameLibraryController.close();
     _gameStatusController.close();
     _recommendationController.close();
+    _playQueueController.close();
   }
 }
 
