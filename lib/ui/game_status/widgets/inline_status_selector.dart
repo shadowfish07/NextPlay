@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../domain/models/game/game_status.dart';
+import '../../core/ui/game_status_display.dart';
 
 /// 内联状态选择器组件
 class InlineStatusSelector extends StatelessWidget {
@@ -26,10 +27,10 @@ class InlineStatusSelector extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: _getStatusColor(currentStatus).withValues(alpha: 0.1),
+            color: GameStatusDisplay.getStatusColor(currentStatus).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: _getStatusColor(currentStatus).withValues(alpha: 0.3),
+              color: GameStatusDisplay.getStatusColor(currentStatus).withValues(alpha: 0.3),
               width: 1,
             ),
           ),
@@ -37,15 +38,15 @@ class InlineStatusSelector extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                _getStatusIcon(currentStatus),
+                GameStatusDisplay.getStatusIcon(currentStatus),
                 size: isCompact ? 14 : 16,
-                color: _getStatusColor(currentStatus),
+                color: GameStatusDisplay.getStatusColor(currentStatus),
               ),
               const SizedBox(width: 4),
               Text(
                 currentStatus.displayName,
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: _getStatusColor(currentStatus),
+                  color: GameStatusDisplay.getStatusColor(currentStatus),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -53,7 +54,7 @@ class InlineStatusSelector extends StatelessWidget {
               Icon(
                 Icons.keyboard_arrow_down,
                 size: isCompact ? 14 : 16,
-                color: _getStatusColor(currentStatus),
+                color: GameStatusDisplay.getStatusColor(currentStatus),
               ),
             ],
           ),
@@ -77,29 +78,6 @@ class InlineStatusSelector extends StatelessWidget {
     );
   }
 
-  /// 获取状态颜色
-  Color _getStatusColor(GameStatus status) {
-    return status.when(
-      notStarted: () => Colors.grey,
-      playing: () => Colors.blue,
-      completed: () => Colors.green,
-      abandoned: () => Colors.red,
-      multiplayer: () => Colors.purple,
-      paused: () => Colors.orange,
-    );
-  }
-
-  /// 获取状态图标
-  IconData _getStatusIcon(GameStatus status) {
-    return status.when(
-      notStarted: () => Icons.play_arrow,
-      playing: () => Icons.videogame_asset,
-      completed: () => Icons.check_circle,
-      abandoned: () => Icons.close,
-      multiplayer: () => Icons.group,
-      paused: () => Icons.pause,
-    );
-  }
 }
 
 /// 状态选择器底部表单
@@ -215,7 +193,7 @@ class _StatusOption extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                _getStatusIcon(status),
+                GameStatusDisplay.getStatusIcon(status),
                 color: isSelected ? statusColor : theme.colorScheme.onSurfaceVariant,
                 size: 20,
               ),
@@ -238,24 +216,6 @@ class _StatusOption extends StatelessWidget {
   }
 
   Color _getStatusColor(GameStatus status) {
-    return status.when(
-      notStarted: () => Colors.grey,
-      playing: () => Colors.blue,
-      completed: () => Colors.green,
-      abandoned: () => Colors.red,
-      multiplayer: () => Colors.purple,
-      paused: () => Colors.orange,
-    );
-  }
-
-  IconData _getStatusIcon(GameStatus status) {
-    return status.when(
-      notStarted: () => Icons.play_arrow,
-      playing: () => Icons.videogame_asset,
-      completed: () => Icons.check_circle,
-      abandoned: () => Icons.close,
-      multiplayer: () => Icons.group,
-      paused: () => Icons.pause,
-    );
+    return GameStatusDisplay.getStatusColor(status);
   }
 }

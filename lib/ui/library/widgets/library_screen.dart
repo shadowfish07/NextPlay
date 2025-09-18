@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../view_models/library_view_model.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/ui/common_widgets.dart' as common_widgets;
+import '../../core/ui/game_status_display.dart';
 import 'gallery_game_card.dart';
 import 'game_library_filters.dart';
 
@@ -384,8 +385,11 @@ class _LibraryScreenState extends State<LibraryScreen>
               child: FloatingActionButton.small(
                 heroTag: status.displayName,
                 onPressed: () => _handleBatchStatusUpdate(viewModel, status),
-                backgroundColor: _getStatusColor(context, status),
-                child: _getStatusIcon(status),
+                backgroundColor: GameStatusDisplay.getStatusColor(status),
+                child: Icon(
+                  GameStatusDisplay.getStatusIcon(status),
+                  size: 20,
+                ),
               ),
             );
           }),
@@ -394,30 +398,6 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
   }
 
-  /// 获取状态颜色
-  Color _getStatusColor(BuildContext context, GameStatus status) {
-    final theme = Theme.of(context);
-    return status.when(
-      notStarted: () => theme.colorScheme.secondary,
-      playing: () => theme.colorScheme.primary,
-      completed: () => theme.colorScheme.tertiary,
-      abandoned: () => theme.colorScheme.error,
-      paused: () => theme.colorScheme.outline,
-      multiplayer: () => theme.colorScheme.inversePrimary,
-    );
-  }
-
-  /// 获取状态图标
-  Widget _getStatusIcon(GameStatus status) {
-    return status.when(
-      notStarted: () => const Icon(Icons.play_arrow, size: 20),
-      playing: () => const Icon(Icons.pause, size: 20),
-      completed: () => const Icon(Icons.check_circle, size: 20),
-      abandoned: () => const Icon(Icons.cancel, size: 20),
-      paused: () => const Icon(Icons.pause_circle_outline, size: 20),
-      multiplayer: () => const Icon(Icons.people, size: 20),
-    );
-  }
 
   /// 处理游戏点击
   void _handleGameTap(LibraryViewModel viewModel, int appId) {

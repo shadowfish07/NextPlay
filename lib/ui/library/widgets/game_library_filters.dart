@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../view_models/library_view_model.dart';
+import '../../core/ui/game_status_display.dart';
 
 /// 游戏库筛选组件
 class GameLibraryFilters extends StatefulWidget {
@@ -188,7 +189,10 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
                   }
                   widget.onStatusFiltersChanged(newFilters);
                 },
-                avatar: _getStatusIcon(status),
+                avatar: Icon(
+                  GameStatusDisplay.getStatusIcon(status),
+                  size: 16,
+                ),
                 selectedColor: theme.colorScheme.primaryContainer,
                 checkmarkColor: theme.colorScheme.onPrimaryContainer,
               ),
@@ -393,17 +397,6 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
     );
   }
 
-  /// 获取状态对应的图标
-  Widget _getStatusIcon(GameStatus status) {
-    return status.when(
-      notStarted: () => const Icon(Icons.play_arrow, size: 16),
-      playing: () => const Icon(Icons.pause, size: 16),
-      completed: () => const Icon(Icons.check_circle, size: 16),
-      abandoned: () => const Icon(Icons.cancel, size: 16),
-      multiplayer: () => const Icon(Icons.people, size: 16),
-      paused: () => const Icon(Icons.pause_circle_outline, size: 16),
-    );
-  }
 
   /// 切换展开状态
   void _toggleExpanded() {

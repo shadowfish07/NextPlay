@@ -3,6 +3,7 @@ import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/theme.dart';
 import '../../core/ui/game_status_selector.dart';
+import '../../core/ui/game_status_display.dart';
 
 /// 游戏库画廊卡片 - 一行两个的网格布局
 /// 融合 SmallGameCard 的游戏化视觉效果和便捷的状态管理
@@ -237,44 +238,10 @@ class GalleryGameCard extends StatelessWidget {
     );
   }
 
-  /// 获取状态图标和颜色
-  ({IconData icon, Color color}) _getStatusIconAndColor() {
-    IconData icon = Icons.help_outline;
-    Color color = AppTheme.statusNotStarted;
-    
-    status.when(
-      notStarted: () {
-        icon = Icons.fiber_new;
-        color = AppTheme.statusNotStarted;
-      },
-      playing: () {
-        icon = Icons.play_circle_filled;
-        color = AppTheme.statusPlaying;
-      },
-      completed: () {
-        icon = Icons.check_circle;
-        color = AppTheme.statusCompleted;
-      },
-      abandoned: () {
-        icon = Icons.pause_circle_filled;
-        color = AppTheme.statusAbandoned;
-      },
-      paused: () {
-        icon = Icons.pause_circle_outline;
-        color = AppTheme.statusPaused;
-      },
-      multiplayer: () {
-        icon = Icons.people;
-        color = AppTheme.statusMultiplayer;
-      },
-    );
-    
-    return (icon: icon, color: color);
-  }
 
   /// 构建状态角标
   Widget _buildStatusBadge() {
-    final statusData = _getStatusIconAndColor();
+    final statusData = GameStatusDisplay.getStatusIconAndColor(status);
     
     return Container(
       width: 24,
@@ -388,7 +355,7 @@ class GalleryGameCard extends StatelessWidget {
   /// 构建快速状态切换栏
   Widget _buildQuickStatusBar(BuildContext context) {
     final theme = Theme.of(context);
-    final statusData = _getStatusIconAndColor();
+    final statusData = GameStatusDisplay.getStatusIconAndColor(status);
     
     return Container(
       height: 24, // 进一步减少高度

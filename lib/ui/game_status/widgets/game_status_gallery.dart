@@ -163,7 +163,7 @@ class _GameCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: isSelectionMode 
-            ? () => onSelectionChanged?.call(game.appId, !gameItem.isSelected)
+            ? () => onSelectionChanged?.call(game.appId, false) // 移除选择逻辑，设为false
             : null,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,34 +197,7 @@ class _GameCard extends StatelessWidget {
                         : null,
                   ),
                   
-                  // 选择状态覆盖
-                  if (isSelectionMode)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: gameItem.isSelected 
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.surface.withValues(alpha: 0.8),
-                          shape: BoxShape.circle,
-                          border: gameItem.isSelected 
-                              ? null
-                              : Border.all(
-                                  color: theme.colorScheme.outline,
-                                  width: 2,
-                                ),
-                        ),
-                        padding: const EdgeInsets.all(6),
-                        child: Icon(
-                          gameItem.isSelected ? Icons.check : null,
-                          size: 16,
-                          color: gameItem.isSelected 
-                              ? theme.colorScheme.onPrimary
-                              : null,
-                        ),
-                      ),
-                    ),
+                  // 移除选择状态覆盖
                   
                   // 状态改变指示器
                   if (gameItem.currentStatus != gameItem.suggestedStatus)
@@ -367,8 +340,10 @@ class _GameCard extends StatelessWidget {
     }
   }
 
-  /// 获取状态颜色
+  /// 获取状态颜色 - 使用主题适配的颜色而非固定颜色
   Color _getStatusColor(GameStatus status, ThemeData theme, bool isText) {
+    // 这里保持原有的主题颜色逻辑，因为它与固定状态颜色不同
+    // 如果需要统一，可以在GameStatusDisplay中添加主题颜色方法
     final colorScheme = theme.colorScheme;
     
     return status.when(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/theme.dart';
+import '../../core/ui/game_status_display.dart';
 
 /// 小尺寸游戏卡片 - 用于横向滑动列表
 /// 适用于"正在游玩"和"待玩队列"区域
@@ -195,44 +196,10 @@ class SmallGameCard extends StatelessWidget {
     );
   }
 
-  /// 获取状态图标和颜色
-  ({IconData icon, Color color}) _getStatusIconAndColor() {
-    IconData icon = Icons.help_outline; // 默认图标
-    Color color = AppTheme.statusNotStarted; // 默认颜色
-    
-    status.when(
-      notStarted: () {
-        icon = Icons.fiber_new;
-        color = AppTheme.statusNotStarted;
-      },
-      playing: () {
-        icon = Icons.play_circle_filled;
-        color = AppTheme.statusPlaying;
-      },
-      completed: () {
-        icon = Icons.check_circle;
-        color = AppTheme.statusCompleted;
-      },
-      abandoned: () {
-        icon = Icons.pause_circle_filled;
-        color = AppTheme.statusAbandoned;
-      },
-      paused: () {
-        icon = Icons.pause_circle_outline;
-        color = AppTheme.statusPaused;
-      },
-      multiplayer: () {
-        icon = Icons.people;
-        color = AppTheme.statusMultiplayer;
-      },
-    );
-    
-    return (icon: icon, color: color);
-  }
 
   /// 构建状态角标
   Widget _buildStatusBadge() {
-    final statusData = _getStatusIconAndColor();
+    final statusData = GameStatusDisplay.getStatusIconAndColor(status);
     
     return Container(
       width: 20,
