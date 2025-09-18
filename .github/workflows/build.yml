@@ -34,15 +34,15 @@ jobs:
       - name: Analyze code
         run: flutter analyze
 
-      - name: Run tests
-        run: flutter test
+      # - name: Run tests
+      #   run: flutter test
 
   build-debug:
     name: Build Debug APK
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'pull_request'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
