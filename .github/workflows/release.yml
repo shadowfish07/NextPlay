@@ -84,32 +84,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Prepare version for build
-        id: prepare_version
-        run: |
-          # Run semantic-release dry-run to get next version
-          SEMANTIC_OUTPUT=$(npx semantic-release --dry-run --no-ci 2>&1)
-          echo "$SEMANTIC_OUTPUT"
-          
-          # Check if there's a new version to release
-          if echo "$SEMANTIC_OUTPUT" | grep -q "The next release version is"; then
-            NEXT_VERSION=$(echo "$SEMANTIC_OUTPUT" | grep -oP 'The next release version is \K[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+\.[0-9]+)?')
-            echo "✅ 检测到需要发布新版本: $NEXT_VERSION"
-            echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
-            echo "has_release=true" >> $GITHUB_OUTPUT
-
-            # Update pubspec.yaml with the new version
-            sed -i "s/^version: .*/version: $NEXT_VERSION/" pubspec.yaml
-            echo "✅ Updated pubspec.yaml version to: $NEXT_VERSION"
-          else
-            echo "ℹ️  无需发布新版本 - 没有检测到符合版本发布条件的提交"
-            echo "has_release=false" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Setup signing
-        if: steps.prepare_version.outputs.has_release == 'true'
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/release-key.jks
           echo "storeFile=android/app/release-key.jks" > key.properties
@@ -118,16 +93,13 @@ jobs:
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> key.properties
 
       - name: Build signed APK
-        if: steps.prepare_version.outputs.has_release == 'true'
         run: flutter build apk --release
 
       - name: Build App Bundle
-        if: steps.prepare_version.outputs.has_release == 'true'
         continue-on-error: true
         run: flutter build appbundle --release
 
       - name: Prepare release assets
-        if: steps.prepare_version.outputs.has_release == 'true'
         run: |
           mkdir -p release-files
           VERSION=${{ steps.prepare_version.outputs.next_version }}
@@ -143,7 +115,6 @@ jobs:
           fi
 
       - name: Clean up signing files
-        if: steps.prepare_version.outputs.has_release == 'true' && env.KEYSTORE_BASE64 != ''
         run: |
           rm -f android/app/release-key.jks
           rm -f key.properties
