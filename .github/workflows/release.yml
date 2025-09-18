@@ -36,11 +36,11 @@ jobs:
         id: check_release
         run: |
           echo "正在检查是否需要发布新版本..."
-          
+
           # 运行 semantic-release dry-run 检查是否有新版本
           SEMANTIC_OUTPUT=$(npx semantic-release --dry-run --no-ci 2>&1)
           echo "$SEMANTIC_OUTPUT"
-          
+
           # 检查是否会创建新版本
           if echo "$SEMANTIC_OUTPUT" | grep -q "The next release version is"; then
             NEXT_VERSION=$(echo "$SEMANTIC_OUTPUT" | grep -oP 'The next release version is \K[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+\.[0-9]+)?')
@@ -144,7 +144,7 @@ jobs:
           NEXT_VERSION="${{ needs.dry_run_check.outputs.next_version }}"
           echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
           echo "has_release=true" >> $GITHUB_OUTPUT
-          
+
           # Update pubspec.yaml with the new version
           sed -i "s/^version: .*/version: $NEXT_VERSION/" pubspec.yaml
           echo "✅ Updated pubspec.yaml version to: $NEXT_VERSION"
@@ -191,8 +191,8 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
-      - name: Run semantic-release
-        if: steps.prepare_version.outputs.has_release == 'true'
-        run: npx semantic-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Run semantic-release
+      #   if: steps.prepare_version.outputs.has_release == 'true'
+      #   run: npx semantic-release
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
