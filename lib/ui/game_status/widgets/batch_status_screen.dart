@@ -138,7 +138,6 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
             description: '建议保持"未开始"状态',
             suggestionType: SuggestionType.zeroPlaytime,
             games: viewModel.state.zeroPlaytimeGames,
-            isRecommended: false, // 不推荐操作，因为已经是正确状态
             onPreview: () => _showPreview(context, SuggestionType.zeroPlaytime, viewModel.state.zeroPlaytimeGames),
           ),
           
@@ -152,7 +151,6 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
             description: '建议标记为"已通关"或"游玩中"',
             suggestionType: SuggestionType.highPlaytime,
             games: viewModel.state.highPlaytimeGames,
-            isRecommended: true,
             onPreview: () => _showPreview(context, SuggestionType.highPlaytime, viewModel.state.highPlaytimeGames),
           ),
           
@@ -166,7 +164,6 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
             description: '长时间未玩，建议重新评估状态',
             suggestionType: SuggestionType.abandoned,
             games: viewModel.state.abandonedGames,
-            isRecommended: true,
             onPreview: () => _showPreview(context, SuggestionType.abandoned, viewModel.state.abandonedGames),
           ),
           
@@ -180,7 +177,6 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
             description: '查看已手动调整状态的游戏',
             suggestionType: SuggestionType.manuallyModified,
             games: _getManuallyModifiedGames(viewModel),
-            isRecommended: false,
             onPreview: () => _showPreview(context, SuggestionType.manuallyModified, _getManuallyModifiedGames(viewModel)),
           ),
           
@@ -496,7 +492,6 @@ class _SmartSuggestionCard extends StatelessWidget {
   final String description;
   final SuggestionType suggestionType;
   final List<GameSelectionItem> games;
-  final bool isRecommended;
   final VoidCallback? onPreview;
 
   const _SmartSuggestionCard({
@@ -506,7 +501,6 @@ class _SmartSuggestionCard extends StatelessWidget {
     required this.description,
     required this.suggestionType,
     required this.games,
-    required this.isRecommended,
     this.onPreview,
   });
 
@@ -521,18 +515,15 @@ class _SmartSuggestionCard extends StatelessWidget {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isRecommended 
-              ? theme.colorScheme.primary.withValues(alpha: 0.3)
-              : theme.colorScheme.outline.withValues(alpha: 0.2),
-          width: isRecommended ? 2 : 1,
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
+          width: 1,
         ),
         boxShadow: [
-          if (isRecommended)
-            BoxShadow(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
+          BoxShadow(
+            color: theme.shadowColor.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -544,16 +535,12 @@ class _SmartSuggestionCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isRecommended 
-                      ? theme.colorScheme.primaryContainer
-                      : theme.colorScheme.surfaceContainerHigh,
+                  color: theme.colorScheme.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   icon,
-                  color: isRecommended 
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurfaceVariant,
+                  color: theme.colorScheme.primary,
                   size: 24,
                 ),
               ),
@@ -580,23 +567,6 @@ class _SmartSuggestionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              
-              // 推荐标签
-              if (isRecommended)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '推荐',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
             ],
           ),
           
