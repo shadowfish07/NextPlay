@@ -187,7 +187,7 @@ class BatchStatusViewModel extends ChangeNotifier {
     updateGameStatusCommand = Command.createAsyncNoResult<(int, GameStatus)>(
       (params) async {
         final (appId, status) = params;
-        _updateGameStatus(appId, status);
+        await _updateGameStatus(appId, status);
       },
     );
 
@@ -368,7 +368,7 @@ class BatchStatusViewModel extends ChangeNotifier {
   }
 
   /// 更新游戏状态
-  void _updateGameStatus(int appId, GameStatus status) {
+  Future<void> _updateGameStatus(int appId, GameStatus status) async {
     final currentGames = currentStepGames;
     final updatedGames = currentGames.map((item) {
       if (item.game.appId == appId) {
@@ -378,6 +378,18 @@ class BatchStatusViewModel extends ChangeNotifier {
     }).toList();
     
     _updateCurrentStepGames(updatedGames);
+    
+    // 立即保存到数据库
+    try {
+      final result = await _gameRepository.updateGameStatus(appId, status);
+      if (result.isError()) {
+        AppLogger.error('Failed to update game status for appId $appId: ${result.exceptionOrNull()}');
+      } else {
+        AppLogger.info('Successfully updated game status for appId $appId to ${status.displayName}');
+      }
+    } catch (e, stackTrace) {
+      AppLogger.error('Error updating game status for appId $appId', e, stackTrace);
+    }
   }
 
   /// 更新当前步骤的游戏列表

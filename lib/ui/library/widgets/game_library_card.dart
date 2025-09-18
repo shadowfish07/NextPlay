@@ -30,7 +30,6 @@ class GameLibraryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
@@ -43,16 +42,16 @@ class GameLibraryCard extends StatelessWidget {
           ],
         ),
         border: Border.all(
-          color: isSelected 
-            ? AppTheme.accentColor 
-            : AppTheme.gamingElevated.withValues(alpha: 0.3),
+          color: isSelected
+              ? AppTheme.accentColor
+              : AppTheme.gamingElevated.withValues(alpha: 0.3),
           width: isSelected ? 2 : 0.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: isSelected 
-              ? AppTheme.accentColor.withValues(alpha: 0.2)
-              : AppTheme.accentColor.withValues(alpha: 0.05),
+            color: isSelected
+                ? AppTheme.accentColor.withValues(alpha: 0.2)
+                : AppTheme.accentColor.withValues(alpha: 0.05),
             blurRadius: isSelected ? 16 : 8,
             offset: const Offset(0, 4),
             spreadRadius: 0,
@@ -75,7 +74,7 @@ class GameLibraryCard extends StatelessWidget {
                 children: [
                   // 游戏封面图
                   _buildGameCover(context),
-                  
+
                   // 游戏信息
                   Expanded(
                     child: Padding(
@@ -83,14 +82,13 @@ class GameLibraryCard extends StatelessWidget {
                       child: _buildGameInfo(context),
                     ),
                   ),
-                  
+
                   // 底部操作栏
-                  if (!isInSelectionMode)
-                    _buildActionBar(context),
+                  if (!isInSelectionMode) _buildActionBar(context),
                 ],
               ),
             ),
-            
+
             // 选择状态指示器
             if (isInSelectionMode)
               Positioned(
@@ -103,14 +101,14 @@ class GameLibraryCard extends StatelessWidget {
                   ),
                   child: CircleAvatar(
                     radius: 14,
-                    backgroundColor: isSelected 
-                        ? AppTheme.accentColor 
+                    backgroundColor: isSelected
+                        ? AppTheme.accentColor
                         : Colors.transparent,
                     child: Icon(
                       isSelected ? Icons.check : Icons.radio_button_unchecked,
                       size: 18,
-                      color: isSelected 
-                          ? Colors.white 
+                      color: isSelected
+                          ? Colors.white
                           : Colors.white.withValues(alpha: 0.7),
                     ),
                   ),
@@ -135,9 +133,7 @@ class GameLibraryCard extends StatelessWidget {
             fit: BoxFit.cover,
             placeholder: (context, url) => Container(
               color: AppTheme.gamingElevated,
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: const Center(child: CircularProgressIndicator()),
             ),
             errorWidget: (context, url, error) => Container(
               color: AppTheme.gamingElevated,
@@ -163,7 +159,7 @@ class GameLibraryCard extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // 渐变遮罩
           Positioned.fill(
             child: Container(
@@ -179,21 +175,13 @@ class GameLibraryCard extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // 状态标签
-          Positioned(
-            top: 8,
-            left: 8,
-            child: _buildStatusChip(context),
-          ),
-          
+          Positioned(top: 8, left: 8, child: _buildStatusChip(context)),
+
           // 游戏时长
           if (game.playtimeForever > 0)
-            Positioned(
-              bottom: 8,
-              right: 8,
-              child: _buildPlaytimeChip(context),
-            ),
+            Positioned(bottom: 8, right: 8, child: _buildPlaytimeChip(context)),
         ],
       ),
     );
@@ -202,34 +190,24 @@ class GameLibraryCard extends StatelessWidget {
   /// 构建状态标签
   Widget _buildStatusChip(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     final colors = status.when(
-      notStarted: () => (
-        backgroundColor: AppTheme.statusNotStarted,
-        textColor: Colors.white,
-      ),
-      playing: () => (
-        backgroundColor: AppTheme.statusPlaying,
-        textColor: Colors.white,
-      ),
-      completed: () => (
-        backgroundColor: AppTheme.statusCompleted,
-        textColor: Colors.white,
-      ),
-      abandoned: () => (
-        backgroundColor: AppTheme.statusAbandoned,
-        textColor: Colors.white,
-      ),
+      notStarted: () =>
+          (backgroundColor: AppTheme.statusNotStarted, textColor: Colors.white),
+      playing: () =>
+          (backgroundColor: AppTheme.statusPlaying, textColor: Colors.white),
+      completed: () =>
+          (backgroundColor: AppTheme.statusCompleted, textColor: Colors.white),
+      abandoned: () =>
+          (backgroundColor: AppTheme.statusAbandoned, textColor: Colors.white),
       multiplayer: () => (
         backgroundColor: AppTheme.statusMultiplayer,
         textColor: Colors.white,
       ),
-      paused: () => (
-        backgroundColor: AppTheme.statusPaused,
-        textColor: Colors.white,
-      ),
+      paused: () =>
+          (backgroundColor: AppTheme.statusPaused, textColor: Colors.white),
     );
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -258,7 +236,7 @@ class GameLibraryCard extends StatelessWidget {
   Widget _buildPlaytimeChip(BuildContext context) {
     final theme = Theme.of(context);
     final hoursPlayed = (game.playtimeForever / 60.0).toStringAsFixed(1);
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -268,11 +246,7 @@ class GameLibraryCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.schedule,
-            size: 12,
-            color: theme.colorScheme.surface,
-          ),
+          Icon(Icons.schedule, size: 12, color: theme.colorScheme.surface),
           const SizedBox(width: 4),
           Text(
             '${hoursPlayed}h',
@@ -289,7 +263,7 @@ class GameLibraryCard extends StatelessWidget {
   /// 构建游戏信息部分
   Widget _buildGameInfo(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -303,9 +277,9 @@ class GameLibraryCard extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        
+
         const SizedBox(height: 4),
-        
+
         // 开发商
         if (game.developerName.isNotEmpty)
           Text(
@@ -316,15 +290,14 @@ class GameLibraryCard extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-        
+
         const SizedBox(height: 8),
-        
+
         // 游戏类型标签
-        if (game.genres.isNotEmpty)
-          _buildGenreTags(context),
-        
+        if (game.genres.isNotEmpty) _buildGenreTags(context),
+
         const Expanded(child: SizedBox()),
-        
+
         // 游戏进度和评分
         _buildGameStats(context),
       ],
@@ -335,7 +308,7 @@ class GameLibraryCard extends StatelessWidget {
   Widget _buildGenreTags(BuildContext context) {
     final theme = Theme.of(context);
     final visibleGenres = game.genres.take(2).toList();
-    
+
     return Wrap(
       spacing: 4,
       runSpacing: 4,
@@ -360,7 +333,7 @@ class GameLibraryCard extends StatelessWidget {
   /// 构建游戏统计信息
   Widget _buildGameStats(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Row(
       children: [
         // 完成进度
@@ -388,7 +361,7 @@ class GameLibraryCard extends StatelessWidget {
               ],
             ),
           ),
-        
+
         // 评分 (如果有)
         if (game.averageRating > 0) ...[
           const SizedBox(width: 16),
@@ -398,11 +371,7 @@ class GameLibraryCard extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.star,
-                    size: 14,
-                    color: theme.colorScheme.primary,
-                  ),
+                  Icon(Icons.star, size: 14, color: theme.colorScheme.primary),
                   const SizedBox(width: 2),
                   Text(
                     game.averageRating.toStringAsFixed(1),
@@ -450,12 +419,10 @@ class GameLibraryCard extends StatelessWidget {
       child: Row(
         children: [
           // 状态切换按钮
-          Expanded(
-            child: _buildStatusButton(context),
-          ),
-          
+          Expanded(child: _buildStatusButton(context)),
+
           const SizedBox(width: 12),
-          
+
           // 更多操作按钮
           Container(
             decoration: BoxDecoration(
@@ -464,10 +431,7 @@ class GameLibraryCard extends StatelessWidget {
             ),
             child: IconButton(
               onPressed: () => _showGameMenu(context),
-              icon: Icon(
-                Icons.more_vert,
-                color: AppTheme.accentColor,
-              ),
+              icon: Icon(Icons.more_vert, color: AppTheme.accentColor),
               iconSize: 20,
             ),
           ),
@@ -479,14 +443,13 @@ class GameLibraryCard extends StatelessWidget {
   /// 构建状态切换按钮
   Widget _buildStatusButton(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return TextButton.icon(
-      onPressed: onStatusChanged != null ? () => _showStatusSelector(context) : null,
+      onPressed: onStatusChanged != null
+          ? () => _showStatusSelector(context)
+          : null,
       icon: _getStatusIcon(status),
-      label: Text(
-        status.displayName,
-        style: theme.textTheme.labelMedium,
-      ),
+      label: Text(status.displayName, style: theme.textTheme.labelMedium),
       style: TextButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         minimumSize: const Size(0, 32),
@@ -510,6 +473,7 @@ class GameLibraryCard extends StatelessWidget {
   void _showStatusSelector(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
       builder: (context) => GameStatusSelector(
         currentStatus: status,
         onStatusSelected: (newStatus) {
@@ -549,7 +513,7 @@ class GameActionMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -563,7 +527,7 @@ class GameActionMenu extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          
+
           ListTile(
             leading: const Icon(Icons.info),
             title: const Text('查看详情'),
@@ -575,19 +539,21 @@ class GameActionMenu extends StatelessWidget {
               );
             },
           ),
-          
+
           ListTile(
             leading: const Icon(Icons.store),
             title: const Text('打开Steam页面'),
             onTap: () async {
               Navigator.of(context).pop();
-              final steamUrl = Uri.parse('https://store.steampowered.com/app/${game.appId}/');
+              final steamUrl = Uri.parse(
+                'https://store.steampowered.com/app/${game.appId}/',
+              );
               if (await canLaunchUrl(steamUrl)) {
                 await launchUrl(steamUrl, mode: LaunchMode.externalApplication);
               }
             },
           ),
-          
+
           if (onStatusChanged != null)
             ListTile(
               leading: const Icon(Icons.edit),
@@ -597,7 +563,7 @@ class GameActionMenu extends StatelessWidget {
                 _showStatusSelector(context);
               },
             ),
-          
+
           const SizedBox(height: 16),
         ],
       ),
@@ -607,6 +573,7 @@ class GameActionMenu extends StatelessWidget {
   void _showStatusSelector(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
       builder: (context) => GameStatusSelector(
         currentStatus: status,
         onStatusSelected: onStatusChanged!,

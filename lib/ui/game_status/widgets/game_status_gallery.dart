@@ -361,7 +361,7 @@ class _GameCard extends StatelessWidget {
     
     final hours = minutes / 60.0;
     if (hours < 1.0) {
-      return '${minutes}分钟';
+      return '$minutes分钟';
     } else {
       return '${hours.toStringAsFixed(1)}小时';
     }
