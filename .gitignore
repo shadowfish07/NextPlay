@@ -55,4 +55,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Signing and security files
+key.properties
+*.jks
+*.keystore
+android/app/release-key.jks
+android/keystore/
+
 node_modules
