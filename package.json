@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "description": "NextPlay - 基于Steam游戏库的智能游戏推荐应用",
+  "engines": {
+    "node": ">=20.6.1"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/shadowfish/NextPlay.git"
+    "url": "https://github.com/shadowfish07/NextPlay"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
