@@ -17,17 +17,7 @@ class BatchStatusViewModel extends ChangeNotifier {
   
   // Commands
   late Command<void, void> initializeCommand;
-  late Command<BatchOperationStep, void> moveToStepCommand;
-  late Command<void, void> nextStepCommand;
-  late Command<void, void> previousStepCommand;
-  late Command<(int, bool), void> toggleGameSelectionCommand;
-  late Command<void, void> selectAllCommand;
-  late Command<void, void> selectNoneCommand;
   late Command<(int, GameStatus), void> updateGameStatusCommand;
-  late Command<void, void> applyZeroPlaytimeChangesCommand;
-  late Command<void, void> applyHighPlaytimeChangesCommand;
-  late Command<void, void> applyAbandonedChangesCommand;
-  late Command<void, void> finishBatchOperationCommand;
   
   BatchStatusViewModel({required GameRepository gameRepository})
       : _gameRepository = gameRepository {
@@ -46,36 +36,6 @@ class BatchStatusViewModel extends ChangeNotifier {
   // Getters - 从BatchOperationState获取状态，但游戏数据从 Repository 动态获取
   BatchOperationState get state => _state;
   
-  /// 动态获取当前步骤的游戏列表 - 实时从Repository获取最新数据
-  List<GameSelectionItem> get currentStepGames {
-    switch (_state.currentStep) {
-      case BatchOperationStep.zeroPlaytime:
-        return _getDynamicZeroPlaytimeGames();
-      case BatchOperationStep.highPlaytime:
-        return _getDynamicHighPlaytimeGames();
-    }
-  }
-  
-  bool get canGoNext {
-    switch (_state.currentStep) {
-      case BatchOperationStep.zeroPlaytime:
-      case BatchOperationStep.highPlaytime:
-        return true;
-    }
-  }
-  
-  bool get canGoPrevious {
-    return _state.currentStep.previous != null;
-  }
-  
-  int get selectedCount {
-    return currentStepGames.where((item) => item.isSelected).length;
-  }
-  
-  bool get isAllSelected {
-    final games = currentStepGames;
-    return games.isNotEmpty && games.every((item) => item.isSelected);
-  }
 
   /// 初始化Commands
   void _initializeCommands() {
@@ -133,92 +93,11 @@ class BatchStatusViewModel extends ChangeNotifier {
       },
     );
 
-    // 移动到指定步骤
-    moveToStepCommand = Command.createAsyncNoResult<BatchOperationStep>(
-      (step) async {
-        AppLogger.info('Moving to step: $step');
-        _setState(_state.copyWith(currentStep: step));
-      },
-    );
-
-    // 下一步
-    nextStepCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        final nextStep = _state.currentStep.next;
-        if (nextStep != null) {
-          AppLogger.info('Moving to next step: $nextStep');
-          _setState(_state.copyWith(currentStep: nextStep));
-        }
-      },
-    );
-
-    // 上一步
-    previousStepCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        final previousStep = _state.currentStep.previous;
-        if (previousStep != null) {
-          AppLogger.info('Moving to previous step: $previousStep');
-          _setState(_state.copyWith(currentStep: previousStep));
-        }
-      },
-    );
-
-    // 切换游戏选择状态
-    toggleGameSelectionCommand = Command.createAsyncNoResult<(int, bool)>(
-      (params) async {
-        final (appId, isSelected) = params;
-        _toggleGameSelection(appId, isSelected);
-      },
-    );
-
-    // 全选
-    selectAllCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        _selectAll(true);
-      },
-    );
-
-    // 取消全选
-    selectNoneCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        _selectAll(false);
-      },
-    );
-
     // 更新游戏状态
     updateGameStatusCommand = Command.createAsyncNoResult<(int, GameStatus)>(
       (params) async {
         final (appId, status) = params;
         await _updateGameStatus(appId, status);
-      },
-    );
-
-    // 应用0时长游戏更改
-    applyZeroPlaytimeChangesCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        await _applySelectedChanges(_state.zeroPlaytimeGames);
-      },
-    );
-
-    // 应用高时长游戏更改
-    applyHighPlaytimeChangesCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        await _applySelectedChanges(_state.highPlaytimeGames);
-      },
-    );
-
-    // 应用已搁置游戏更改
-    applyAbandonedChangesCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        await _applySelectedChanges(_state.abandonedGames);
-      },
-    );
-
-    // 完成批量操作
-    finishBatchOperationCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        AppLogger.info('Batch operation finished');
-        // 可以在这里添加完成后的逻辑，比如导航回主页面
       },
     );
   }
@@ -236,7 +115,6 @@ class BatchStatusViewModel extends ChangeNotifier {
             game: game,
             currentStatus: currentStatus,
             suggestedStatus: const GameStatus.notStarted(),
-            isSelected: false, // 默认不选中，因为游戏默认状态就是未开始
             reason: '游戏时长为0，建议标记为未开始',
           );
         })
@@ -277,7 +155,6 @@ class BatchStatusViewModel extends ChangeNotifier {
             game: game,
             currentStatus: currentStatus,
             suggestedStatus: suggestedStatus,
-            isSelected: currentStatus != suggestedStatus,
             reason: reason,
           );
         })
@@ -339,109 +216,30 @@ class BatchStatusViewModel extends ChangeNotifier {
             game: game,
             currentStatus: currentStatus,
             suggestedStatus: const GameStatus.abandoned(),
-            isSelected: currentStatus != const GameStatus.abandoned(),
             reason: reason,
           );
         })
         .toList();
   }
 
-  /// 切换游戏选择状态
-  void _toggleGameSelection(int appId, bool isSelected) {
-    final currentGames = currentStepGames;
-    final updatedGames = currentGames.map((item) {
-      if (item.game.appId == appId) {
-        return item.copyWith(isSelected: isSelected);
-      }
-      return item;
-    }).toList();
-    
-    _updateCurrentStepGames(updatedGames);
-  }
-
-  /// 全选/取消全选
-  void _selectAll(bool isSelected) {
-    final currentGames = currentStepGames;
-    final updatedGames = currentGames.map((item) {
-      return item.copyWith(isSelected: isSelected);
-    }).toList();
-    
-    _updateCurrentStepGames(updatedGames);
-  }
 
   /// 更新游戏状态
   Future<void> _updateGameStatus(int appId, GameStatus status) async {
-    final currentGames = currentStepGames;
-    final updatedGames = currentGames.map((item) {
-      if (item.game.appId == appId) {
-        return item.copyWith(suggestedStatus: status);
-      }
-      return item;
-    }).toList();
-    
-    _updateCurrentStepGames(updatedGames);
-    
-    // 立即保存到数据库
+    // 直接更新到 Repository
     try {
       final result = await _gameRepository.updateGameStatus(appId, status);
       if (result.isError()) {
         AppLogger.error('Failed to update game status for appId $appId: ${result.exceptionOrNull()}');
       } else {
         AppLogger.info('Successfully updated game status for appId $appId to ${status.displayName}');
+        // 更新成功后，重新初始化数据以反映最新状态
+        initializeCommand.execute();
       }
     } catch (e, stackTrace) {
       AppLogger.error('Error updating game status for appId $appId', e, stackTrace);
     }
   }
 
-  /// 更新当前步骤的游戏列表
-  void _updateCurrentStepGames(List<GameSelectionItem> updatedGames) {
-    switch (_state.currentStep) {
-      case BatchOperationStep.zeroPlaytime:
-        _setState(_state.copyWith(zeroPlaytimeGames: updatedGames));
-        break;
-      case BatchOperationStep.highPlaytime:
-        _setState(_state.copyWith(highPlaytimeGames: updatedGames));
-        break;
-    }
-  }
-
-  /// 应用选中的更改
-  Future<void> _applySelectedChanges(List<GameSelectionItem> games) async {
-    _setState(_state.copyWith(isLoading: true, errorMessage: ''));
-    
-    try {
-      final selectedGames = games.where((item) => item.isSelected).toList();
-      int processedCount = 0;
-      
-      for (final item in selectedGames) {
-        final result = await _gameRepository.updateGameStatus(
-          item.game.appId, 
-          item.suggestedStatus,
-        );
-        
-        if (result.isSuccess()) {
-          processedCount++;
-        } else {
-          AppLogger.error('Failed to update game status for ${item.game.name}: ${result.exceptionOrNull()}');
-        }
-      }
-      
-      _setState(_state.copyWith(
-        isLoading: false,
-        processedCount: _state.processedCount + processedCount,
-      ));
-      
-      AppLogger.info('Applied changes to $processedCount games');
-    } catch (e, stackTrace) {
-      final error = '应用更改失败: $e';
-      AppLogger.error(error, e, stackTrace);
-      _setState(_state.copyWith(
-        isLoading: false,
-        errorMessage: error,
-      ));
-    }
-  }
 
   
   /// 设置状态并通知监听器
@@ -459,35 +257,14 @@ class BatchStatusViewModel extends ChangeNotifier {
     AppLogger.info('BatchStatusViewModel state reset');
   }
 
-  /// 动态获取零时长游戏列表 - 供UI使用
-  List<GameSelectionItem> get zeroPlaytimeGames => _getDynamicZeroPlaytimeGames();
+  /// 零时长游戏列表 - 从缓存状态获取
+  List<GameSelectionItem> get zeroPlaytimeGames => _state.zeroPlaytimeGames;
   
-  /// 动态获取高时长游戏列表 - 供UI使用
-  List<GameSelectionItem> get highPlaytimeGames => _getDynamicHighPlaytimeGames();
+  /// 高时长游戏列表 - 从缓存状态获取
+  List<GameSelectionItem> get highPlaytimeGames => _state.highPlaytimeGames;
   
-  /// 动态获取已搜置游戏列表 - 供UI使用
-  List<GameSelectionItem> get abandonedGames => _getDynamicAbandonedGames();
-
-  /// 动态获取零时长游戏列表 - 实时从Repository获取数据
-  List<GameSelectionItem> _getDynamicZeroPlaytimeGames() {
-    final gameLibrary = _gameRepository.gameLibrary;
-    final gameStatuses = _gameRepository.gameStatuses;
-    return _findZeroPlaytimeGames(gameLibrary, gameStatuses);
-  }
-
-  /// 动态获取高时长游戏列表 - 实时从Repository获取数据
-  List<GameSelectionItem> _getDynamicHighPlaytimeGames() {
-    final gameLibrary = _gameRepository.gameLibrary;
-    final gameStatuses = _gameRepository.gameStatuses;
-    return _findHighPlaytimeGames(gameLibrary, gameStatuses);
-  }
-
-  /// 动态获取已搜置游戏列表 - 实时从Repository获取数据
-  List<GameSelectionItem> _getDynamicAbandonedGames() {
-    final gameLibrary = _gameRepository.gameLibrary;
-    final gameStatuses = _gameRepository.gameStatuses;
-    return _findAbandonedGames(gameLibrary, gameStatuses);
-  }
+  /// 已搁置游戏列表 - 从缓存状态获取
+  List<GameSelectionItem> get abandonedGames => _state.abandonedGames;
 
   @override
   void dispose() {
@@ -495,17 +272,7 @@ class BatchStatusViewModel extends ChangeNotifier {
     
     // 释放Commands
     initializeCommand.dispose();
-    moveToStepCommand.dispose();
-    nextStepCommand.dispose();
-    previousStepCommand.dispose();
-    toggleGameSelectionCommand.dispose();
-    selectAllCommand.dispose();
-    selectNoneCommand.dispose();
     updateGameStatusCommand.dispose();
-    applyZeroPlaytimeChangesCommand.dispose();
-    applyHighPlaytimeChangesCommand.dispose();
-    applyAbandonedChangesCommand.dispose();
-    finishBatchOperationCommand.dispose();
     
     super.dispose();
   }

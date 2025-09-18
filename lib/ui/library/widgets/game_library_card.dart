@@ -6,6 +6,7 @@ import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/theme.dart';
 import '../../core/ui/game_status_selector.dart';
+import '../../core/ui/game_status_display.dart';
 
 /// 游戏库卡片组件 - 展示单个游戏信息
 class GameLibraryCard extends StatelessWidget {
@@ -443,29 +444,21 @@ class GameLibraryCard extends StatelessWidget {
   /// 构建状态切换按钮
   Widget _buildStatusButton(BuildContext context) {
     final theme = Theme.of(context);
+    final statusData = GameStatusDisplay.getStatusIconAndColor(status);
 
     return TextButton.icon(
       onPressed: onStatusChanged != null
           ? () => _showStatusSelector(context)
           : null,
-      icon: _getStatusIcon(status),
-      label: Text(status.displayName, style: theme.textTheme.labelMedium),
+      icon: Icon(statusData.icon, size: 16, color: statusData.color),
+      label: Text(
+        status.displayName, 
+        style: theme.textTheme.labelMedium?.copyWith(color: statusData.color),
+      ),
       style: TextButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         minimumSize: const Size(0, 32),
       ),
-    );
-  }
-
-  /// 获取状态对应的图标
-  Widget _getStatusIcon(GameStatus status) {
-    return status.when(
-      notStarted: () => const Icon(Icons.play_arrow, size: 16),
-      playing: () => const Icon(Icons.pause, size: 16),
-      completed: () => const Icon(Icons.check_circle, size: 16),
-      abandoned: () => const Icon(Icons.cancel, size: 16),
-      multiplayer: () => const Icon(Icons.people, size: 16),
-      paused: () => const Icon(Icons.pause_circle_outline, size: 16),
     );
   }
 

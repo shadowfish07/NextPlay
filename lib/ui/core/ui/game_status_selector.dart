@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../theme.dart';
+import 'game_status_display.dart';
 
 /// 游戏状态选择器
 class GameStatusSelector extends StatelessWidget {
@@ -70,7 +71,6 @@ class GameStatusSelector extends StatelessWidget {
           // 状态选项列表
           ...GameStatusExtension.values.map((statusOption) {
             final isSelected = statusOption == currentStatus;
-            final statusData = _getStatusIconAndColor(statusOption);
             
             return Material(
               color: Colors.transparent,
@@ -85,19 +85,7 @@ class GameStatusSelector extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: statusData.color.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          statusData.icon,
-                          size: 18,
-                          color: statusData.color,
-                        ),
-                      ),
+                      GameStatusDisplay.buildStatusIcon(statusOption),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -136,40 +124,5 @@ class GameStatusSelector extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  /// 获取状态图标和颜色
-  ({IconData icon, Color color}) _getStatusIconAndColor(GameStatus status) {
-    IconData icon = Icons.help_outline;
-    Color color = AppTheme.statusNotStarted;
-    
-    status.when(
-      notStarted: () {
-        icon = Icons.fiber_new;
-        color = AppTheme.statusNotStarted;
-      },
-      playing: () {
-        icon = Icons.play_circle_filled;
-        color = AppTheme.statusPlaying;
-      },
-      completed: () {
-        icon = Icons.check_circle;
-        color = AppTheme.statusCompleted;
-      },
-      abandoned: () {
-        icon = Icons.pause_circle_filled;
-        color = AppTheme.statusAbandoned;
-      },
-      paused: () {
-        icon = Icons.pause_circle_outline;
-        color = AppTheme.statusPaused;
-      },
-      multiplayer: () {
-        icon = Icons.people;
-        color = AppTheme.statusMultiplayer;
-      },
-    );
-    
-    return (icon: icon, color: color);
   }
 }

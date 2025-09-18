@@ -5,6 +5,7 @@ import '../../../domain/models/game_status/batch_operation_state.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../../utils/logger.dart';
 import '../../core/ui/game_status_selector.dart';
+import '../../core/ui/game_status_display.dart';
 
 /// 智能状态建议主屏幕 - 全新单页面设计
 class BatchStatusScreen extends StatefulWidget {
@@ -218,98 +219,19 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
     BuildContext context,
     BatchStatusViewModel viewModel,
   ) {
-    final theme = Theme.of(context);
-
-    // 计算所有需要修改状态的游戏数量 - 使用动态getter
-    final allChanges = [
-      ...viewModel.highPlaytimeGames.where( // 使用动态getter
-        (game) => game.currentStatus != game.suggestedStatus,
-      ),
-      ...viewModel.abandonedGames.where( // 使用动态getter
-        (game) => game.currentStatus != game.suggestedStatus,
-      ),
-    ];
-    final totalSuggestions = allChanges.length;
-
     return Column(
       children: [
-        // 跳过所有建议提示
-        Container(
+        // 完成按钮
+        SizedBox(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.2),
+          child: FilledButton.icon(
+            onPressed: () => _completeAction(context),
+            icon: const Icon(Icons.check),
+            label: const Text('完成'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 20,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '不想现在整理？',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '您可以跳过这些建议，所有游戏将保持当前状态。稍后可以在游戏库中随时调整。',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // 操作按钮
-        Row(
-          children: [
-            // 跳过所有建议
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _skipAllSuggestions(context),
-                icon: const Icon(Icons.skip_next),
-                label: const Text('跳过所有建议'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ),
-
-            const SizedBox(width: 16),
-
-            // 应用所有建议
-            Expanded(
-              flex: 2,
-              child: FilledButton.icon(
-                onPressed: totalSuggestions > 0
-                    ? () => _applyAllSuggestions(context, viewModel)
-                    : null,
-                icon: const Icon(Icons.auto_fix_high),
-                label: Text(
-                  totalSuggestions > 0 ? '应用所有建议 ($totalSuggestions个)' : '无需修改',
-                ),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ),
-          ],
         ),
       ],
     );
@@ -389,8 +311,8 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
     );
   }
 
-  /// 跳过所有建议
-  void _skipAllSuggestions(BuildContext context) {
+  /// 完成操作
+  void _completeAction(BuildContext context) {
     if (widget.isFromOnboarding) {
       widget.onCompleted?.call();
     } else {
@@ -398,26 +320,6 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
     }
   }
 
-  /// 应用所有建议
-  void _applyAllSuggestions(
-    BuildContext context,
-    BatchStatusViewModel viewModel,
-  ) {
-    // 应用高时长游戏建议
-    viewModel.applyHighPlaytimeChangesCommand.execute();
-
-    // 应用搁置游戏建议
-    viewModel.applyAbandonedChangesCommand.execute();
-
-    // 显示完成对话框或直接完成
-    if (widget.isFromOnboarding) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        widget.onCompleted?.call();
-      });
-    } else {
-      _showCompletionDialog(context, viewModel);
-    }
-  }
 
   /// 获取手动修改过状态的游戏
   List<GameSelectionItem> _getManuallyModifiedGames(
@@ -432,9 +334,7 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
     // 筛选出当前状态与建议状态不同的游戏（表示用户手动修改过）
     return allGames
         .where(
-          (game) =>
-              game.currentStatus != game.suggestedStatus &&
-              game.isSelected == false, // 如果还在选中状态，说明还没有应用修改
+          (game) => game.currentStatus != game.suggestedStatus,
         )
         .toList();
   }
@@ -459,70 +359,6 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
     );
   }
 
-  /// 显示完成对话框
-  void _showCompletionDialog(
-    BuildContext context,
-    BatchStatusViewModel viewModel,
-  ) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        icon: Icon(
-          Icons.check_circle,
-          color: Theme.of(context).colorScheme.primary,
-          size: 48,
-        ),
-        title: const Text('智能建议应用完成'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('您的游戏库状态已经更新完成！'),
-            const SizedBox(height: 16),
-            Consumer<BatchStatusViewModel>(
-              builder: (context, viewModel, child) {
-                final processedCount = viewModel.state.processedCount;
-                return Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.analytics,
-                        size: 16,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '共处理了 $processedCount 个游戏状态',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // 关闭对话框
-              Navigator.of(context).pop(); // 返回上一页面
-            },
-            child: const Text('完成'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// 建议类型枚举
@@ -677,9 +513,7 @@ class _SuggestionPreviewSheetState extends State<_SuggestionPreviewSheet> {
           ...widget.viewModel.abandonedGames, // 使用动态getter
         ];
         return allGames
-            .where((game) =>
-                game.currentStatus != game.suggestedStatus &&
-                game.isSelected == false)
+            .where((game) => game.currentStatus != game.suggestedStatus)
             .toList();
     }
   }
@@ -850,56 +684,10 @@ class _SuggestionPreviewSheetState extends State<_SuggestionPreviewSheet> {
                           ),
 
                           // 状态选择器
-                          GestureDetector(
+                          GameStatusDisplay.buildStatusChip(
+                            context,
+                            gameItem.currentStatus,
                             onTap: () => _showStatusSelector(context, gameItem),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(
-                                  gameItem.suggestedStatus,
-                                ).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: _getStatusColor(
-                                    gameItem.suggestedStatus,
-                                  ).withValues(alpha: 0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _getStatusIcon(gameItem.suggestedStatus),
-                                    size: 14,
-                                    color: _getStatusColor(
-                                      gameItem.suggestedStatus,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    gameItem.suggestedStatus.displayName,
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: _getStatusColor(
-                                        gameItem.suggestedStatus,
-                                      ),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Icon(
-                                    Icons.keyboard_arrow_down,
-                                    size: 14,
-                                    color: _getStatusColor(
-                                      gameItem.suggestedStatus,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                           ),
                         ],
                       ),
@@ -916,13 +704,13 @@ class _SuggestionPreviewSheetState extends State<_SuggestionPreviewSheet> {
 
   /// 显示状态选择器
   void _showStatusSelector(BuildContext context, GameSelectionItem gameItem) {
-    AppLogger.info('BatchStatusScreen: _showStatusSelector called for ${gameItem.game.name}, current status: ${gameItem.suggestedStatus.displayName}');
+    AppLogger.info('BatchStatusScreen: _showStatusSelector called for ${gameItem.game.name}, current status: ${gameItem.currentStatus.displayName}');
     
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => GameStatusSelector(
-        currentStatus: gameItem.suggestedStatus,
+        currentStatus: gameItem.currentStatus,
         onStatusSelected: (status) {
           AppLogger.info('BatchStatusScreen: Status selected: ${status.displayName} for game ${gameItem.game.name}');
           Navigator.of(context).pop();
@@ -933,30 +721,6 @@ class _SuggestionPreviewSheetState extends State<_SuggestionPreviewSheet> {
           ));
         },
       ),
-    );
-  }
-
-  /// 获取状态颜色
-  Color _getStatusColor(GameStatus status) {
-    return status.when(
-      notStarted: () => Colors.grey,
-      playing: () => Colors.blue,
-      completed: () => Colors.green,
-      abandoned: () => Colors.red,
-      multiplayer: () => Colors.purple,
-      paused: () => Colors.orange,
-    );
-  }
-
-  /// 获取状态图标
-  IconData _getStatusIcon(GameStatus status) {
-    return status.when(
-      notStarted: () => Icons.play_arrow,
-      playing: () => Icons.videogame_asset,
-      completed: () => Icons.check_circle,
-      abandoned: () => Icons.close,
-      multiplayer: () => Icons.group,
-      paused: () => Icons.pause,
     );
   }
 }

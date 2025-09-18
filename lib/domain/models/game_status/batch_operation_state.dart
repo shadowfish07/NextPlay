@@ -55,14 +55,13 @@ extension BatchOperationStepExtension on BatchOperationStep {
   }
 }
 
-/// 游戏选择项
+/// 游戏建议项 - 用于智能状态建议展示
 @freezed
 class GameSelectionItem with _$GameSelectionItem {
   const factory GameSelectionItem({
     required Game game,
     required GameStatus currentStatus,
     required GameStatus suggestedStatus,
-    @Default(false) bool isSelected,
     String? reason,
   }) = _GameSelectionItem;
 
