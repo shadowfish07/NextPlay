@@ -172,9 +172,9 @@ jobs:
           # 创建签名配置
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/release-key.jks
 
-          # 创建 key.properties 文件
+          # 创建 key.properties 文件（使用相对路径）
           cat > key.properties << EOF
-          storeFile=android/app/release-key.jks
+          storeFile=release-key.jks
           storePassword=${{ secrets.KEYSTORE_PASSWORD }}
           keyAlias=${{ secrets.KEY_ALIAS }}
           keyPassword=${{ secrets.KEY_PASSWORD }}

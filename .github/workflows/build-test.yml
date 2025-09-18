@@ -64,15 +64,19 @@ jobs:
           # 创建签名配置
           echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
           
-          # 创建 key.properties 文件
+          # 创建 key.properties 文件（使用相对路径）
           cat > key.properties << EOF
-          storeFile=android/app/release-key.jks
+          storeFile=release-key.jks
           storePassword=$KEYSTORE_PASSWORD
           keyAlias=$KEY_ALIAS
           keyPassword=$KEY_PASSWORD
           EOF
           
           echo "✅ Android signing configured"
+          echo "📁 Keystore file location:"
+          ls -la android/app/release-key.jks
+          echo "📄 Key properties:"
+          cat key.properties
 
       - name: Build APK
         if: github.event.inputs.output_format == 'apk' || github.event.inputs.output_format == 'both'
