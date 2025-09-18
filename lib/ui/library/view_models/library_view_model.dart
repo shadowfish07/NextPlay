@@ -10,10 +10,7 @@ import '../../../utils/logger.dart';
 class LibraryViewModel extends ChangeNotifier {
   final GameRepository _gameRepository;
 
-  // 状态
-  List<Game> _games = [];
-  List<Game> _filteredGames = [];
-  Map<int, GameStatus> _gameStatuses = {};
+  // UI状态 - 仅保留UI专用的状态，不缓存业务数据
   bool _isLoading = false;
   String _errorMessage = '';
   
@@ -49,9 +46,9 @@ class LibraryViewModel extends ChangeNotifier {
     _loadInitialData();
   }
 
-  // Getters
-  List<Game> get games => List.unmodifiable(_filteredGames);
-  Map<int, GameStatus> get gameStatuses => Map.unmodifiable(_gameStatuses);
+  // Getters - 从Repository动态获取数据，实现真正的单一数据源
+  List<Game> get games => _getFilteredAndSortedGames();
+  Map<int, GameStatus> get gameStatuses => _gameRepository.gameStatuses;
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
   String get searchQuery => _searchQuery;
@@ -81,10 +78,10 @@ class LibraryViewModel extends ChangeNotifier {
     );
   }
   
-  /// 获取所有唯一的游戏类型
+  /// 获取所有唯一的游戏类型 - 直接从Repository获取
   List<String> get availableGenres {
     final genres = <String>{};
-    for (final game in _games) {
+    for (final game in _gameRepository.gameLibrary) {
       genres.addAll(game.genres);
     }
     final sortedGenres = genres.toList()..sort();
@@ -103,19 +100,19 @@ class LibraryViewModel extends ChangeNotifier {
     // 搜索
     searchCommand = Command.createAsyncNoResult<String>((query) async {
       _searchQuery = query;
-      _applyFiltersAndSort();
+      notifyListeners(); // 触发UI重新计算筛选结果
     });
 
     // 状态筛选
     applyStatusFiltersCommand = Command.createAsyncNoResult<Set<GameStatus>>((filters) async {
       _statusFilters = filters;
-      _applyFiltersAndSort();
+      notifyListeners(); // 触发UI重新计算筛选结果
     });
 
     // 类型筛选
     applyGenreFiltersCommand = Command.createAsyncNoResult<Set<String>>((filters) async {
       _genreFilters = filters;
-      _applyFiltersAndSort();
+      notifyListeners(); // 触发UI重新计算筛选结果
     });
 
     // 排序
@@ -126,7 +123,7 @@ class LibraryViewModel extends ChangeNotifier {
         _sortOption = option;
         _sortAscending = true;
       }
-      _applyFiltersAndSort();
+      notifyListeners(); // 触发UI重新计算排序结果
     });
 
     // 视图模式切换
@@ -171,28 +168,25 @@ class LibraryViewModel extends ChangeNotifier {
       _searchQuery = '';
       _statusFilters.clear();
       _genreFilters.clear();
-      _applyFiltersAndSort();
+      notifyListeners(); // 触发UI重新计算结果
     });
   }
 
   void _subscribeToRepositoryStreams() {
-    // 监听游戏库变化
+    // 监听游戏库变化 - 不缓存数据，只通知UI更新
     _gameRepository.gameLibraryStream.listen((games) {
-      _games = games;
-      _applyFiltersAndSort();
+      notifyListeners(); // 触发UI重新获取数据
     });
 
-    // 监听游戏状态变化
+    // 监听游戏状态变化 - 不缓存数据，只通知UI更新
     _gameRepository.gameStatusStream.listen((statuses) {
-      _gameStatuses = statuses;
-      notifyListeners();
+      notifyListeners(); // 触发UI重新获取数据
     });
   }
 
   void _loadInitialData() {
-    _games = _gameRepository.gameLibrary;
-    _gameStatuses = _gameRepository.gameStatuses;
-    _applyFiltersAndSort();
+    // 不再缓存数据，只触发UI更新以从Repository获取数据
+    notifyListeners();
   }
 
   /// 刷新游戏库
@@ -200,10 +194,8 @@ class LibraryViewModel extends ChangeNotifier {
     _setLoading(true);
     try {
       // 这里可以触发重新从Steam同步
-      // 现在只是重新加载本地数据
-      _games = _gameRepository.gameLibrary;
-      _gameStatuses = _gameRepository.gameStatuses;
-      _applyFiltersAndSort();
+      // 现在只是通知UI重新获取Repository数据
+      notifyListeners();
       _clearError();
     } catch (e, stackTrace) {
       _setError('刷新游戏库失败: $e');
@@ -213,9 +205,10 @@ class LibraryViewModel extends ChangeNotifier {
     }
   }
 
-  /// 应用筛选和排序
-  void _applyFiltersAndSort() {
-    var filtered = List<Game>.from(_games);
+  /// 动态获取筛选和排序后的游戏列表 - 实时从Repository获取数据
+  List<Game> _getFilteredAndSortedGames() {
+    var filtered = List<Game>.from(_gameRepository.gameLibrary);
+    final gameStatuses = _gameRepository.gameStatuses;
 
     // 应用搜索筛选
     if (_searchQuery.isNotEmpty) {
@@ -231,7 +224,7 @@ class LibraryViewModel extends ChangeNotifier {
     // 应用状态筛选
     if (_statusFilters.isNotEmpty) {
       filtered = filtered.where((game) {
-        final status = _gameStatuses[game.appId] ?? const GameStatus.notStarted();
+        final status = gameStatuses[game.appId] ?? const GameStatus.notStarted();
         return _statusFilters.contains(status);
       }).toList();
     }
@@ -287,8 +280,7 @@ class LibraryViewModel extends ChangeNotifier {
       return _sortAscending ? comparison : -comparison;
     });
 
-    _filteredGames = filtered;
-    notifyListeners();
+    return filtered;
   }
 
   /// 更新游戏状态
@@ -332,9 +324,9 @@ class LibraryViewModel extends ChangeNotifier {
     }
   }
 
-  /// 获取游戏当前状态
+  /// 获取游戏当前状态 - 直接从Repository获取
   GameStatus getGameStatus(int appId) {
-    return _gameStatuses[appId] ?? const GameStatus.notStarted();
+    return _gameRepository.gameStatuses[appId] ?? const GameStatus.notStarted();
   }
 
   /// 检查游戏是否被选中

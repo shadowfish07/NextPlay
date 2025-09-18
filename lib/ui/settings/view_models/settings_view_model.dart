@@ -19,15 +19,10 @@ class SettingsViewModel extends ChangeNotifier {
   late final Command<void, void> clearCacheCommand;
   late final Command<void, void> clearAllDataCommand;
   
-  // State
+  // UI状态 - 仅保留UI专用的状态，减少重复缓存
   bool _isLoading = false;
   String _errorMessage = '';
-  String _apiKey = '';
-  String _steamId = '';
-  bool _isSteamConnected = false;
-  bool _isDarkTheme = false;
-  int _gameCount = 0;
-  DateTime? _lastSyncTime;
+  bool _isDarkTheme = false; // UI状态，可以缓存
   
   SettingsViewModel({
     required OnboardingRepository onboardingRepository,
@@ -39,15 +34,18 @@ class SettingsViewModel extends ChangeNotifier {
     _loadSettings();
   }
 
-  // Getters
+  // Getters - 从Repository或SharedPreferences动态获取数据
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
-  String get apiKey => _apiKey;
-  String get steamId => _steamId;
-  bool get isSteamConnected => _isSteamConnected;
+  String get apiKey => _prefs.getString('api_key') ?? '';
+  String get steamId => _prefs.getString('steam_id') ?? '';
+  bool get isSteamConnected => apiKey.isNotEmpty && steamId.isNotEmpty;
   bool get isDarkTheme => _isDarkTheme;
-  int get gameCount => _gameCount;
-  DateTime? get lastSyncTime => _lastSyncTime;
+  int get gameCount => _prefs.getInt('game_count') ?? 0;
+  DateTime? get lastSyncTime {
+    final syncTimeString = _prefs.getString('last_sync_time');
+    return syncTimeString != null ? DateTime.tryParse(syncTimeString) : null;
+  }
   
   void _initializeCommands() {
     refreshSteamConnectionCommand = Command.createAsyncNoParam(
@@ -88,21 +86,10 @@ class SettingsViewModel extends ChangeNotifier {
   
   void _loadSettings() {
     try {
-      _apiKey = _prefs.getString('api_key') ?? '';
-      _steamId = _prefs.getString('steam_id') ?? '';
+      // 只加载UI专用的状态，其他数据通过getter动态获取
       _isDarkTheme = _prefs.getBool('dark_theme') ?? false;
-      _isSteamConnected = _apiKey.isNotEmpty && _steamId.isNotEmpty;
       
-      // Load sync time
-      final syncTimeString = _prefs.getString('last_sync_time');
-      if (syncTimeString != null) {
-        _lastSyncTime = DateTime.tryParse(syncTimeString);
-      }
-      
-      // Load game count (could be from game repository)
-      _gameCount = _prefs.getInt('game_count') ?? 0;
-      
-      AppLogger.info('Settings loaded: Steam connected=$_isSteamConnected, Game count=$_gameCount');
+      AppLogger.info('Settings loaded: Steam connected=$isSteamConnected, Game count=$gameCount');
       notifyListeners();
     } catch (e, stackTrace) {
       AppLogger.error('Failed to load settings', e, stackTrace);
@@ -116,12 +103,9 @@ class SettingsViewModel extends ChangeNotifier {
       _setLoading(true);
       AppLogger.info('Refreshing Steam connection status');
       
-      // Check if credentials are valid by calling the repository
-      final currentState = _onboardingRepository.currentState;
-      _isSteamConnected = currentState.isApiKeyValid && currentState.isSteamIdValid;
-      
+      // 检查凭据是否有效，状态从 getter 动态获取
       _setLoading(false);
-      AppLogger.info('Steam connection status refreshed: $_isSteamConnected');
+      AppLogger.info('Steam connection status refreshed: $isSteamConnected');
     } catch (e, stackTrace) {
       AppLogger.error('Failed to refresh Steam connection', e, stackTrace);
       _setError('Failed to refresh connection status');
@@ -134,7 +118,6 @@ class SettingsViewModel extends ChangeNotifier {
       AppLogger.info('Updating API key');
       
       await _onboardingRepository.saveApiKey(newApiKey);
-      _apiKey = newApiKey;
       await _prefs.setString('api_key', newApiKey);
       
       _setLoading(false);
@@ -151,7 +134,6 @@ class SettingsViewModel extends ChangeNotifier {
       AppLogger.info('Updating Steam ID');
       
       await _onboardingRepository.saveSteamId(newSteamId);
-      _steamId = newSteamId;
       await _prefs.setString('steam_id', newSteamId);
       
       _setLoading(false);
@@ -169,18 +151,16 @@ class SettingsViewModel extends ChangeNotifier {
       
       await _onboardingRepository.syncGameLibrary();
       
-      // Update last sync time
+      // 更新同步时间到SharedPreferences
       final now = DateTime.now();
-      _lastSyncTime = now;
       await _prefs.setString('last_sync_time', now.toIso8601String());
       
-      // Update game count (this would be better to get from game repository)
+      // 更新游戏数量（从状态动态获取）
       final state = _onboardingRepository.currentState;
-      _gameCount = state.gameLibrary.length;
-      await _prefs.setInt('game_count', _gameCount);
+      await _prefs.setInt('game_count', state.gameLibrary.length);
       
       _setLoading(false);
-      AppLogger.info('Game library sync completed: $_gameCount games');
+      AppLogger.info('Game library sync completed: ${state.gameLibrary.length} games');
     } catch (e, stackTrace) {
       AppLogger.error('Failed to sync game library', e, stackTrace);
       _setError('Failed to sync game library');
@@ -224,13 +204,8 @@ class SettingsViewModel extends ChangeNotifier {
       
       await _prefs.clear();
       
-      // Reset local state
-      _apiKey = '';
-      _steamId = '';
-      _isSteamConnected = false;
+      // 重置本地UI状态
       _isDarkTheme = false;
-      _gameCount = 0;
-      _lastSyncTime = null;
       
       _setLoading(false);
       AppLogger.info('All application data cleared');

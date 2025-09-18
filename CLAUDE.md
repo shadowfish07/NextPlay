@@ -304,6 +304,183 @@ test_resources/
 
 ---
 
+## 10.1. 单一数据源（SSOT）实施指南
+
+### 核心原则
+
+**禁止数据重复缓存**：
+- ViewModel 不得缓存来自 Repository 的业务数据
+- UI 组件不得维护自己的状态数据
+- 所有数据变更必须通过 Repository 进行
+
+### ViewModel 实施规范
+
+**✅ 正确做法**：
+```dart
+class LibraryViewModel extends ChangeNotifier {
+  final GameRepository _gameRepository;
+  
+  // 仅保留UI专用状态
+  bool _isLoading = false;
+  String _searchQuery = '';
+  
+  // 动态从Repository获取数据
+  List<Game> get games => _getFilteredGames();
+  Map<int, GameStatus> get gameStatuses => _gameRepository.gameStatuses;
+  
+  List<Game> _getFilteredGames() {
+    // 实时从Repository获取并筛选
+    return _gameRepository.gameLibrary.where(...);
+  }
+}
+```
+
+**❌ 错误做法**：
+```dart
+class LibraryViewModel extends ChangeNotifier {
+  // 违规：缓存了Repository中的数据
+  List<Game> _games = [];
+  Map<int, GameStatus> _gameStatuses = {};
+  
+  // 违规：返回缓存的数据而非实时获取
+  List<Game> get games => _games;
+}
+```
+
+### UI组件实施规范
+
+**✅ 正确做法**：
+```dart
+class GameListWidget extends StatelessWidget {
+  Widget build(BuildContext context) {
+    return Consumer<LibraryViewModel>(
+      builder: (context, viewModel, child) {
+        // 直接从ViewModel获取数据
+        final games = viewModel.games;
+        return ListView.builder(...);
+      },
+    );
+  }
+}
+```
+
+**❌ 错误做法**：
+```dart
+class GameListWidget extends StatefulWidget {
+  State<GameListWidget> createState() => _GameListWidgetState();
+}
+
+class _GameListWidgetState extends State<GameListWidget> {
+  // 违规：在Widget中缓存数据
+  List<Game> _localGames = [];
+  
+  void initState() {
+    // 违规：从ViewModel复制数据到本地
+    _localGames = context.read<LibraryViewModel>().games;
+  }
+}
+```
+
+### Repository责任边界
+
+**Repository 负责**：
+- 数据的唯一存储和缓存
+- 数据变更的统一管理
+- 通过 Stream 广播数据变更
+- 数据持久化和同步
+
+**ViewModel 负责**：
+- UI状态管理（加载、错误、筛选条件等）
+- 将用户操作转换为 Repository 调用
+- 数据的展示逻辑（筛选、排序、格式化）
+
+**UI组件 负责**：
+- 纯展示和用户交互
+- 不维护任何业务状态
+- 通过 ViewModel 获取所有数据
+
+### 违规检查清单
+
+**ViewModel检查项**：
+- [ ] 是否缓存了Repository中存在的数据？
+- [ ] getter是否直接返回缓存字段而非从Repository获取？
+- [ ] 是否监听Repository的Stream并更新本地缓存？
+- [ ] 状态更新方法是否同时更新本地缓存和Repository？
+
+**UI组件检查项**：
+- [ ] StatefulWidget是否存储了业务数据？
+- [ ] 是否从ViewModel复制数据到本地变量？
+- [ ] 是否直接调用Repository而跳过ViewModel？
+- [ ] 是否使用Consumer/Provider正确获取最新数据？
+
+**Repository检查项**：
+- [ ] 是否通过Stream暴露数据变更？
+- [ ] 数据是否只在Repository中存在单一副本？
+- [ ] 是否正确处理数据的增删改查？
+
+### 常见违规模式及修复
+
+**模式1：ViewModel缓存Repository数据**
+```dart
+// 违规
+class MyViewModel {
+  List<Game> _games = [];
+  
+  void loadGames() {
+    _games = _repository.gameLibrary; // 创建了数据副本
+  }
+}
+
+// 修复
+class MyViewModel {
+  List<Game> get games => _repository.gameLibrary; // 直接获取
+}
+```
+
+**模式2：UI组件状态缓存**
+```dart
+// 违规
+class _MyWidgetState {
+  List<Game> _localGames = [];
+  
+  void initState() {
+    _localGames = widget.viewModel.games;
+  }
+}
+
+// 修复
+class MyWidget {
+  Widget build(context) {
+    return Consumer<MyViewModel>(
+      builder: (context, viewModel, child) {
+        return ListView(children: viewModel.games.map(...));
+      },
+    );
+  }
+}
+```
+
+**模式3：重复的数据同步逻辑**
+```dart
+// 违规
+class MyViewModel {
+  void updateGame(Game game) {
+    _repository.updateGame(game);
+    _localGames = _repository.gameLibrary; // 重复同步
+  }
+}
+
+// 修复
+class MyViewModel {
+  void updateGame(Game game) {
+    _repository.updateGame(game); // Repository通过Stream通知变更
+    // ViewModel通过getter自动获取最新数据
+  }
+}
+```
+
+---
+
 ## 11. 错误与异常处理规范
 
 统一错误页面组件：

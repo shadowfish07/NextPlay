@@ -26,6 +26,7 @@ class GameRepository {
   List<GameRecommendation> _recentRecommendations = [];
   List<int> _playQueue = []; // 待玩队列 - 存储游戏AppID
   RecommendationStats _stats = const RecommendationStats();
+  RecommendationResult? _currentRecommendations; // 当前推荐结果
   
   // 数据变更流
   final _gameLibraryController = StreamController<List<Game>>.broadcast();
@@ -80,6 +81,7 @@ class GameRepository {
     return List.unmodifiable(queueGames);
   }
   RecommendationStats get stats => _stats;
+  RecommendationResult? get currentRecommendations => _currentRecommendations; // 暴露当前推荐结果
 
   /// 从本地存储加载数据
   Future<void> _loadFromStorage() async {
@@ -327,13 +329,19 @@ class GameRepository {
       final recommendableGames = _getRecommendableGames(criteria);
       
       if (recommendableGames.isEmpty) {
-        return Success(RecommendationResult(
+        final emptyResult = RecommendationResult(
           heroRecommendation: null,
           alternatives: [],
           totalGamesCount: _gameLibrary.length,
           recommendableGamesCount: 0,
           generatedAt: DateTime.now(),
-        ));
+        );
+        
+        // 更新当前推荐结果缓存
+        _currentRecommendations = emptyResult;
+        _recommendationController.add(emptyResult);
+        
+        return Success(emptyResult);
       }
 
       // 生成推荐
@@ -357,6 +365,9 @@ class GameRepository {
       if (_recentRecommendations.length > 50) {
         _recentRecommendations = _recentRecommendations.take(50).toList();
       }
+
+      // 更新当前推荐结果缓存
+      _currentRecommendations = result;
 
       await _saveToStorage();
       _recommendationController.add(result);

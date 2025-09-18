@@ -43,14 +43,16 @@ class BatchStatusViewModel extends ChangeNotifier {
     AppLogger.info('BatchStatusViewModel initialized');
   }
 
-  // Getters
+  // Getters - 从BatchOperationState获取状态，但游戏数据从 Repository 动态获取
   BatchOperationState get state => _state;
+  
+  /// 动态获取当前步骤的游戏列表 - 实时从Repository获取最新数据
   List<GameSelectionItem> get currentStepGames {
     switch (_state.currentStep) {
       case BatchOperationStep.zeroPlaytime:
-        return _state.zeroPlaytimeGames;
+        return _getDynamicZeroPlaytimeGames();
       case BatchOperationStep.highPlaytime:
-        return _state.highPlaytimeGames;
+        return _getDynamicHighPlaytimeGames();
     }
   }
   
@@ -455,6 +457,36 @@ class BatchStatusViewModel extends ChangeNotifier {
   void resetState() {
     _setState(const BatchOperationState());
     AppLogger.info('BatchStatusViewModel state reset');
+  }
+
+  /// 动态获取零时长游戏列表 - 供UI使用
+  List<GameSelectionItem> get zeroPlaytimeGames => _getDynamicZeroPlaytimeGames();
+  
+  /// 动态获取高时长游戏列表 - 供UI使用
+  List<GameSelectionItem> get highPlaytimeGames => _getDynamicHighPlaytimeGames();
+  
+  /// 动态获取已搜置游戏列表 - 供UI使用
+  List<GameSelectionItem> get abandonedGames => _getDynamicAbandonedGames();
+
+  /// 动态获取零时长游戏列表 - 实时从Repository获取数据
+  List<GameSelectionItem> _getDynamicZeroPlaytimeGames() {
+    final gameLibrary = _gameRepository.gameLibrary;
+    final gameStatuses = _gameRepository.gameStatuses;
+    return _findZeroPlaytimeGames(gameLibrary, gameStatuses);
+  }
+
+  /// 动态获取高时长游戏列表 - 实时从Repository获取数据
+  List<GameSelectionItem> _getDynamicHighPlaytimeGames() {
+    final gameLibrary = _gameRepository.gameLibrary;
+    final gameStatuses = _gameRepository.gameStatuses;
+    return _findHighPlaytimeGames(gameLibrary, gameStatuses);
+  }
+
+  /// 动态获取已搜置游戏列表 - 实时从Repository获取数据
+  List<GameSelectionItem> _getDynamicAbandonedGames() {
+    final gameLibrary = _gameRepository.gameLibrary;
+    final gameStatuses = _gameRepository.gameStatuses;
+    return _findAbandonedGames(gameLibrary, gameStatuses);
   }
 
   @override

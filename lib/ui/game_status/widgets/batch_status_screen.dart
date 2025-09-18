@@ -50,9 +50,11 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
               Expanded(
                 child:
                     viewModel.state.isLoading &&
-                        viewModel.state.zeroPlaytimeGames.isEmpty
+                        viewModel.zeroPlaytimeGames.isEmpty // 使用动态getter
                     ? _buildLoadingState(context)
-                    : viewModel.state.totalCount == 0
+                    : (viewModel.zeroPlaytimeGames.isEmpty && 
+                       viewModel.highPlaytimeGames.isEmpty && 
+                       viewModel.abandonedGames.isEmpty) // 使用动态getter检查是否为空
                     ? _buildEmptyState(context)
                     : _buildSmartSuggestions(context, viewModel),
               ),
@@ -140,14 +142,14 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
           _SmartSuggestionCard(
             icon: Icons.new_releases,
             title: '0时长游戏',
-            subtitle: '${viewModel.state.zeroPlaytimeGames.length}个游戏',
+            subtitle: '${viewModel.zeroPlaytimeGames.length}个游戏', // 使用动态getter
             description: '建议保持"未开始"状态',
             suggestionType: SuggestionType.zeroPlaytime,
-            games: viewModel.state.zeroPlaytimeGames,
+            games: viewModel.zeroPlaytimeGames, // 使用动态getter
             onPreview: () => _showPreview(
               context,
               SuggestionType.zeroPlaytime,
-              viewModel.state.zeroPlaytimeGames,
+              viewModel.zeroPlaytimeGames, // 使用动态getter
             ),
           ),
 
@@ -157,14 +159,14 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
           _SmartSuggestionCard(
             icon: Icons.schedule,
             title: '高游玩时长游戏',
-            subtitle: '${viewModel.state.highPlaytimeGames.length}个游戏',
+            subtitle: '${viewModel.highPlaytimeGames.length}个游戏', // 使用动态getter
             description: '建议标记为"已通关"或"游玩中"',
             suggestionType: SuggestionType.highPlaytime,
-            games: viewModel.state.highPlaytimeGames,
+            games: viewModel.highPlaytimeGames, // 使用动态getter
             onPreview: () => _showPreview(
               context,
               SuggestionType.highPlaytime,
-              viewModel.state.highPlaytimeGames,
+              viewModel.highPlaytimeGames, // 使用动态getter
             ),
           ),
 
@@ -174,14 +176,14 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
           _SmartSuggestionCard(
             icon: Icons.pause_circle_filled,
             title: '已搁置游戏',
-            subtitle: '${viewModel.state.abandonedGames.length}个游戏',
+            subtitle: '${viewModel.abandonedGames.length}个游戏', // 使用动态getter
             description: '长时间未玩，建议重新评估状态',
             suggestionType: SuggestionType.abandoned,
-            games: viewModel.state.abandonedGames,
+            games: viewModel.abandonedGames, // 使用动态getter
             onPreview: () => _showPreview(
               context,
               SuggestionType.abandoned,
-              viewModel.state.abandonedGames,
+              viewModel.abandonedGames, // 使用动态getter
             ),
           ),
 
@@ -218,12 +220,12 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
   ) {
     final theme = Theme.of(context);
 
-    // 计算所有需要修改状态的游戏数量
+    // 计算所有需要修改状态的游戏数量 - 使用动态getter
     final allChanges = [
-      ...viewModel.state.highPlaytimeGames.where(
+      ...viewModel.highPlaytimeGames.where( // 使用动态getter
         (game) => game.currentStatus != game.suggestedStatus,
       ),
-      ...viewModel.state.abandonedGames.where(
+      ...viewModel.abandonedGames.where( // 使用动态getter
         (game) => game.currentStatus != game.suggestedStatus,
       ),
     ];
@@ -422,9 +424,9 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
     BatchStatusViewModel viewModel,
   ) {
     final allGames = [
-      ...viewModel.state.zeroPlaytimeGames,
-      ...viewModel.state.highPlaytimeGames,
-      ...viewModel.state.abandonedGames,
+      ...viewModel.zeroPlaytimeGames, // 使用动态getter
+      ...viewModel.highPlaytimeGames, // 使用动态getter
+      ...viewModel.abandonedGames, // 使用动态getter
     ];
 
     // 筛选出当前状态与建议状态不同的游戏（表示用户手动修改过）
@@ -662,17 +664,17 @@ class _SuggestionPreviewSheetState extends State<_SuggestionPreviewSheet> {
     // 从 ViewModel 动态获取最新的游戏列表，而不是使用静态的 widget.games
     switch (widget.type) {
       case SuggestionType.zeroPlaytime:
-        return widget.viewModel.state.zeroPlaytimeGames;
+        return widget.viewModel.zeroPlaytimeGames; // 使用动态getter
       case SuggestionType.highPlaytime:
-        return widget.viewModel.state.highPlaytimeGames;
+        return widget.viewModel.highPlaytimeGames; // 使用动态getter
       case SuggestionType.abandoned:
-        return widget.viewModel.state.abandonedGames;
+        return widget.viewModel.abandonedGames; // 使用动态getter
       case SuggestionType.manuallyModified:
         // 对于手动修改的游戏，需要重新计算
         final allGames = [
-          ...widget.viewModel.state.zeroPlaytimeGames,
-          ...widget.viewModel.state.highPlaytimeGames,
-          ...widget.viewModel.state.abandonedGames,
+          ...widget.viewModel.zeroPlaytimeGames, // 使用动态getter
+          ...widget.viewModel.highPlaytimeGames, // 使用动态getter
+          ...widget.viewModel.abandonedGames, // 使用动态getter
         ];
         return allGames
             .where((game) =>

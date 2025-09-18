@@ -14,9 +14,8 @@ import '../../../utils/logger.dart';
 class DiscoverViewModel extends ChangeNotifier {
   final GameRepository _gameRepository;
   
-  // 当前状态
+  // UI状态 - 仅保留UI专用的状态，不缓存业务数据
   DiscoverState _state = const DiscoverState.loading();
-  RecommendationResult? _currentRecommendations;
   FilterCriteria _filterCriteria = const FilterCriteria();
   
   // Commands
@@ -38,18 +37,18 @@ class DiscoverViewModel extends ChangeNotifier {
     AppLogger.info('DiscoverViewModel initialized');
   }
 
-  // Getters
+  // Getters - 从Repository动态获取数据，实现真正的单一数据源
   DiscoverState get state => _state;
-  RecommendationResult? get currentRecommendations => _currentRecommendations;
+  RecommendationResult? get currentRecommendations => _gameRepository.currentRecommendations;
   FilterCriteria get filterCriteria => _filterCriteria;
   
-  // 便捷getters
-  GameRecommendation? get heroRecommendation => _currentRecommendations?.heroRecommendation;
+  // 便捷getters - 从Repository动态获取
+  GameRecommendation? get heroRecommendation => _gameRepository.currentRecommendations?.heroRecommendation;
   List<GameRecommendation> get alternativeRecommendations => 
-      _currentRecommendations?.alternatives ?? [];
-  bool get hasRecommendations => _currentRecommendations != null && 
-      (_currentRecommendations!.heroRecommendation != null || 
-       _currentRecommendations!.alternatives.isNotEmpty);
+      _gameRepository.currentRecommendations?.alternatives ?? [];
+  bool get hasRecommendations => _gameRepository.currentRecommendations != null && 
+      (_gameRepository.currentRecommendations!.heroRecommendation != null || 
+       _gameRepository.currentRecommendations!.alternatives.isNotEmpty);
   bool get isLoading => _state == const DiscoverState.loading();
   bool get isRefreshing => _state == const DiscoverState.refreshing();
   String? get errorMessage => _state.maybeWhen(
@@ -85,8 +84,7 @@ class DiscoverViewModel extends ChangeNotifier {
         
         result.fold(
           (recommendationResult) {
-            _currentRecommendations = recommendationResult;
-            
+            // 不缓存推荐结果，直接由Repository管理
             if (recommendationResult.heroRecommendation == null && 
                 recommendationResult.alternatives.isEmpty) {
               _setState(const DiscoverState.empty('没有找到符合条件的游戏推荐'));
@@ -118,8 +116,7 @@ class DiscoverViewModel extends ChangeNotifier {
         
         result.fold(
           (recommendationResult) {
-            _currentRecommendations = recommendationResult;
-            
+            // 不缓存推荐结果，直接由Repository管理
             if (recommendationResult.heroRecommendation == null && 
                 recommendationResult.alternatives.isEmpty) {
               _setState(const DiscoverState.empty('没有找到符合筛选条件的游戏'));
@@ -217,8 +214,7 @@ class DiscoverViewModel extends ChangeNotifier {
         
         result.fold(
           (recommendationResult) {
-            _currentRecommendations = recommendationResult;
-            
+            // 不缓存推荐结果，直接由Repository管理
             if (recommendationResult.heroRecommendation == null && 
                 recommendationResult.alternatives.isEmpty) {
               _setState(const DiscoverState.empty('没有找到符合条件的游戏推荐'));
@@ -261,11 +257,10 @@ class DiscoverViewModel extends ChangeNotifier {
 
   /// 订阅数据流
   void _subscribeToStreams() {
-    // 监听推荐结果变化
+    // 监听推荐结果变化 - 不缓存数据，只更新UI状态
     _recommendationSubscription = _gameRepository.recommendationStream.listen(
       (recommendationResult) {
-        _currentRecommendations = recommendationResult;
-        
+        // 不缓存推荐结果，推荐数据由Repository管理
         if (recommendationResult.heroRecommendation == null && 
             recommendationResult.alternatives.isEmpty) {
           _setState(const DiscoverState.empty('没有找到符合条件的游戏推荐'));
@@ -321,7 +316,7 @@ class DiscoverViewModel extends ChangeNotifier {
   /// 重置状态
   void resetState() {
     _setState(const DiscoverState.loading());
-    _currentRecommendations = null;
+    // 不重置缓存的推荐数据，因为数据由Repository管理
     _filterCriteria = const FilterCriteria();
     notifyListeners();
     AppLogger.info('DiscoverViewModel state reset');
