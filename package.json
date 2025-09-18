@@ -1,0 +1,50 @@
+{
+  "name": "nextplay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NextPlay - 基于Steam游戏库的智能游戏推荐应用",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shadowfish/NextPlay.git"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^9.2.4",
+    "semantic-release": "^22.0.8"
+  },
+  "release": {
+    "branches": [
+      "main",
+      {
+        "name": "beta",
+        "prerelease": true
+      }
+    ],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      [
+        "@semantic-release/github",
+        {
+          "assets": [
+            {
+              "path": "release-files/*.apk",
+              "label": "Android APK"
+            }
+          ]
+        }
+      ],
+      [
+        "@semantic-release/git",
+        {
+          "assets": [
+            "CHANGELOG.md",
+            "pubspec.yaml"
+          ],
+          "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+        }
+      ]
+    ]
+  }
+}
