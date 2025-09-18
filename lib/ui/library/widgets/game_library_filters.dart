@@ -119,7 +119,7 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
                 borderSide: BorderSide.none,
               ),
               filled: true,
-              fillColor: theme.colorScheme.surfaceVariant,
+              fillColor: theme.colorScheme.surfaceContainerHighest,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 20,
                 vertical: 12,
@@ -140,7 +140,7 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
             child: const Icon(Icons.tune),
           ),
           style: IconButton.styleFrom(
-            backgroundColor: theme.colorScheme.surfaceVariant,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
             foregroundColor: theme.colorScheme.onSurfaceVariant,
           ),
         ),

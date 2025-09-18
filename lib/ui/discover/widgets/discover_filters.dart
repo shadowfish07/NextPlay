@@ -20,8 +20,6 @@ class DiscoverFilters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Padding(
@@ -193,8 +191,6 @@ class DiscoverFilters extends StatelessWidget {
 
   /// 构建详细筛选选项
   Widget _buildDetailedFilters(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -401,7 +397,7 @@ class QuickDiscoverFilters extends StatelessWidget {
                 },
               ),
             );
-          }).toList(),
+          }),
           
           // 心情筛选
           ...MoodFilter.values.where((m) => m != MoodFilter.any).map((mood) {
@@ -419,7 +415,7 @@ class QuickDiscoverFilters extends StatelessWidget {
                 },
               ),
             );
-          }).toList(),
+          }),
           
           // 更多筛选按钮
           if (onShowMore != null)

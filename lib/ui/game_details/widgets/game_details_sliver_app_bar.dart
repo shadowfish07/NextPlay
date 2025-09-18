@@ -93,7 +93,7 @@ class GameDetailsSliverAppBar extends StatelessWidget {
       children: [
         // 背景图片
         Container(
-          color: theme.colorScheme.surfaceVariant,
+          color: theme.colorScheme.surfaceContainerHighest,
           child: game.headerImage != null && game.headerImage!.isNotEmpty
               ? Image.network(
                   game.coverImageUrl,
@@ -143,12 +143,12 @@ class GameDetailsSliverAppBar extends StatelessWidget {
     final theme = Theme.of(context);
     
     return Container(
-      color: theme.colorScheme.surfaceVariant,
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Center(
         child: Icon(
           Icons.videogame_asset,
           size: 80,
-          color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
         ),
       ),
     );

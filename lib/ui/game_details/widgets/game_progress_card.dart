@@ -155,7 +155,7 @@ class GameProgressCard extends StatelessWidget {
         
         LinearProgressIndicator(
           value: progress,
-          backgroundColor: theme.colorScheme.surfaceVariant,
+          backgroundColor: theme.colorScheme.surfaceContainerHighest,
           valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
         ),
         

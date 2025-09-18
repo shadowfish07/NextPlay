@@ -59,8 +59,6 @@ class GameInfoHeaderCard extends StatelessWidget {
 
   /// 构建开发商信息
   Widget _buildDeveloperInfo(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -139,7 +137,7 @@ class GameInfoHeaderCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -235,27 +233,33 @@ class GameInfoHeaderCard extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('更改游戏状态'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: GameStatusExtension.values.map((status) {
-            final isSelected = status == gameStatus;
-            
-            return ListTile(
-              leading: Radio<GameStatus>(
-                value: status,
-                groupValue: gameStatus,
-                onChanged: (value) {
-                  if (value != null) {
-                    onStatusChanged(value);
-                    Navigator.of(context).pop();
-                  }
+        content: RadioGroup<GameStatus>(
+          groupValue: gameStatus,
+          onChanged: (value) {
+            if (value != null) {
+              onStatusChanged(value);
+              Navigator.of(context).pop();
+            }
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: GameStatusExtension.values.map((status) {
+              final isSelected = status == gameStatus;
+              
+              return ListTile(
+                leading: Radio<GameStatus>(
+                  value: status,
+                ),
+                title: Text(status.displayName),
+                subtitle: Text(status.description),
+                selected: isSelected,
+                onTap: () {
+                  onStatusChanged(status);
+                  Navigator.of(context).pop();
                 },
-              ),
-              title: Text(status.displayName),
-              subtitle: Text(status.description),
-              selected: isSelected,
-            );
-          }).toList(),
+              );
+            }).toList(),
+          ),
         ),
         actions: [
           TextButton(

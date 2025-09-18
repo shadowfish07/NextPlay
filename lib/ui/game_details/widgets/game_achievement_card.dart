@@ -56,7 +56,7 @@ class GameAchievementCard extends StatelessWidget {
                       height: 60,
                       child: CircularProgressIndicator(
                         value: achievementProgress,
-                        backgroundColor: theme.colorScheme.surfaceVariant,
+                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
                         valueColor: AlwaysStoppedAnimation<Color>(
                           theme.colorScheme.secondary,
                         ),

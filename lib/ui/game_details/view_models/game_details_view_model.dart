@@ -59,7 +59,7 @@ class GameDetailsViewModel extends ChangeNotifier {
   String get publisher => _game?.publisherName ?? '未知发行商';
   List<String> get genres => _game?.genres ?? [];
   String get steamStoreUrl => _game?.steamStoreUrl ?? '';
-  String get steamGameUrl => 'steam://launch/${_gameAppId}';
+  String get steamGameUrl => 'steam://launch/$_gameAppId';
   bool get hasAchievements => _game?.hasAchievements ?? false;
   double get achievementProgress => hasAchievements && (_game?.totalAchievements ?? 0) > 0 
       ? (_game?.unlockedAchievements ?? 0) / (_game?.totalAchievements ?? 1)

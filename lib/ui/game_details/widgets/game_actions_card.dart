@@ -131,10 +131,10 @@ class _GameActionsCardState extends State<GameActionsCard> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: theme.colorScheme.outline.withOpacity(0.2),
+                color: theme.colorScheme.outline.withValues(alpha: 0.2),
                 style: BorderStyle.solid,
               ),
             ),
@@ -143,7 +143,7 @@ class _GameActionsCardState extends State<GameActionsCard> {
                 Icon(
                   Icons.edit_note_outlined,
                   size: 32,
-                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -175,7 +175,7 @@ class _GameActionsCardState extends State<GameActionsCard> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
