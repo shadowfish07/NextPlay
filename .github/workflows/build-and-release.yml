@@ -55,6 +55,8 @@ jobs:
 
       - name: Check for release
         id: check-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Dry run to check if semantic-release will create a release
           npm run semantic-release -- --dry-run > semantic-output.txt 2>&1 || true
