@@ -6,6 +6,9 @@
   "engines": {
     "node": ">=20.6.1"
   },
+  "scripts": {
+    "semantic-release": "semantic-release"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/shadowfish07/NextPlay"
@@ -32,8 +35,18 @@
         {
           "assets": [
             {
-              "path": "release-files/*.apk",
-              "label": "Android APK"
+              "path": "release-files/app-release.apk",
+              "label": "Android APK",
+              "name": "nextplay-${nextRelease.version}.apk"
+            },
+            {
+              "path": "release-files/app-release.aab", 
+              "label": "Android App Bundle",
+              "name": "nextplay-${nextRelease.version}.aab"
+            },
+            {
+              "path": "release-files/checksums.txt",
+              "label": "Checksums"
             }
           ]
         }
