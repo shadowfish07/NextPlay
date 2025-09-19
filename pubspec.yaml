@@ -50,7 +50,8 @@ dependencies:
   
   # 外部集成
   url_launcher: ^6.2.2                 # URL启动器
-  
+  package_info_plus: ^8.0.2            # 应用信息获取
+
   # UI组件
   cupertino_icons: ^1.0.8
   cached_network_image: ^3.3.0         # 网络图片缓存

@@ -155,8 +155,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 16),
                     
                     // Help & Support Card
-                    const HelpSupportCard(
-                      appVersion: '1.0.0',
+                    HelpSupportCard(
+                      appVersion: viewModel.appVersion.isNotEmpty ? viewModel.appVersion : 'Loading...',
                     ),
                     
                     const SizedBox(height: 32),

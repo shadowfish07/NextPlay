@@ -4,6 +4,7 @@ import 'package:flutter_command/flutter_command.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/repository/onboarding/onboarding_repository.dart';
 import '../../../data/repository/game_repository.dart';
+import '../../../data/service/app_info_service.dart';
 import '../../../utils/logger.dart';
 
 class SettingsViewModel extends ChangeNotifier {
@@ -18,11 +19,13 @@ class SettingsViewModel extends ChangeNotifier {
   late final Command<bool, void> toggleThemeCommand;
   late final Command<void, void> clearCacheCommand;
   late final Command<void, void> clearAllDataCommand;
+  late final Command<void, String> getVersionCommand;
   
   // UI状态 - 仅保留UI专用的状态，减少重复缓存
   bool _isLoading = false;
   String _errorMessage = '';
   bool _isDarkTheme = false; // UI状态，可以缓存
+  String _appVersion = ''; // 缓存版本信息用于显示
   
   SettingsViewModel({
     required OnboardingRepository onboardingRepository,
@@ -42,6 +45,7 @@ class SettingsViewModel extends ChangeNotifier {
   bool get isSteamConnected => apiKey.isNotEmpty && steamId.isNotEmpty;
   bool get isDarkTheme => _isDarkTheme;
   int get gameCount => _prefs.getInt('game_count') ?? 0;
+  String get appVersion => _appVersion; // 版本信息getter
   DateTime? get lastSyncTime {
     final syncTimeString = _prefs.getString('last_sync_time');
     return syncTimeString != null ? DateTime.tryParse(syncTimeString) : null;
@@ -82,13 +86,21 @@ class SettingsViewModel extends ChangeNotifier {
       _handleClearAllData,
       initialValue: null,
     );
+
+    getVersionCommand = Command.createAsyncNoParam(
+      _handleGetVersion,
+      initialValue: '',
+    );
   }
   
   void _loadSettings() {
     try {
       // 只加载UI专用的状态，其他数据通过getter动态获取
       _isDarkTheme = _prefs.getBool('dark_theme') ?? false;
-      
+
+      // 初始化时获取版本信息
+      getVersionCommand.execute();
+
       AppLogger.info('Settings loaded: Steam connected=$isSteamConnected, Game count=$gameCount');
       notifyListeners();
     } catch (e, stackTrace) {
@@ -212,6 +224,33 @@ class SettingsViewModel extends ChangeNotifier {
     } catch (e, stackTrace) {
       AppLogger.error('Failed to clear all data', e, stackTrace);
       _setError('Failed to clear all data');
+    }
+  }
+
+  Future<String> _handleGetVersion() async {
+    try {
+      AppLogger.info('Getting app version info');
+
+      final result = await AppInfoService.getDisplayVersion();
+      return result.fold(
+        (success) {
+          _appVersion = success;
+          AppLogger.info('App version retrieved: $success');
+          notifyListeners();
+          return success;
+        },
+        (failure) {
+          AppLogger.error('Failed to get app version', failure);
+          _appVersion = 'Unknown';
+          notifyListeners();
+          return 'Unknown';
+        },
+      );
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to get app version', e, stackTrace);
+      _appVersion = 'Unknown';
+      notifyListeners();
+      return 'Unknown';
     }
   }
   

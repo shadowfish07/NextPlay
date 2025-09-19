@@ -61,12 +61,21 @@ jobs:
           # Dry run to check if semantic-release will create a release
           npm run semantic-release -- --dry-run > semantic-output.txt 2>&1 || true
 
+          # Extract version info for dynamic versioning
+          SEMANTIC_VERSION=$(grep -oP 'The next release version is \K\d+\.\d+\.\d+' semantic-output.txt || echo "")
+          CURRENT_VERSION=$(grep -oP 'version: \K[^+]+' pubspec.yaml)
+          VERSION=${SEMANTIC_VERSION:-$CURRENT_VERSION}
+          BUILD_NUMBER=${{ github.run_number }}
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build-number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+
           if grep -q "Published release" semantic-output.txt || grep -q "The next release version is" semantic-output.txt; then
             echo "has-release=true" >> $GITHUB_OUTPUT
-            echo "✅ New release will be created"
+            echo "✅ New release will be created with version: $VERSION+$BUILD_NUMBER"
           else
             echo "has-release=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ No release needed - no significant changes"
+            echo "ℹ️ No release needed - will use current version: $VERSION+$BUILD_NUMBER"
           fi
 
           echo "=== Semantic Release Dry Run Output ==="
@@ -91,17 +100,23 @@ jobs:
 
       - name: Build signed APK
         if: steps.check-release.outputs.has-release == 'true'
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release \
+            --build-name=${{ steps.check-release.outputs.version }} \
+            --build-number=${{ steps.check-release.outputs.build-number }}
 
       - name: Build signed App Bundle
         if: steps.check-release.outputs.has-release == 'true'
-        run: flutter build appbundle --release
+        run: |
+          flutter build appbundle --release \
+            --build-name=${{ steps.check-release.outputs.version }} \
+            --build-number=${{ steps.check-release.outputs.build-number }}
 
       - name: Prepare release files
         if: steps.check-release.outputs.has-release == 'true'
         run: |
           mkdir -p release-files
-           
+
           # Copy build outputs to release-files directory
           cp build/app/outputs/flutter-apk/app-release.apk release-files/
           cp build/app/outputs/bundle/release/app-release.aab release-files/
@@ -110,7 +125,7 @@ jobs:
           cd release-files
           sha256sum *.apk *.aab > checksums.txt
 
-          echo "📦 Release files prepared:"
+          echo "📦 Release files prepared for v${{ steps.check-release.outputs.version }}+${{ steps.check-release.outputs.build-number }}:"
           ls -la
 
       - name: Run semantic-release

@@ -66,8 +66,31 @@ jobs:
       - name: Generate code
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
 
+      - name: Get version info
+        id: version
+        run: |
+          # Get semantic version if available
+          SEMANTIC_VERSION=""
+          if command -v npx &> /dev/null; then
+            SEMANTIC_VERSION=$(npx semantic-release --dry-run --no-ci 2>/dev/null | grep -oP 'The next release version is \K\d+\.\d+\.\d+' || echo "")
+          fi
+
+          # Get current version from pubspec.yaml
+          CURRENT_VERSION=$(grep -oP 'version: \K[^+]+' pubspec.yaml)
+
+          # Choose version
+          VERSION=${SEMANTIC_VERSION:-$CURRENT_VERSION}
+          BUILD_NUMBER=${{ github.run_number }}
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build-number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "Using version: $VERSION+$BUILD_NUMBER"
+
       - name: Build debug APK
-        run: flutter build apk --debug
+        run: |
+          flutter build apk --debug \
+            --build-name=${{ steps.version.outputs.version }} \
+            --build-number=${{ steps.version.outputs.build-number }}
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
