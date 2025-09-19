@@ -37,8 +37,6 @@ class GameRepository {
   // 配置
   static const String _gameLibraryKey = 'game_library';
   static const String _gameStatusesKey = 'game_statuses';
-  static const String _recommendationStatsKey = 'recommendation_stats';
-  static const String _recentRecommendationsKey = 'recent_recommendations';
   static const String _playQueueKey = 'play_queue';
   
   GameRepository({
@@ -103,21 +101,8 @@ class GameRepository {
         AppLogger.info('Loaded ${_gameStatuses.length} game statuses from storage');
       }
 
-      // 加载推荐统计
-      final statsJson = _prefs.getString(_recommendationStatsKey);
-      if (statsJson != null) {
-        _stats = RecommendationStats.fromJson(json.decode(statsJson));
-        AppLogger.info('Loaded recommendation stats from storage');
-      }
-
-      // 加载最近推荐记录
-      final recentJson = _prefs.getString(_recentRecommendationsKey);
-      if (recentJson != null) {
-        final recentList = json.decode(recentJson) as List;
-        _recentRecommendations = recentList.map((json) => 
-          GameRecommendation.fromJson(json)).toList();
-        AppLogger.info('Loaded ${_recentRecommendations.length} recent recommendations');
-      }
+      // 推荐数据不再持久化，仅保持内存状态
+      AppLogger.info('Recommendation data is kept in memory only');
 
       // 加载待玩队列
       final playQueueJson = _prefs.getString(_playQueueKey);
@@ -144,13 +129,7 @@ class GameRepository {
         MapEntry(key.toString(), value.toJson())));
       await _prefs.setString(_gameStatusesKey, gameStatusesJson);
 
-      // 保存推荐统计
-      await _prefs.setString(_recommendationStatsKey, json.encode(_stats.toJson()));
-
-      // 保存最近推荐（只保留最近20个）
-      final recentToSave = _recentRecommendations.take(20).toList();
-      final recentJson = json.encode(recentToSave.map((rec) => rec.toJson()).toList());
-      await _prefs.setString(_recentRecommendationsKey, recentJson);
+      // 推荐数据不再持久化到存储
 
       // 保存待玩队列
       final playQueueJson = json.encode(_playQueue);

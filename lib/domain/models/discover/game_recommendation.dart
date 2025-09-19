@@ -1,81 +1,181 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
 import '../game/game.dart';
 import '../game/game_status.dart';
 
-part 'game_recommendation.freezed.dart';
-part 'game_recommendation.g.dart';
-
 /// 游戏推荐结果
-@freezed
-class GameRecommendation with _$GameRecommendation {
-  const factory GameRecommendation({
-    required Game game,
-    required GameStatus status,
-    required double score,
-    required String reason,
-    @Default([]) List<String> tags,
-    DateTime? recommendedAt,
-  }) = _GameRecommendation;
+class GameRecommendation {
+  const GameRecommendation({
+    required this.game,
+    required this.status,
+    required this.score,
+    required this.reason,
+    this.tags = const [],
+    this.recommendedAt,
+  });
 
-  factory GameRecommendation.fromJson(Map<String, dynamic> json) => _$GameRecommendationFromJson(json);
+  final Game game;
+  final GameStatus status;
+  final double score;
+  final String reason;
+  final List<String> tags;
+  final DateTime? recommendedAt;
+
+  GameRecommendation copyWith({
+    Game? game,
+    GameStatus? status,
+    double? score,
+    String? reason,
+    List<String>? tags,
+    DateTime? recommendedAt,
+  }) {
+    return GameRecommendation(
+      game: game ?? this.game,
+      status: status ?? this.status,
+      score: score ?? this.score,
+      reason: reason ?? this.reason,
+      tags: tags ?? this.tags,
+      recommendedAt: recommendedAt ?? this.recommendedAt,
+    );
+  }
 }
 
 /// 推荐结果集合
-@freezed
-class RecommendationResult with _$RecommendationResult {
-  const factory RecommendationResult({
-    GameRecommendation? heroRecommendation,
-    @Default([]) List<GameRecommendation> alternatives,
-    @Default(0) int totalGamesCount,
-    @Default(0) int recommendableGamesCount,
-    DateTime? generatedAt,
-  }) = _RecommendationResult;
+class RecommendationResult {
+  const RecommendationResult({
+    this.heroRecommendation,
+    this.alternatives = const [],
+    this.totalGamesCount = 0,
+    this.recommendableGamesCount = 0,
+    this.generatedAt,
+  });
 
-  factory RecommendationResult.fromJson(Map<String, dynamic> json) => _$RecommendationResultFromJson(json);
+  final GameRecommendation? heroRecommendation;
+  final List<GameRecommendation> alternatives;
+  final int totalGamesCount;
+  final int recommendableGamesCount;
+  final DateTime? generatedAt;
+
+  RecommendationResult copyWith({
+    GameRecommendation? heroRecommendation,
+    List<GameRecommendation>? alternatives,
+    int? totalGamesCount,
+    int? recommendableGamesCount,
+    DateTime? generatedAt,
+  }) {
+    return RecommendationResult(
+      heroRecommendation: heroRecommendation ?? this.heroRecommendation,
+      alternatives: alternatives ?? this.alternatives,
+      totalGamesCount: totalGamesCount ?? this.totalGamesCount,
+      recommendableGamesCount: recommendableGamesCount ?? this.recommendableGamesCount,
+      generatedAt: generatedAt ?? this.generatedAt,
+    );
+  }
 }
 
 /// 推荐历史记录
-@freezed
-class RecommendationHistory with _$RecommendationHistory {
-  const factory RecommendationHistory({
-    required int gameAppId,
-    required DateTime recommendedAt,
-    required String reason,
-    @Default(false) bool wasAccepted,
-    @Default(false) bool wasDismissed,
-  }) = _RecommendationHistory;
+class RecommendationHistory {
+  const RecommendationHistory({
+    required this.gameAppId,
+    required this.recommendedAt,
+    required this.reason,
+    this.wasAccepted = false,
+    this.wasDismissed = false,
+  });
 
-  factory RecommendationHistory.fromJson(Map<String, dynamic> json) => _$RecommendationHistoryFromJson(json);
+  final int gameAppId;
+  final DateTime recommendedAt;
+  final String reason;
+  final bool wasAccepted;
+  final bool wasDismissed;
+
+  RecommendationHistory copyWith({
+    int? gameAppId,
+    DateTime? recommendedAt,
+    String? reason,
+    bool? wasAccepted,
+    bool? wasDismissed,
+  }) {
+    return RecommendationHistory(
+      gameAppId: gameAppId ?? this.gameAppId,
+      recommendedAt: recommendedAt ?? this.recommendedAt,
+      reason: reason ?? this.reason,
+      wasAccepted: wasAccepted ?? this.wasAccepted,
+      wasDismissed: wasDismissed ?? this.wasDismissed,
+    );
+  }
 }
 
 /// 推荐统计数据
-@freezed
-class RecommendationStats with _$RecommendationStats {
-  const factory RecommendationStats({
-    @Default(0) int totalRecommendations,
-    @Default(0) int acceptedRecommendations,
-    @Default(0) int dismissedRecommendations,
-    @Default(<String, int>{}) Map<String, int> genreRecommendationCounts,
-    @Default(<String, int>{}) Map<String, int> genreAcceptanceCounts,
-    DateTime? lastRecommendationAt,
-  }) = _RecommendationStats;
+class RecommendationStats {
+  const RecommendationStats({
+    this.totalRecommendations = 0,
+    this.acceptedRecommendations = 0,
+    this.dismissedRecommendations = 0,
+    this.genreRecommendationCounts = const <String, int>{},
+    this.genreAcceptanceCounts = const <String, int>{},
+    this.lastRecommendationAt,
+  });
 
-  factory RecommendationStats.fromJson(Map<String, dynamic> json) => _$RecommendationStatsFromJson(json);
+  final int totalRecommendations;
+  final int acceptedRecommendations;
+  final int dismissedRecommendations;
+  final Map<String, int> genreRecommendationCounts;
+  final Map<String, int> genreAcceptanceCounts;
+  final DateTime? lastRecommendationAt;
+
+  RecommendationStats copyWith({
+    int? totalRecommendations,
+    int? acceptedRecommendations,
+    int? dismissedRecommendations,
+    Map<String, int>? genreRecommendationCounts,
+    Map<String, int>? genreAcceptanceCounts,
+    DateTime? lastRecommendationAt,
+  }) {
+    return RecommendationStats(
+      totalRecommendations: totalRecommendations ?? this.totalRecommendations,
+      acceptedRecommendations: acceptedRecommendations ?? this.acceptedRecommendations,
+      dismissedRecommendations: dismissedRecommendations ?? this.dismissedRecommendations,
+      genreRecommendationCounts: genreRecommendationCounts ?? this.genreRecommendationCounts,
+      genreAcceptanceCounts: genreAcceptanceCounts ?? this.genreAcceptanceCounts,
+      lastRecommendationAt: lastRecommendationAt ?? this.lastRecommendationAt,
+    );
+  }
 }
 
 /// 推荐配置
-@freezed
-class RecommendationConfig with _$RecommendationConfig {
-  const factory RecommendationConfig({
-    @Default(true) bool enableGenreBalance,
-    @Default(true) bool enableTimeBasedScoring,
-    @Default(true) bool enableMoodMatching,
-    @Default(0.15) double genreBalanceWeight,
-    @Default(10) int recentRecommendationLimit,
-    @Default(4) int alternativeRecommendationCount,
-  }) = _RecommendationConfig;
+class RecommendationConfig {
+  const RecommendationConfig({
+    this.enableGenreBalance = true,
+    this.enableTimeBasedScoring = true,
+    this.enableMoodMatching = true,
+    this.genreBalanceWeight = 0.15,
+    this.recentRecommendationLimit = 10,
+    this.alternativeRecommendationCount = 4,
+  });
 
-  factory RecommendationConfig.fromJson(Map<String, dynamic> json) => _$RecommendationConfigFromJson(json);
+  final bool enableGenreBalance;
+  final bool enableTimeBasedScoring;
+  final bool enableMoodMatching;
+  final double genreBalanceWeight;
+  final int recentRecommendationLimit;
+  final int alternativeRecommendationCount;
+
+  RecommendationConfig copyWith({
+    bool? enableGenreBalance,
+    bool? enableTimeBasedScoring,
+    bool? enableMoodMatching,
+    double? genreBalanceWeight,
+    int? recentRecommendationLimit,
+    int? alternativeRecommendationCount,
+  }) {
+    return RecommendationConfig(
+      enableGenreBalance: enableGenreBalance ?? this.enableGenreBalance,
+      enableTimeBasedScoring: enableTimeBasedScoring ?? this.enableTimeBasedScoring,
+      enableMoodMatching: enableMoodMatching ?? this.enableMoodMatching,
+      genreBalanceWeight: genreBalanceWeight ?? this.genreBalanceWeight,
+      recentRecommendationLimit: recentRecommendationLimit ?? this.recentRecommendationLimit,
+      alternativeRecommendationCount: alternativeRecommendationCount ?? this.alternativeRecommendationCount,
+    );
+  }
 }
 
 /// 推荐扩展方法
