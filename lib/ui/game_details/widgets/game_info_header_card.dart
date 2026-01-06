@@ -18,237 +18,276 @@ class GameInfoHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _buildDeveloperCard(context),
+        const SizedBox(height: 12),
+        _buildStatusCard(context),
+        const SizedBox(height: 12),
+        _buildQuickActions(context),
+      ],
+    );
+  }
+
+  /// 单独展示制作团队信息
+  Widget _buildDeveloperCard(BuildContext context) {
     final theme = Theme.of(context);
-    
+    final chips = <Widget>[];
+
+    if (game.developerName.isNotEmpty) {
+      chips.add(
+        _buildInfoChip(
+          context,
+          icon: Icons.code,
+          label: '开发商',
+          value: game.developerName,
+        ),
+      );
+    }
+
+    if (game.publisherName.isNotEmpty) {
+      chips.add(
+        _buildInfoChip(
+          context,
+          icon: Icons.business,
+          label: '发行商',
+          value: game.publisherName,
+        ),
+      );
+    }
+
+    if (game.releaseDate != null) {
+      chips.add(
+        _buildInfoChip(
+          context,
+          icon: Icons.calendar_today,
+          label: '发布日期',
+          value: _formatReleaseDate(game.releaseDate!),
+        ),
+      );
+    }
+
     return Card(
       elevation: 1,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 开发商和发行商信息
-            AnimatedSize(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              alignment: Alignment.topLeft,
-              child: _buildDeveloperInfo(context),
+            Row(
+              children: [
+                Icon(
+                  Icons.badge_outlined,
+                  size: 18,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '制作团队',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-            
-            const SizedBox(height: 16),
-            
-            // 状态管理区域
-            _buildStatusSection(context),
-            
-            const SizedBox(height: 16),
-            
-            // 快速操作按钮
-            _buildQuickActions(context),
+            const SizedBox(height: 12),
+            if (chips.isEmpty)
+              Text(
+                '暂无开发商/发行商信息',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              )
+            else
+              Wrap(spacing: 10, runSpacing: 10, children: chips),
           ],
         ),
       ),
     );
   }
 
-  /// 构建开发商信息
-  Widget _buildDeveloperInfo(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          child: game.developerName.isNotEmpty
-              ? _buildInfoRow(
-                  context,
-                  key: const ValueKey('developer'),
-                  icon: Icons.code,
-                  label: '开发商',
-                  value: game.developerName,
-                )
-              : const SizedBox.shrink(key: ValueKey('developer-empty')),
-        ),
-        
-        if (game.developerName.isNotEmpty && game.publisherName.isNotEmpty)
-          const SizedBox(height: 4),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          child: game.publisherName.isNotEmpty
-              ? _buildInfoRow(
-                  context,
-                  key: const ValueKey('publisher'),
-                  icon: Icons.business,
-                  label: '发行商',
-                  value: game.publisherName,
-                )
-              : const SizedBox.shrink(key: ValueKey('publisher-empty')),
-        ),
-        
-        if ((game.developerName.isNotEmpty || game.publisherName.isNotEmpty) &&
-            game.releaseDate != null)
-          const SizedBox(height: 4),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          child: game.releaseDate != null
-              ? _buildInfoRow(
-                  context,
-                  key: const ValueKey('release-date'),
-                  icon: Icons.calendar_today,
-                  label: '发布日期',
-                  value: _formatReleaseDate(game.releaseDate!),
-                )
-              : const SizedBox.shrink(key: ValueKey('release-date-empty')),
-        ),
-      ],
-    );
-  }
-
-  /// 构建信息行
-  Widget _buildInfoRow(
+  Widget _buildInfoChip(
     BuildContext context, {
-    Key? key,
     required IconData icon,
     required String label,
     required String value,
   }) {
     final theme = Theme.of(context);
-    
-    return Row(
-      key: key,
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 16,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: 8),
         Text(
-          '$label: ',
-          style: theme.textTheme.bodySmall?.copyWith(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        Expanded(
-          child: Text(
-            value,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w500,
+        const SizedBox(height: 6),
+        Container(
+          constraints: const BoxConstraints(maxWidth: 240),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.8),
             ),
-            overflow: TextOverflow.ellipsis,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  /// 构建状态区域
-  Widget _buildStatusSection(BuildContext context) {
+  /// 状态单独成卡片，视觉上更像控制面板
+  Widget _buildStatusCard(BuildContext context) {
     final theme = Theme.of(context);
-    
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+
+    return Card(
+      elevation: 2,
+      clipBehavior: Clip.antiAlias,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              theme.colorScheme.primaryContainer.withValues(alpha: 0.9),
+              theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.flag,
-                size: 16,
-                color: theme.colorScheme.primary,
+              Row(
+                children: [
+                  Icon(
+                    Icons.flag_outlined,
+                    size: 18,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '当前状态',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 4),
-              Text(
-                '当前状态',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          gameStatus.displayName,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: theme.colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          gameStatus.description,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onPrimaryContainer
+                                .withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  FilledButton(
+                    onPressed: () => _showStatusChangeDialog(context),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: theme.colorScheme.onPrimaryContainer,
+                      foregroundColor: theme.colorScheme.primary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.edit, size: 16),
+                        SizedBox(width: 6),
+                        Text('更改'),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          
-          const SizedBox(height: 8),
-          
-          Row(
-            children: [
-              // 当前状态显示
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      gameStatus.displayName,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      gameStatus.description,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              // 状态更改按钮
-              FilledButton.icon(
-                onPressed: () => _showStatusChangeDialog(context),
-                icon: const Icon(Icons.edit, size: 16),
-                label: const Text('更改'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(80, 36),
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  /// 构建快速操作按钮
+  /// 构建快速操作按钮，封装成底部按钮栏
   Widget _buildQuickActions(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Row(
-      children: [
-        Expanded(
-          child: FilledButton.tonalIcon(
-            onPressed: () => _addToWishlist(context),
-            icon: const Icon(Icons.bookmark_border, size: 18),
-            label: const Text('添加收藏'),
-            style: FilledButton.styleFrom(
-              foregroundColor: theme.colorScheme.onSurface,
+    return Card(
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Expanded(
+              child: FilledButton.tonalIcon(
+                onPressed: () => _addToWishlist(context),
+                icon: const Icon(Icons.bookmark_border, size: 18),
+                label: const Text('添加收藏'),
+                style: FilledButton.styleFrom(
+                  foregroundColor: theme.colorScheme.onSurface,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
             ),
-          ),
-        ),
-        
-        const SizedBox(width: 12),
-        
-        Expanded(
-          child: FilledButton.tonalIcon(
-            onPressed: () => _viewSteamPage(context),
-            icon: const Icon(Icons.open_in_new, size: 18),
-            label: const Text('Steam页面'),
-            style: FilledButton.styleFrom(
-              foregroundColor: theme.colorScheme.onSurface,
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.tonalIcon(
+                onPressed: () => _viewSteamPage(context),
+                icon: const Icon(Icons.open_in_new, size: 18),
+                label: const Text('Steam页面'),
+                style: FilledButton.styleFrom(
+                  foregroundColor: theme.colorScheme.onSurface,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -270,11 +309,9 @@ class GameInfoHeaderCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: GameStatusExtension.values.map((status) {
               final isSelected = status == gameStatus;
-              
+
               return ListTile(
-                leading: Radio<GameStatus>(
-                  value: status,
-                ),
+                leading: Radio<GameStatus>(value: status),
                 title: Text(status.displayName),
                 subtitle: Text(status.description),
                 selected: isSelected,

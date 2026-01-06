@@ -6,15 +6,52 @@ import '../../../domain/models/game/game.dart';
 class GameMetadataCard extends StatelessWidget {
   final Game game;
 
-  const GameMetadataCard({
-    super.key,
-    required this.game,
-  });
+  const GameMetadataCard({super.key, required this.game});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
+    final rows = <Widget>[];
+
+    if (game.metacriticScore != null && game.metacriticScore!.isNotEmpty) {
+      rows.add(_buildMetacriticHighlight(context));
+    }
+
+    if (game.genres.isNotEmpty) {
+      rows.add(
+        _buildTagRow(
+          context,
+          icon: Icons.category,
+          label: '游戏类型',
+          tags: game.genres.take(6).toList(),
+        ),
+      );
+    }
+
+    final featureTags = _collectGameFeatures();
+    if (featureTags.isNotEmpty) {
+      rows.add(
+        _buildTagRow(
+          context,
+          icon: Icons.gamepad,
+          label: '游戏特性',
+          tags: featureTags,
+        ),
+      );
+    }
+
+    if (game.steamTags.isNotEmpty) {
+      rows.add(
+        _buildTagRow(
+          context,
+          icon: Icons.local_offer_outlined,
+          label: 'Steam标签',
+          tags: game.steamTags.take(12).toList(),
+        ),
+      );
+    }
+
     return Card(
       elevation: 1,
       child: Padding(
@@ -26,160 +63,80 @@ class GameMetadataCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 18,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '游戏信息',
-                  style: theme.textTheme.titleMedium?.copyWith(
+              Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 18,
                     color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w600,
                   ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // 游戏类型
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              child: game.genres.isNotEmpty
-                  ? Column(
-                      key: const ValueKey('genres'),
-                      children: [
-                        _buildMetadataRow(
-                          context,
-                          icon: Icons.category,
-                          label: '游戏类型',
-                          child: Wrap(
-                            spacing: 6,
-                            children: game.genres.take(4).map((genre) => Chip(
-                              label: Text(
-                                genre,
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
-                              backgroundColor: theme.colorScheme.surfaceVariant,
-                              visualDensity: VisualDensity.compact,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            )).toList(),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
+                  const SizedBox(width: 8),
+                  Text(
+                    '游戏信息',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (rows.isEmpty)
+                    Text(
+                      '暂无详细信息',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     )
-                  : const SizedBox.shrink(key: ValueKey('genres-empty')),
-            ),
-            
-            // Metacritic评分
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              child: game.metacriticScore != null && game.metacriticScore!.isNotEmpty
-                  ? Column(
-                      key: const ValueKey('metacritic'),
+                  else
+                    Column(
                       children: [
-                        _buildMetadataRow(
-                          context,
-                          icon: Icons.star,
-                          label: 'Metacritic评分',
-                          child: _buildMetacriticBadge(
-                            context,
-                            int.tryParse(game.metacriticScore!) ?? 0,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
+                        for (var i = 0; i < rows.length; i++) ...[
+                          rows[i],
+                          if (i != rows.length - 1) const SizedBox(height: 12),
+                        ],
                       ],
-                    )
-                  : const SizedBox.shrink(key: ValueKey('metacritic-empty')),
-            ),
-            
-            // 游戏特性
-            _buildGameFeatures(context),
-          ],
-        ),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildMetadataRow(
-    BuildContext context, {
-    Key? key,
-    required IconData icon,
-    required String label,
-    required Widget child,
-  }) {
+  Widget _buildMetacriticHighlight(BuildContext context) {
     final theme = Theme.of(context);
-    
-    return Row(
-      key: key,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          icon,
-          size: 16,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 80,
-          child: Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+    final score = int.tryParse(game.metacriticScore ?? '') ?? 0;
+    final color = _getMetacriticColor(theme, score);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.star, color: color, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            'Metacritic',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
             ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(child: child),
-      ],
-    );
-  }
-
-  Widget _buildGameFeatures(BuildContext context) {
-    final features = <String>[];
-    if (game.isSinglePlayer) features.add('单人');
-    if (game.isMultiplayer) features.add('多人');
-    if (game.hasControllerSupport) features.add('手柄支持');
-    if (game.hasAchievements) features.add('成就系统');
-    
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 200),
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
-      child: features.isEmpty
-          ? const SizedBox.shrink(key: ValueKey('features-empty'))
-          : _buildMetadataRow(
-              key: const ValueKey('features'),
-              context,
-              icon: Icons.gamepad,
-              label: '游戏特性',
-              child: Wrap(
-                spacing: 4,
-                children: features.map((feature) => Chip(
-                  label: Text(
-                    feature,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                  ),
-                  backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                )).toList(),
-              ),
-            ),
+          const Spacer(),
+          _buildMetacriticBadge(context, score, overrideColor: color),
+        ],
+      ),
     );
   }
 
@@ -189,9 +146,22 @@ class GameMetadataCard extends StatelessWidget {
     return theme.colorScheme.error;
   }
 
-  Widget _buildMetacriticBadge(BuildContext context, int score) {
+  List<String> _collectGameFeatures() {
+    final features = <String>[];
+    if (game.isSinglePlayer) features.add('单人');
+    if (game.isMultiplayer) features.add('多人');
+    if (game.hasControllerSupport) features.add('手柄支持');
+    if (game.hasAchievements) features.add('成就系统');
+    return features;
+  }
+
+  Widget _buildMetacriticBadge(
+    BuildContext context,
+    int score, {
+    Color? overrideColor,
+  }) {
     final theme = Theme.of(context);
-    final color = _getMetacriticColor(theme, score);
+    final color = overrideColor ?? _getMetacriticColor(theme, score);
     final label = _getMetacriticLabel(score);
 
     return Container(
@@ -199,7 +169,9 @@ class GameMetadataCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.6)),
+        border: Border.all(
+          color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.6),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -210,7 +182,10 @@ class GameMetadataCard extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: color.withValues(alpha: 0.18),
-              border: Border.all(color: color.withValues(alpha: 0.6), width: 1.2),
+              border: Border.all(
+                color: color.withValues(alpha: 0.6),
+                width: 1.2,
+              ),
             ),
             alignment: Alignment.center,
             child: Text(
@@ -232,6 +207,63 @@ class GameMetadataCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTagRow(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required List<String> tags,
+  }) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: tags
+              .map(
+                (tag) => Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant.withValues(
+                      alpha: 0.5,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: theme.colorScheme.surfaceVariant),
+                  ),
+                  child: Text(
+                    tag,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ],
     );
   }
 

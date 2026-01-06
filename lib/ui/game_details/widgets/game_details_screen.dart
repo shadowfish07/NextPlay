@@ -12,7 +12,6 @@ import 'game_metadata_card.dart';
 import 'game_progress_card.dart';
 import 'game_achievement_card.dart';
 import 'game_description_card.dart';
-import 'game_tags_section.dart';
 
 /// 游戏详情页面
 class GameDetailsScreen extends StatelessWidget {
@@ -42,9 +41,7 @@ class GameDetailsScreen extends StatelessWidget {
   /// 构建加载状态
   Widget _buildLoadingState(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('游戏详情'),
-      ),
+      appBar: AppBar(title: const Text('游戏详情')),
       body: const Center(
         child: common_widgets.LoadingWidget(message: '加载游戏详情中...'),
       ),
@@ -52,11 +49,12 @@ class GameDetailsScreen extends StatelessWidget {
   }
 
   /// 构建错误状态
-  Widget _buildErrorState(BuildContext context, GameDetailsViewModel viewModel) {
+  Widget _buildErrorState(
+    BuildContext context,
+    GameDetailsViewModel viewModel,
+  ) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('游戏详情'),
-      ),
+      appBar: AppBar(title: const Text('游戏详情')),
       body: Center(
         child: common_widgets.ErrorWidget(
           message: viewModel.errorMessage!,
@@ -69,21 +67,15 @@ class GameDetailsScreen extends StatelessWidget {
   /// 构建游戏未找到状态
   Widget _buildNotFoundState(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('游戏详情'),
-      ),
-      body: const Center(
-        child: common_widgets.ErrorWidget(
-          message: '未找到游戏信息',
-        ),
-      ),
+      appBar: AppBar(title: const Text('游戏详情')),
+      body: const Center(child: common_widgets.ErrorWidget(message: '未找到游戏信息')),
     );
   }
 
   /// 构建主要内容
   Widget _buildContent(BuildContext context, GameDetailsViewModel viewModel) {
     final game = viewModel.game!;
-    
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -93,7 +85,7 @@ class GameDetailsScreen extends StatelessWidget {
             gameStatus: viewModel.gameStatus!,
             onStorePressed: () => viewModel.launchSteamStoreCommand.execute(),
           ),
-          
+
           // 主要内容区域
           SliverToBoxAdapter(
             child: Padding(
@@ -102,29 +94,27 @@ class GameDetailsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 16),
-                  
+
                   // 游戏基础信息卡片
                   GameInfoHeaderCard(
                     game: game,
                     gameStatus: viewModel.gameStatus!,
-                    onStatusChanged: (status) => 
+                    onStatusChanged: (status) =>
                         viewModel.updateGameStatusCommand.execute(status),
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
+                  // 游玩记录卡片
+                  GameProgressCard(game: game),
+
+                  const SizedBox(height: 16),
+
                   // 游戏元数据卡片
                   GameMetadataCard(game: game),
-                  
+
                   const SizedBox(height: 16),
-                  
-                  // 游玩记录卡片
-                  GameProgressCard(
-                    game: game,
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
+
                   // 成就进度卡片（如果有成就）
                   AnimatedSize(
                     duration: const Duration(milliseconds: 220),
@@ -142,10 +132,12 @@ class GameDetailsScreen extends StatelessWidget {
                                 const SizedBox(height: 16),
                               ],
                             )
-                          : const SizedBox.shrink(key: ValueKey('achievements-empty')),
+                          : const SizedBox.shrink(
+                              key: ValueKey('achievements-empty'),
+                            ),
                     ),
                   ),
-                  
+
                   // 游戏描述卡片
                   AnimatedSize(
                     duration: const Duration(milliseconds: 220),
@@ -155,39 +147,21 @@ class GameDetailsScreen extends StatelessWidget {
                       duration: const Duration(milliseconds: 200),
                       switchInCurve: Curves.easeOut,
                       switchOutCurve: Curves.easeIn,
-                      child: (game.shortDescription != null && game.shortDescription!.isNotEmpty)
+                      child:
+                          (game.shortDescription != null &&
+                              game.shortDescription!.isNotEmpty)
                           ? Column(
                               key: const ValueKey('description'),
                               children: [
-                                GameDescriptionCard(description: game.shortDescription!),
-                                const SizedBox(height: 16),
-                              ],
-                            )
-                          : const SizedBox.shrink(key: ValueKey('description-empty')),
-                    ),
-                  ),
-                  
-                  // 标签和类型区域
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    alignment: Alignment.topLeft,
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      child: (game.genres.isNotEmpty || game.steamTags.isNotEmpty)
-                          ? Column(
-                              key: const ValueKey('tags'),
-                              children: [
-                                GameTagsSection(
-                                  genres: game.genres,
-                                  steamTags: game.steamTags,
+                                GameDescriptionCard(
+                                  description: game.shortDescription!,
                                 ),
                                 const SizedBox(height: 16),
                               ],
                             )
-                          : const SizedBox.shrink(key: ValueKey('tags-empty')),
+                          : const SizedBox.shrink(
+                              key: ValueKey('description-empty'),
+                            ),
                     ),
                   ),
 
@@ -229,7 +203,8 @@ class GameDetailsScreen extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final game = viewModel.randomRecommendations[index];
-              final status = viewModel.gameStatuses[game.appId] ??
+              final status =
+                  viewModel.gameStatuses[game.appId] ??
                   const GameStatus.notStarted();
 
               return SmallGameCard(

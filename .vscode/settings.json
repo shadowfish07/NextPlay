@@ -7,5 +7,6 @@
     "appbundle",
     "nextplay",
     "softprops"
-  ]
+  ],
+  "chatgpt.openOnStartup": true
 }
