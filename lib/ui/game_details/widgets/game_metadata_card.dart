@@ -166,13 +166,6 @@ class GameMetadataCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.6),
-        ),
-      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -217,6 +210,7 @@ class GameMetadataCard extends StatelessWidget {
     required List<String> tags,
   }) {
     final theme = Theme.of(context);
+    final surfaceTone = _surfaceTone(theme.colorScheme);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,11 +240,9 @@ class GameMetadataCard extends StatelessWidget {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withValues(
-                      alpha: 0.5,
-                    ),
+                    color: surfaceTone.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: theme.colorScheme.surfaceVariant),
+                    border: Border.all(color: surfaceTone),
                   ),
                   child: Text(
                     tag,
@@ -273,5 +265,12 @@ class GameMetadataCard extends StatelessWidget {
     if (score >= 60) return '褒贬不一';
     if (score > 0) return '评价一般';
     return '暂无评分';
+  }
+
+  Color _surfaceTone(ColorScheme colorScheme) {
+    return Color.alphaBlend(
+      colorScheme.primary.withValues(alpha: 0.12),
+      colorScheme.surfaceContainerHighest,
+    );
   }
 }

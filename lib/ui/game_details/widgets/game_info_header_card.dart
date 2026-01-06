@@ -114,6 +114,10 @@ class GameInfoHeaderCard extends StatelessWidget {
     required String value,
   }) {
     final theme = Theme.of(context);
+    final borderColor = Color.alphaBlend(
+      theme.colorScheme.primary.withValues(alpha: 0.14),
+      theme.colorScheme.surfaceContainerHighest,
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -133,7 +137,7 @@ class GameInfoHeaderCard extends StatelessWidget {
             color: theme.colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.8),
+              color: borderColor.withValues(alpha: 0.85),
             ),
           ),
           child: Row(

@@ -102,6 +102,10 @@ class GameProgressCard extends StatelessWidget {
     required String value,
   }) {
     final theme = Theme.of(context);
+    final surfaceTone = Color.alphaBlend(
+      theme.colorScheme.primary.withValues(alpha: 0.12),
+      theme.colorScheme.surfaceContainerHighest,
+    );
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 150, maxWidth: 220),
@@ -112,7 +116,9 @@ class GameProgressCard extends StatelessWidget {
             alpha: 0.65,
           ),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: theme.colorScheme.surfaceVariant),
+          border: Border.all(
+            color: surfaceTone.withValues(alpha: 0.85),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

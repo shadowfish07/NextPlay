@@ -28,8 +28,6 @@ class LibraryListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Card(
       color: AppTheme.gamingCard,
       elevation: isSelected ? 8 : 4,

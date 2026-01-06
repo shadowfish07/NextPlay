@@ -373,25 +373,4 @@ class _LibraryScreenState extends State<LibraryScreen>
       ),
     );
   }
-
-  /// 切换全选状态
-  void _toggleSelectAll() {
-    final viewModel = context.read<LibraryViewModel>();
-    
-    if (viewModel.selectedGamesCount == viewModel.games.length) {
-      // 取消全选
-      for (final game in viewModel.games) {
-        if (viewModel.isGameSelected(game.appId)) {
-          viewModel.toggleGameSelectionCommand.execute(game.appId);
-        }
-      }
-    } else {
-      // 全选
-      for (final game in viewModel.games) {
-        if (!viewModel.isGameSelected(game.appId)) {
-          viewModel.toggleGameSelectionCommand.execute(game.appId);
-        }
-      }
-    }
-  }
 }
