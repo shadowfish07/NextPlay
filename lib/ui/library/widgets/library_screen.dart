@@ -7,6 +7,7 @@ import '../../core/ui/common_widgets.dart' as common_widgets;
 import '../../core/ui/game_status_display.dart';
 import 'gallery_game_card.dart';
 import 'game_library_filters.dart';
+import 'library_list_item.dart';
 
 /// 游戏库页面 - 展示和管理用户的游戏库
 class LibraryScreen extends StatefulWidget {
@@ -142,86 +143,7 @@ class _LibraryScreenState extends State<LibraryScreen>
 
   /// 构建应用栏操作按钮
   List<Widget> _buildAppBarActions(BuildContext context, LibraryViewModel viewModel) {
-    if (viewModel.isInSelectionMode) {
-      return [
-        // 全选/取消全选
-        IconButton(
-          onPressed: _toggleSelectAll,
-          icon: Icon(
-            viewModel.selectedGamesCount == viewModel.games.length
-                ? Icons.deselect
-                : Icons.select_all,
-          ),
-        ),
-        
-        // 退出选择模式
-        IconButton(
-          onPressed: () => viewModel.toggleSelectionModeCommand.execute(),
-          icon: const Icon(Icons.close),
-        ),
-      ];
-    }
-    
-    return [
-      // 游戏库统计
-      _buildGameLibraryStats(context, viewModel),
-      
-      // 视图切换
-      IconButton(
-        onPressed: () => viewModel.toggleViewModeCommand.execute(),
-        icon: Icon(
-          viewModel.viewMode == LibraryViewMode.grid 
-              ? Icons.view_list 
-              : Icons.grid_view,
-        ),
-      ),
-      
-      // 刷新
-      IconButton(
-        onPressed: viewModel.isLoading 
-            ? null 
-            : () => viewModel.refreshCommand.execute(),
-        icon: AnimatedRotation(
-          turns: viewModel.isLoading ? 1 : 0,
-          duration: const Duration(seconds: 1),
-          child: const Icon(Icons.refresh),
-        ),
-      ),
-      
-      // 批量操作
-      IconButton(
-        onPressed: viewModel.games.isNotEmpty 
-            ? () => viewModel.toggleSelectionModeCommand.execute()
-            : null,
-        icon: const Icon(Icons.checklist),
-      ),
-    ];
-  }
-
-  /// 构建游戏库统计信息
-  Widget _buildGameLibraryStats(BuildContext context, LibraryViewModel viewModel) {
-    if (viewModel.games.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            '${viewModel.games.length}',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
-    );
+    return const [];
   }
 
   /// 构建游戏列表
@@ -306,17 +228,15 @@ class _LibraryScreenState extends State<LibraryScreen>
             
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: SizedBox(
-                height: 160, // 增加高度适配新卡片
-                child: GalleryGameCard(
-                  game: game,
-                  status: status,
-                  isSelected: isSelected,
-                  isInSelectionMode: viewModel.isInSelectionMode,
-                  onTap: () => _handleGameTap(viewModel, game.appId),
-                  onLongPress: () => _handleGameLongPress(viewModel),
-                  onStatusChanged: (newStatus) => _handleStatusChange(viewModel, game.appId, newStatus),
-                ),
+              child: LibraryListItem(
+                game: game,
+                status: status,
+                isSelected: isSelected,
+                isInSelectionMode: viewModel.isInSelectionMode,
+                onTap: () => _handleGameTap(viewModel, game.appId),
+                onLongPress: () => _handleGameLongPress(viewModel),
+                onStatusChanged: (newStatus) =>
+                    _handleStatusChange(viewModel, game.appId, newStatus),
               ),
             );
           },

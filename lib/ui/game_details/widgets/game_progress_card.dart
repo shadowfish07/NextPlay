@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../../domain/models/game/game.dart';
-import '../../../domain/models/game/game_status.dart';
 
-/// 游戏进度卡片
+/// 游戏游玩记录卡片
 class GameProgressCard extends StatelessWidget {
   final Game game;
-  final GameStatus gameStatus;
 
   const GameProgressCard({
     super.key,
     required this.game,
-    required this.gameStatus,
   });
 
   @override
@@ -28,13 +25,13 @@ class GameProgressCard extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  Icons.schedule,
+                  Icons.query_stats,
                   size: 18,
                   color: theme.colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '游玩进度',
+                  '游玩记录',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w600,
@@ -79,8 +76,6 @@ class GameProgressCard extends StatelessWidget {
               const SizedBox(height: 8),
             ],
             
-            // 进度条
-            _buildProgressSection(context),
           ],
         ),
       ),
@@ -119,52 +114,6 @@ class GameProgressCard extends StatelessWidget {
               fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.end,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProgressSection(BuildContext context) {
-    final theme = Theme.of(context);
-    final progress = game.completionProgress;
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '完成进度',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              '${(progress * 100).toInt()}%',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        
-        const SizedBox(height: 8),
-        
-        LinearProgressIndicator(
-          value: progress,
-          backgroundColor: theme.colorScheme.surfaceContainerHighest,
-          valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
-        ),
-        
-        const SizedBox(height: 8),
-        
-        Text(
-          game.durationDescription,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ],

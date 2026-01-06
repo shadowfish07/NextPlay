@@ -11,14 +11,14 @@ import '../../domain/models/discover/game_recommendation.dart';
 import '../../domain/models/discover/discover_state.dart';
 import '../service/completion_time_service.dart';
 import '../service/steam_api_service.dart';
-// import '../service/steam_store_service.dart'; // 暂时注释，按需加载时启用
+import '../service/steam_store_service.dart';
 import '../../utils/logger.dart';
 
 /// 游戏仓库 - 管理游戏数据、状态和推荐算法
 class GameRepository {
   final SharedPreferences _prefs;
   final SteamApiService _steamApiService;
-  // final SteamStoreService _steamStoreService; // 暂时注释，后续按需加载时启用
+  final SteamStoreService _steamStoreService;
   
   // 内存缓存
   List<Game> _gameLibrary = [];
@@ -42,10 +42,10 @@ class GameRepository {
   GameRepository({
     required SharedPreferences prefs,
     required SteamApiService steamApiService,
-    // required SteamStoreService steamStoreService, // 暂时注释
+    required SteamStoreService steamStoreService,
   }) : _prefs = prefs,
-       _steamApiService = steamApiService {
-       // _steamStoreService = steamStoreService, // 暂时注释
+       _steamApiService = steamApiService,
+       _steamStoreService = steamStoreService {
     _loadFromStorage();
   }
 
@@ -112,6 +112,9 @@ class GameRepository {
         AppLogger.info('Loaded ${_playQueue.length} games in play queue');
       }
 
+      _gameLibraryController.add(_gameLibrary);
+      _gameStatusController.add(_gameStatuses);
+      _playQueueController.add(playQueue);
     } catch (e, stackTrace) {
       AppLogger.error('Error loading data from storage', e, stackTrace);
     }
@@ -726,6 +729,80 @@ class GameRepository {
     } catch (e) {
       AppLogger.warning('Game not found for appId: $appId');
       return null;
+    }
+  }
+
+  /// 按需刷新游戏详情和成就数据
+  Future<Result<Game, String>> refreshGameDetails(
+    int appId, {
+    bool includeStoreData = true,
+    bool includeAchievements = true,
+  }) async {
+    try {
+      final gameIndex = _gameLibrary.indexWhere((game) => game.appId == appId);
+      if (gameIndex == -1) {
+        return const Failure('Game not found');
+      }
+
+      final currentGame = _gameLibrary[gameIndex];
+      var updatedGame = currentGame;
+      var hasChanges = false;
+
+      if (includeStoreData) {
+        final storeResult = await _steamStoreService.getAppDetails(appId);
+        if (storeResult.isSuccess()) {
+          updatedGame = _steamStoreService.enhanceGameWithStoreData(
+            updatedGame,
+            storeResult.getOrNull()!,
+          );
+          hasChanges = hasChanges || updatedGame != currentGame;
+        } else {
+          AppLogger.warning(
+            'Failed to fetch store details for $appId: ${storeResult.exceptionOrNull()}',
+          );
+        }
+      }
+
+      if (includeAchievements) {
+        final apiKey = _prefs.getString('api_key') ?? '';
+        final steamId = _prefs.getString('steam_id') ?? '';
+
+        if (apiKey.isNotEmpty && steamId.isNotEmpty) {
+          final achievementResult = await _steamApiService.getPlayerAchievements(
+            apiKey: apiKey,
+            steamId: steamId,
+            appId: appId,
+          );
+
+          if (achievementResult.isSuccess()) {
+            final summary = achievementResult.getOrNull();
+            if (summary != null) {
+              updatedGame = updatedGame.copyWith(
+                hasAchievements: summary.total > 0,
+                totalAchievements: summary.total,
+                unlockedAchievements: summary.unlocked,
+              );
+              hasChanges = hasChanges || updatedGame != currentGame;
+            }
+          } else {
+            AppLogger.warning(
+              'Failed to fetch achievements for $appId: ${achievementResult.exceptionOrNull()}',
+            );
+          }
+        }
+      }
+
+      if (hasChanges) {
+        _gameLibrary[gameIndex] = updatedGame;
+        await _saveToStorage();
+        _gameLibraryController.add(_gameLibrary);
+      }
+
+      return Success(updatedGame);
+    } catch (e, stackTrace) {
+      final error = 'Failed to refresh game details: $e';
+      AppLogger.error(error, e, stackTrace);
+      return Failure(error);
     }
   }
 

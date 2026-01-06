@@ -2,7 +2,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/service/steam_validation_service.dart';
 import '../data/service/steam_api_service.dart';
-// import '../data/service/steam_store_service.dart'; // 暂时注释，按需加载时启用
+import '../data/service/steam_store_service.dart';
 import '../data/repository/onboarding/onboarding_repository.dart';
 import '../data/repository/game_repository.dart';
 import '../ui/onboarding/view_models/onboarding_view_model.dart';
@@ -15,6 +15,7 @@ class Dependencies {
   // 单例实例缓存
   static SharedPreferences? _sharedPreferences;
   static SteamApiService? _steamApiService;
+  static SteamStoreService? _steamStoreService;
   static SteamValidationService? _steamValidationService;
   static GameRepository? _gameRepository;
   static OnboardingRepository? _onboardingRepository;
@@ -25,6 +26,7 @@ class Dependencies {
     
     _sharedPreferences = await SharedPreferences.getInstance();
     _steamApiService = SteamApiService();
+    _steamStoreService = SteamStoreService();
     _steamValidationService = SteamValidationService(
       steamApiService: _steamApiService!,
     );
@@ -32,6 +34,7 @@ class Dependencies {
     _gameRepository = GameRepository(
       prefs: _sharedPreferences!,
       steamApiService: _steamApiService!,
+      steamStoreService: _steamStoreService!,
     );
     
     _onboardingRepository = OnboardingRepository(
@@ -84,6 +87,7 @@ class Dependencies {
     return [
       Provider<SharedPreferences>.value(value: _sharedPreferences!),
       Provider<SteamApiService>.value(value: _steamApiService!),
+      Provider<SteamStoreService>.value(value: _steamStoreService!),
       Provider<SteamValidationService>.value(value: _steamValidationService!),
       Provider<OnboardingRepository>.value(value: _onboardingRepository!),
       Provider<GameRepository>.value(value: _gameRepository!),

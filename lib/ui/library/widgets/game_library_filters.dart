@@ -67,6 +67,19 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
   }
 
   @override
+  void didUpdateWidget(GameLibraryFilters oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.searchQuery != oldWidget.searchQuery &&
+        widget.searchQuery != _searchController.text) {
+      _searchController.text = widget.searchQuery;
+      _searchController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _searchController.text.length),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -7,14 +7,12 @@ import '../../../domain/models/game/game_status.dart';
 class GameDetailsSliverAppBar extends StatelessWidget {
   final Game game;
   final GameStatus gameStatus;
-  final VoidCallback? onPlayPressed;
   final VoidCallback? onStorePressed;
 
   const GameDetailsSliverAppBar({
     super.key,
     required this.game,
     required this.gameStatus,
-    this.onPlayPressed,
     this.onStorePressed,
   });
 
@@ -27,6 +25,7 @@ class GameDetailsSliverAppBar extends StatelessWidget {
       expandedHeight: 300,
       pinned: true,
       stretch: true,
+      centerTitle: false,
       leading: IconButton(
         icon: Icon(
           Icons.arrow_back,
@@ -34,27 +33,6 @@ class GameDetailsSliverAppBar extends StatelessWidget {
         ),
         onPressed: () => Navigator.of(context).pop(),
       ),
-      actions: [
-        // Steam商店链接
-        IconButton(
-          icon: const Icon(
-            Icons.open_in_new,
-            color: Colors.white,
-          ),
-          onPressed: onStorePressed,
-          tooltip: '在Steam商店中查看',
-        ),
-        
-        // 分享按钮
-        IconButton(
-          icon: const Icon(
-            Icons.share,
-            color: Colors.white,
-          ),
-          onPressed: () => _shareGame(context),
-          tooltip: '分享游戏',
-        ),
-      ],
       backgroundColor: colorScheme.primary,
       flexibleSpace: FlexibleSpaceBar(
         title: Text(
@@ -66,20 +44,16 @@ class GameDetailsSliverAppBar extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
-        titlePadding: const EdgeInsets.only(left: 16, bottom: 16, right: 80),
+        titlePadding: const EdgeInsetsDirectional.only(
+          start: 72, // 给返回键留出空间，折叠后不重叠
+          bottom: 16,
+          end: 16,
+        ),
         background: _buildHeroImage(context),
         stretchModes: const [
           StretchMode.blurBackground,
           StretchMode.zoomBackground,
         ],
-      ),
-      // 浮动操作按钮
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(0),
-        child: Container(
-          transform: Matrix4.translationValues(0, -28, 0),
-          child: _buildFloatingActionButton(context),
-        ),
       ),
     );
   }
@@ -98,6 +72,8 @@ class GameDetailsSliverAppBar extends StatelessWidget {
               ? Image.network(
                   game.coverImageUrl,
                   fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  filterQuality: FilterQuality.medium,
                   errorBuilder: (context, error, stackTrace) => _buildFallbackImage(context),
                 )
               : _buildFallbackImage(context),
@@ -118,13 +94,6 @@ class GameDetailsSliverAppBar extends StatelessWidget {
               stops: [0.0, 0.3, 0.7, 1.0],
             ),
           ),
-        ),
-        
-        // 状态徽章
-        Positioned(
-          top: 60,
-          left: 16,
-          child: _buildStatusBadge(context),
         ),
         
         // 游戏评分（如果有）
@@ -149,37 +118,6 @@ class GameDetailsSliverAppBar extends StatelessWidget {
           Icons.videogame_asset,
           size: 80,
           color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-        ),
-      ),
-    );
-  }
-
-  /// 构建状态徽章
-  Widget _buildStatusBadge(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    Color badgeColor = theme.colorScheme.primary;
-    
-    gameStatus.when(
-      notStarted: () => badgeColor = theme.colorScheme.primary,
-      playing: () => badgeColor = theme.colorScheme.secondary,
-      completed: () => badgeColor = theme.colorScheme.tertiary,
-      abandoned: () => badgeColor = theme.colorScheme.error,
-      paused: () => badgeColor = theme.colorScheme.outline,
-      multiplayer: () => badgeColor = theme.colorScheme.primaryContainer,
-    );
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: badgeColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        gameStatus.displayName,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onPrimary,
-          fontWeight: FontWeight.bold,
         ),
       ),
     );
@@ -216,45 +154,4 @@ class GameDetailsSliverAppBar extends StatelessWidget {
     );
   }
 
-  /// 构建浮动操作按钮
-  Widget _buildFloatingActionButton(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Padding(
-      padding: const EdgeInsets.only(right: 16),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: FloatingActionButton.extended(
-          onPressed: onPlayPressed,
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: theme.colorScheme.onPrimary,
-          icon: const Icon(Icons.play_arrow),
-          label: Text(_getPlayButtonText()),
-        ),
-      ),
-    );
-  }
-
-  /// 获取播放按钮文本
-  String _getPlayButtonText() {
-    return gameStatus.when(
-      notStarted: () => '开始游戏',
-      playing: () => '继续游戏',
-      completed: () => '重新体验',
-      abandoned: () => '重新尝试',
-      paused: () => '重新开始',
-      multiplayer: () => '在线游戏',
-    );
-  }
-
-  /// 分享游戏
-  void _shareGame(BuildContext context) {
-    // TODO: 实现分享功能
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('分享功能开发中...'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
 }

@@ -27,20 +27,13 @@ class GameInfoHeaderCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 游戏标题
-            Text(
-              game.name,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            
-            const SizedBox(height: 8),
-            
             // 开发商和发行商信息
-            _buildDeveloperInfo(context),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topLeft,
+              child: _buildDeveloperInfo(context),
+            ),
             
             const SizedBox(height: 16),
             
@@ -62,33 +55,55 @@ class GameInfoHeaderCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (game.developerName.isNotEmpty)
-          _buildInfoRow(
-            context,
-            icon: Icons.code,
-            label: '开发商',
-            value: game.developerName,
-          ),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          child: game.developerName.isNotEmpty
+              ? _buildInfoRow(
+                  context,
+                  key: const ValueKey('developer'),
+                  icon: Icons.code,
+                  label: '开发商',
+                  value: game.developerName,
+                )
+              : const SizedBox.shrink(key: ValueKey('developer-empty')),
+        ),
         
-        if (game.publisherName.isNotEmpty) ...[
+        if (game.developerName.isNotEmpty && game.publisherName.isNotEmpty)
           const SizedBox(height: 4),
-          _buildInfoRow(
-            context,
-            icon: Icons.business,
-            label: '发行商',
-            value: game.publisherName,
-          ),
-        ],
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          child: game.publisherName.isNotEmpty
+              ? _buildInfoRow(
+                  context,
+                  key: const ValueKey('publisher'),
+                  icon: Icons.business,
+                  label: '发行商',
+                  value: game.publisherName,
+                )
+              : const SizedBox.shrink(key: ValueKey('publisher-empty')),
+        ),
         
-        if (game.releaseDate != null) ...[
+        if ((game.developerName.isNotEmpty || game.publisherName.isNotEmpty) &&
+            game.releaseDate != null)
           const SizedBox(height: 4),
-          _buildInfoRow(
-            context,
-            icon: Icons.calendar_today,
-            label: '发布日期',
-            value: _formatReleaseDate(game.releaseDate!),
-          ),
-        ],
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          child: game.releaseDate != null
+              ? _buildInfoRow(
+                  context,
+                  key: const ValueKey('release-date'),
+                  icon: Icons.calendar_today,
+                  label: '发布日期',
+                  value: _formatReleaseDate(game.releaseDate!),
+                )
+              : const SizedBox.shrink(key: ValueKey('release-date-empty')),
+        ),
       ],
     );
   }
@@ -96,6 +111,7 @@ class GameInfoHeaderCard extends StatelessWidget {
   /// 构建信息行
   Widget _buildInfoRow(
     BuildContext context, {
+    Key? key,
     required IconData icon,
     required String label,
     required String value,
@@ -103,6 +119,7 @@ class GameInfoHeaderCard extends StatelessWidget {
     final theme = Theme.of(context);
     
     return Row(
+      key: key,
       children: [
         Icon(
           icon,
@@ -204,23 +221,31 @@ class GameInfoHeaderCard extends StatelessWidget {
 
   /// 构建快速操作按钮
   Widget _buildQuickActions(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Row(
       children: [
         Expanded(
-          child: OutlinedButton.icon(
+          child: FilledButton.tonalIcon(
             onPressed: () => _addToWishlist(context),
             icon: const Icon(Icons.bookmark_border, size: 18),
             label: const Text('添加收藏'),
+            style: FilledButton.styleFrom(
+              foregroundColor: theme.colorScheme.onSurface,
+            ),
           ),
         ),
         
         const SizedBox(width: 12),
         
         Expanded(
-          child: OutlinedButton.icon(
+          child: FilledButton.tonalIcon(
             onPressed: () => _viewSteamPage(context),
             icon: const Icon(Icons.open_in_new, size: 18),
             label: const Text('Steam页面'),
+            style: FilledButton.styleFrom(
+              foregroundColor: theme.colorScheme.onSurface,
+            ),
           ),
         ),
       ],

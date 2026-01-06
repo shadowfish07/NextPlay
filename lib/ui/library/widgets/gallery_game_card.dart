@@ -30,7 +30,6 @@ class GalleryGameCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 300, // 增加高度避免溢出
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
@@ -145,9 +144,8 @@ class GalleryGameCard extends StatelessWidget {
 
   /// 构建游戏封面
   Widget _buildGameCover() {
-    return SizedBox(
-      height: 165, // 进一步减少封面高度适应约束
-      width: double.infinity,
+    return AspectRatio(
+      aspectRatio: 2 / 3,
       child: Stack(
         children: [
           // 封面图片

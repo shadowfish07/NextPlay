@@ -234,4 +234,85 @@ class SteamApiService {
       (error) => Failure(error),
     );
   }
+
+  /// 获取玩家成就统计
+  Future<Result<AchievementSummary, String>> getPlayerAchievements({
+    required String apiKey,
+    required String steamId,
+    required int appId,
+  }) async {
+    try {
+      AppLogger.info('Fetching achievements for app $appId');
+
+      final response = await _dio.get(
+        '$_baseUrl/ISteamUserStats/GetPlayerAchievements/v0001/',
+        queryParameters: {
+          'key': apiKey,
+          'steamid': steamId,
+          'appid': appId,
+        },
+      );
+
+      if (response.statusCode != 200) {
+        return Failure('Steam API returned status code: ${response.statusCode}');
+      }
+
+      final data = response.data;
+      final playerStats = data['playerstats'] as Map<String, dynamic>?;
+      if (playerStats == null) {
+        return const Failure('成就信息不可用');
+      }
+
+      final achievements = playerStats['achievements'] as List<dynamic>?;
+      if (achievements == null) {
+        return const Failure('成就信息不可用');
+      }
+
+      final total = achievements.length;
+      final unlocked = achievements
+          .where((achievement) => achievement['achieved'] == 1)
+          .length;
+
+      return Success(AchievementSummary(total: total, unlocked: unlocked));
+    } on DioException catch (e) {
+      String error;
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.receiveTimeout:
+          error = '网络连接超时，请检查网络连接';
+          break;
+        case DioExceptionType.badResponse:
+          if (e.response?.statusCode == 403) {
+            error = 'API Key无效或权限不足';
+          } else if (e.response?.statusCode == 404) {
+            error = '成就信息不可用';
+          } else {
+            error = 'Steam API请求失败: ${e.response?.statusCode}';
+          }
+          break;
+        case DioExceptionType.connectionError:
+          error = '网络连接错误，请检查网络连接';
+          break;
+        default:
+          error = '未知网络错误: ${e.message}';
+      }
+
+      AppLogger.error('Steam achievements API error: $error', e);
+      return Failure(error);
+    } catch (e, stackTrace) {
+      final error = '获取成就信息时发生未知错误: $e';
+      AppLogger.error(error, e, stackTrace);
+      return Failure(error);
+    }
+  }
+}
+
+class AchievementSummary {
+  final int total;
+  final int unlocked;
+
+  const AchievementSummary({
+    required this.total,
+    required this.unlocked,
+  });
 }

@@ -113,19 +113,39 @@ class SteamStoreService {
 
   /// 增强游戏数据 - 将Steam Store数据合并到现有Game对象
   Game enhanceGameWithStoreData(Game game, GameStoreData storeData) {
+    final resolvedName = game.name.isNotEmpty ? game.name : storeData.name;
+    final resolvedGenres = game.genres.isNotEmpty ? game.genres : storeData.genres;
+    final resolvedShortDescription = (game.shortDescription != null && game.shortDescription!.isNotEmpty)
+        ? game.shortDescription
+        : storeData.shortDescription;
+    final resolvedHeaderImage = (game.headerImage != null && game.headerImage!.isNotEmpty)
+        ? game.headerImage
+        : storeData.headerImage;
+    final resolvedDeveloper = game.developerName.isNotEmpty
+        ? game.developerName
+        : (storeData.developers.isNotEmpty ? storeData.developers.first : game.developerName);
+    final resolvedPublisher = game.publisherName.isNotEmpty
+        ? game.publisherName
+        : (storeData.publishers.isNotEmpty ? storeData.publishers.first : game.publisherName);
+    final resolvedReleaseDate = game.releaseDate ?? storeData.releaseDate;
+    final resolvedMetacritic = (game.metacriticScore != null && game.metacriticScore!.isNotEmpty)
+        ? game.metacriticScore
+        : storeData.metacriticScore;
+    final resolvedTags = game.steamTags.isNotEmpty ? game.steamTags : storeData.categories;
+
     return game.copyWith(
-      name: storeData.name.isNotEmpty ? storeData.name : game.name,
-      genres: storeData.genres.isNotEmpty ? storeData.genres : game.genres,
-      shortDescription: storeData.shortDescription ?? game.shortDescription,
-      headerImage: storeData.headerImage ?? game.headerImage,
-      developerName: storeData.developers.isNotEmpty ? storeData.developers.first : game.developerName,
-      publisherName: storeData.publishers.isNotEmpty ? storeData.publishers.first : game.publisherName,
-      releaseDate: storeData.releaseDate ?? game.releaseDate,
-      metacriticScore: storeData.metacriticScore ?? game.metacriticScore,
+      name: resolvedName,
+      genres: resolvedGenres,
+      shortDescription: resolvedShortDescription,
+      headerImage: resolvedHeaderImage,
+      developerName: resolvedDeveloper,
+      publisherName: resolvedPublisher,
+      releaseDate: resolvedReleaseDate,
+      metacriticScore: resolvedMetacritic,
       isMultiplayer: storeData.isMultiplayer || game.isMultiplayer,
       isSinglePlayer: storeData.isSinglePlayer || game.isSinglePlayer,
       hasControllerSupport: storeData.hasControllerSupport || game.hasControllerSupport,
-      steamTags: storeData.categories.isNotEmpty ? storeData.categories : game.steamTags,
+      steamTags: resolvedTags,
     );
   }
 

@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 import '../view_models/game_details_view_model.dart';
 import '../../core/ui/common_widgets.dart' as common_widgets;
+import '../../discover/widgets/small_game_card.dart';
+import '../../../domain/models/game/game_status.dart';
 import 'game_details_sliver_app_bar.dart';
 import 'game_info_header_card.dart';
 import 'game_metadata_card.dart';
 import 'game_progress_card.dart';
 import 'game_achievement_card.dart';
-import 'game_actions_card.dart';
 import 'game_description_card.dart';
 import 'game_tags_section.dart';
 
@@ -89,7 +91,6 @@ class GameDetailsScreen extends StatelessWidget {
           GameDetailsSliverAppBar(
             game: game,
             gameStatus: viewModel.gameStatus!,
-            onPlayPressed: () => viewModel.launchSteamGameCommand.execute(),
             onStorePressed: () => viewModel.launchSteamStoreCommand.execute(),
           ),
           
@@ -117,45 +118,82 @@ class GameDetailsScreen extends StatelessWidget {
                   
                   const SizedBox(height: 16),
                   
-                  // 游玩进度卡片
+                  // 游玩记录卡片
                   GameProgressCard(
                     game: game,
-                    gameStatus: viewModel.gameStatus!,
                   ),
                   
                   const SizedBox(height: 16),
                   
                   // 成就进度卡片（如果有成就）
-                  if (game.hasAchievements) ...[
-                    GameAchievementCard(game: game),
-                    const SizedBox(height: 16),
-                  ],
-                  
-                  // 用户操作卡片（状态管理、笔记）
-                  GameActionsCard(
-                    userNotes: viewModel.userNotes,
-                    isEditingNotes: viewModel.isEditingNotes,
-                    onToggleNotesEditing: () => 
-                        viewModel.toggleNotesEditingCommand.execute(),
-                    onSaveNotes: (notes) => 
-                        viewModel.updateNotesCommand.execute(notes),
-                    onCancelNotesEditing: () => viewModel.cancelNotesEditing(),
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topLeft,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      child: game.hasAchievements
+                          ? Column(
+                              key: const ValueKey('achievements'),
+                              children: [
+                                GameAchievementCard(game: game),
+                                const SizedBox(height: 16),
+                              ],
+                            )
+                          : const SizedBox.shrink(key: ValueKey('achievements-empty')),
+                    ),
                   ),
                   
-                  const SizedBox(height: 16),
-                  
                   // 游戏描述卡片
-                  if (game.shortDescription != null && game.shortDescription!.isNotEmpty) ...[
-                    GameDescriptionCard(description: game.shortDescription!),
-                    const SizedBox(height: 16),
-                  ],
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topLeft,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      child: (game.shortDescription != null && game.shortDescription!.isNotEmpty)
+                          ? Column(
+                              key: const ValueKey('description'),
+                              children: [
+                                GameDescriptionCard(description: game.shortDescription!),
+                                const SizedBox(height: 16),
+                              ],
+                            )
+                          : const SizedBox.shrink(key: ValueKey('description-empty')),
+                    ),
+                  ),
                   
                   // 标签和类型区域
-                  if (game.genres.isNotEmpty || game.steamTags.isNotEmpty) ...[
-                    GameTagsSection(
-                      genres: game.genres,
-                      steamTags: game.steamTags,
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topLeft,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      child: (game.genres.isNotEmpty || game.steamTags.isNotEmpty)
+                          ? Column(
+                              key: const ValueKey('tags'),
+                              children: [
+                                GameTagsSection(
+                                  genres: game.genres,
+                                  steamTags: game.steamTags,
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                            )
+                          : const SizedBox.shrink(key: ValueKey('tags-empty')),
                     ),
+                  ),
+
+                  // 随机推荐
+                  if (viewModel.randomRecommendations.isNotEmpty) ...[
+                    _buildRandomRecommendations(context, viewModel),
                     const SizedBox(height: 16),
                   ],
                 ],
@@ -164,6 +202,50 @@ class GameDetailsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRandomRecommendations(
+    BuildContext context,
+    GameDetailsViewModel viewModel,
+  ) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '随机推荐',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 210,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: viewModel.randomRecommendations.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final game = viewModel.randomRecommendations[index];
+              final status = viewModel.gameStatuses[game.appId] ??
+                  const GameStatus.notStarted();
+
+              return SmallGameCard(
+                game: game,
+                status: status,
+                onTap: () {
+                  context.pushNamed(
+                    'gameDetails',
+                    pathParameters: {'appId': game.appId.toString()},
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

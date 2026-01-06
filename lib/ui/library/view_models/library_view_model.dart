@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_command/flutter_command.dart';
 
@@ -20,11 +21,14 @@ class LibraryViewModel extends ChangeNotifier {
   Set<String> _genreFilters = {};
   LibrarySortOption _sortOption = LibrarySortOption.name;
   bool _sortAscending = true;
-  LibraryViewMode _viewMode = LibraryViewMode.grid;
+  LibraryViewMode _viewMode = LibraryViewMode.list;
   
   // 批量操作状态
   bool _isInSelectionMode = false;
   final Set<int> _selectedGameIds = {};
+
+  StreamSubscription<List<Game>>? _gameLibrarySubscription;
+  StreamSubscription<Map<int, GameStatus>>? _gameStatusSubscription;
 
   // Commands
   late final Command<void, void> refreshCommand;
@@ -174,12 +178,12 @@ class LibraryViewModel extends ChangeNotifier {
 
   void _subscribeToRepositoryStreams() {
     // 监听游戏库变化 - 不缓存数据，只通知UI更新
-    _gameRepository.gameLibraryStream.listen((games) {
+    _gameLibrarySubscription = _gameRepository.gameLibraryStream.listen((games) {
       notifyListeners(); // 触发UI重新获取数据
     });
 
     // 监听游戏状态变化 - 不缓存数据，只通知UI更新
-    _gameRepository.gameStatusStream.listen((statuses) {
+    _gameStatusSubscription = _gameRepository.gameStatusStream.listen((statuses) {
       notifyListeners(); // 触发UI重新获取数据
     });
   }
@@ -355,6 +359,8 @@ class LibraryViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    _gameLibrarySubscription?.cancel();
+    _gameStatusSubscription?.cancel();
     // Commands会自动释放
     super.dispose();
   }

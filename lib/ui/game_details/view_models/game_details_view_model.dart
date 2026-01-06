@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_command/flutter_command.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -20,6 +21,7 @@ class GameDetailsViewModel extends ChangeNotifier {
   bool _isEditingNotes = false;
   bool _isLoading = true;
   String? _errorMessage;
+  List<Game> _randomRecommendations = [];
   
   // Commands
   late Command<GameStatus, void> updateGameStatusCommand;
@@ -40,7 +42,7 @@ class GameDetailsViewModel extends ChangeNotifier {
        _gameAppId = gameAppId {
     _initializeCommands();
     _subscribeToStreams();
-    _loadGameData();
+    unawaited(_loadGameData());
     AppLogger.info('GameDetailsViewModel initialized for game $gameAppId');
   }
 
@@ -52,6 +54,8 @@ class GameDetailsViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get hasError => _errorMessage != null;
+  List<Game> get randomRecommendations => List.unmodifiable(_randomRecommendations);
+  Map<int, GameStatus> get gameStatuses => _gameRepository.gameStatuses;
   
   // 便捷getters
   String get gameTitle => _game?.name ?? '未知游戏';
@@ -164,7 +168,7 @@ class GameDetailsViewModel extends ChangeNotifier {
       () async {
         AppLogger.info('Refreshing game data for $_gameAppId');
         _setLoading(true);
-        _loadGameData();
+        await _loadGameData();
       },
     );
 
@@ -218,7 +222,7 @@ class GameDetailsViewModel extends ChangeNotifier {
   }
 
   /// 加载游戏数据
-  void _loadGameData() {
+  Future<void> _loadGameData() async {
     try {
       _setLoading(true);
       _clearError();
@@ -234,14 +238,67 @@ class GameDetailsViewModel extends ChangeNotifier {
       _game = game;
       _gameStatus = _gameRepository.gameStatuses[_gameAppId] ?? const GameStatus.notStarted();
       _userNotes = game.userNotes;
+      _randomRecommendations = _generateRandomRecommendations(count: 5);
 
       _setLoading(false);
       AppLogger.info('Game data loaded successfully for ${game.name}');
+
+      final shouldLoadStoreData = _shouldFetchStoreData(game);
+      final shouldLoadAchievements = _shouldFetchAchievements(game);
+
+      if (shouldLoadStoreData || shouldLoadAchievements) {
+        final detailsResult = await _gameRepository.refreshGameDetails(
+          _gameAppId,
+          includeStoreData: shouldLoadStoreData,
+          includeAchievements: shouldLoadAchievements,
+        );
+
+        detailsResult.fold(
+          (updatedGame) {
+            if (_game != updatedGame) {
+              _game = updatedGame;
+              notifyListeners();
+              AppLogger.info('Game details refreshed for ${updatedGame.name}');
+            }
+          },
+          (error) {
+            AppLogger.warning('Failed to refresh game details: $error');
+          },
+        );
+      }
     } catch (e, stackTrace) {
       _setError('加载游戏数据失败: $e');
       _setLoading(false);
       AppLogger.error('Error loading game data', e, stackTrace);
     }
+  }
+
+  bool _shouldFetchStoreData(Game game) {
+    return game.genres.isEmpty ||
+        (game.shortDescription == null || game.shortDescription!.isEmpty) ||
+        game.developerName.isEmpty ||
+        game.publisherName.isEmpty ||
+        game.releaseDate == null ||
+        game.steamTags.isEmpty;
+  }
+
+  bool _shouldFetchAchievements(Game game) {
+    return !game.hasAchievements &&
+        game.totalAchievements == 0 &&
+        game.unlockedAchievements == 0;
+  }
+
+  List<Game> _generateRandomRecommendations({int count = 5}) {
+    final allGames = _gameRepository.gameLibrary
+        .where((game) => game.appId != _gameAppId)
+        .toList();
+
+    if (allGames.isEmpty) {
+      return [];
+    }
+
+    allGames.shuffle(Random());
+    return allGames.take(count).toList();
   }
 
   /// 设置加载状态
