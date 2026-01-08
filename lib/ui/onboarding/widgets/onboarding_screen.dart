@@ -284,10 +284,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             Expanded(
               child: OutlinedButton(
-                onPressed: () {
+                onPressed: () async {
                   // 跳过批量标记，直接完成引导
-                  viewModel.completeOnboardingCommand.execute();
-                  context.go(Routes.main);
+                  await viewModel.completeOnboarding();
+                  if (context.mounted) {
+                    context.go(Routes.main);
+                  }
                 },
                 child: const Text('跳过此步骤'),
               ),
@@ -319,11 +321,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           child: BatchStatusScreen(
             isFromOnboarding: true,
-            onCompleted: () {
-              // 批量状态管理完成后，完成引导流程
+            onCompleted: () async {
+              // 批量状态管理完成后,完成引导流程
               Navigator.of(context).pop(); // 关闭批量状态管理页面
-              viewModel.completeOnboardingCommand.execute();
-              context.go(Routes.main);
+              await viewModel.completeOnboarding();
+              if (context.mounted) {
+                context.go(Routes.main);
+              }
             },
           ),
         ),

@@ -150,6 +150,12 @@ class OnboardingViewModel extends ChangeNotifier {
     await _repository.updateCurrentStep(OnboardingStep.gameTagging);
   }
 
+  /// 完成引导流程（供UI直接调用的公共方法）
+  Future<void> completeOnboarding() async {
+    AppLogger.info('Completing onboarding (public method)');
+    await _repository.updateCurrentStep(OnboardingStep.gameTagging);
+  }
+
   bool get canGoNext {
     switch (_state.currentStep) {
       case OnboardingStep.welcome:
