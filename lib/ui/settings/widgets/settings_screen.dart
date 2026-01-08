@@ -1,185 +1,172 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../view_models/settings_view_model.dart';
-import 'steam_connection_card.dart';
-import 'recommendation_preferences_card.dart';
-import 'app_settings_card.dart';
-import 'help_support_card.dart';
-import 'steam_credentials_dialog.dart';
+import 'account_section/steam_connection_card.dart';
+import 'account_section/data_sync_card.dart';
+import 'preferences_section/recommendation_preferences_card.dart';
+import 'appearance_section/theme_display_card.dart';
+import 'data_section/storage_cache_card.dart';
+import 'about_section/app_information_card.dart';
 
-class SettingsScreen extends StatefulWidget {
+/// 设置页面（重新设计）
+///
+/// 基于 Material Design 3 规范的层次化卡片布局。
+/// 所有样式来自主题，遵循 MVVM 架构。
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  // Default preference values
-  double _typeBalanceWeight = 0.5;
-  String _timePreference = 'any';
-  String _moodPreference = 'any';
-  List<String> _excludedCategories = [];
-  String _language = 'zh_CN';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPreferences();
-  }
-
-  void _loadPreferences() {
-    // Load saved preferences from SharedPreferences
-    // This would be handled by SettingsViewModel in a real implementation
-    // For now, using default values
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Consumer<SettingsViewModel>(builder: (context, viewModel, child) {
-      return Scaffold(
-        body: SafeArea(
-          child: CustomScrollView(
+    return Consumer<SettingsViewModel>(
+      builder: (context, viewModel, child) {
+        return Scaffold(
+          body: CustomScrollView(
             slivers: [
+              // App Bar
               SliverAppBar(
                 title: const Text('设置'),
                 pinned: true,
-                backgroundColor: Theme.of(context).colorScheme.surface,
-                foregroundColor: Theme.of(context).colorScheme.onSurface,
                 elevation: 0,
               ),
+
+              // Main Content
               SliverPadding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    // Error Message
-                    if (viewModel.errorMessage.isNotEmpty)
-                      Card(
-                        color: Theme.of(context).colorScheme.errorContainer,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: Theme.of(context).colorScheme.onErrorContainer,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  viewModel.errorMessage,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onErrorContainer,
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: viewModel.clearError,
-                                icon: Icon(
-                                  Icons.close,
-                                  color: Theme.of(context).colorScheme.onErrorContainer,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    
-                    if (viewModel.errorMessage.isNotEmpty) const SizedBox(height: 16),
-                    
-                    // Steam Connection Card
-                    SteamConnectionCard(
-                      isConnected: viewModel.isSteamConnected,
-                      apiKey: viewModel.apiKey,
-                      steamId: viewModel.steamId,
-                      lastSyncTime: viewModel.lastSyncTime,
-                      gameCount: viewModel.gameCount,
-                      isLoading: viewModel.isLoading,
-                      onRefreshConnection: () => viewModel.refreshSteamConnectionCommand.execute(),
-                      onUpdateCredentials: () => _showCredentialsDialog(context, viewModel),
-                      onSyncLibrary: () => viewModel.syncGameLibraryCommand.execute(),
-                    ),
-                    
+                    // Error Message Banner
+                    if (viewModel.errorMessage.isNotEmpty) ...[
+                      _ErrorBanner(message: viewModel.errorMessage),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Connection Status Banner (if disconnected)
+                    if (!viewModel.isSteamConnected) ...[
+                      _ConnectionBanner(),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Account Section
+                    const SteamConnectionCard(),
                     const SizedBox(height: 16),
-                    
-                    // Recommendation Preferences Card
-                    RecommendationPreferencesCard(
-                      typeBalanceWeight: _typeBalanceWeight,
-                      timePreference: _timePreference,
-                      moodPreference: _moodPreference,
-                      excludedCategories: _excludedCategories,
-                      onTypeBalanceChanged: (value) {
-                        setState(() {
-                          _typeBalanceWeight = value;
-                        });
-                        // Save to preferences
-                      },
-                      onTimePreferenceChanged: (value) {
-                        setState(() {
-                          _timePreference = value;
-                        });
-                        // Save to preferences
-                      },
-                      onMoodPreferenceChanged: (value) {
-                        setState(() {
-                          _moodPreference = value;
-                        });
-                        // Save to preferences
-                      },
-                      onExcludedCategoriesChanged: (categories) {
-                        setState(() {
-                          _excludedCategories = categories;
-                        });
-                        // Save to preferences
-                      },
-                    ),
-                    
+                    const DataSyncCard(),
+                    const SizedBox(height: 24), // Larger spacing between sections
+
+                    // Preferences Section (包含排除类别)
+                    const RecommendationPreferencesCard(),
+                    const SizedBox(height: 24),
+
+                    // Appearance Section
+                    const ThemeDisplayCard(),
+                    const SizedBox(height: 24),
+
+                    // Data Management Section
+                    const StorageCacheCard(),
+                    const SizedBox(height: 24),
+
+                    // About Section
+                    const AppInformationCard(),
+
+                    // Bottom padding
                     const SizedBox(height: 16),
-                    
-                    // App Settings Card
-                    AppSettingsCard(
-                      isDarkTheme: viewModel.isDarkTheme,
-                      language: _language,
-                      isLoading: viewModel.isLoading,
-                      onThemeChanged: (isDark) => viewModel.toggleThemeCommand.execute(isDark),
-                      onLanguageChanged: (lang) {
-                        setState(() {
-                          _language = lang;
-                        });
-                        // Save to preferences
-                      },
-                      onClearCache: () => viewModel.clearCacheCommand.execute(),
-                      onClearAllData: () => viewModel.clearAllDataCommand.execute(),
-                    ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // Help & Support Card
-                    HelpSupportCard(
-                      appVersion: viewModel.appVersion.isNotEmpty ? viewModel.appVersion : 'Loading...',
-                    ),
-                    
-                    const SizedBox(height: 32),
                   ]),
                 ),
               ),
             ],
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
+}
 
-  void _showCredentialsDialog(BuildContext context, SettingsViewModel viewModel) {
-    showDialog(
-      context: context,
-      builder: (context) => SteamCredentialsDialog(
-        currentApiKey: viewModel.apiKey,
-        currentSteamId: viewModel.steamId,
-        onSave: (apiKey, steamId) {
-          viewModel.updateApiKeyCommand.execute(apiKey);
-          viewModel.updateSteamIdCommand.execute(steamId);
-        },
+/// Error Banner Component
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+
+  const _ErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Card(
+      color: colorScheme.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: colorScheme.onErrorContainer,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onErrorContainer,
+                ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.close,
+                color: colorScheme.onErrorContainer,
+              ),
+              onPressed: () {
+                context.read<SettingsViewModel>().clearError();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Connection Status Banner
+class _ConnectionBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Card(
+      color: colorScheme.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(
+              Icons.cloud_off,
+              color: colorScheme.onSecondaryContainer,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Steam 未连接',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: colorScheme.onSecondaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '连接以同步游戏库',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

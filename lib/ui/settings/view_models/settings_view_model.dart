@@ -5,13 +5,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/repository/onboarding/onboarding_repository.dart';
 import '../../../data/repository/game_repository.dart';
 import '../../../data/service/app_info_service.dart';
+import '../../../data/service/steam_validation_service.dart';
 import '../../../utils/logger.dart';
 
 class SettingsViewModel extends ChangeNotifier {
   final OnboardingRepository _onboardingRepository;
+  final GameRepository _gameRepository;
+  final SteamValidationService _steamValidationService;
   final SharedPreferences _prefs;
-  
-  // Commands
+
+  // Commands - 现有的
   late final Command<void, void> refreshSteamConnectionCommand;
   late final Command<String, void> updateApiKeyCommand;
   late final Command<String, void> updateSteamIdCommand;
@@ -20,18 +23,33 @@ class SettingsViewModel extends ChangeNotifier {
   late final Command<void, void> clearCacheCommand;
   late final Command<void, void> clearAllDataCommand;
   late final Command<void, String> getVersionCommand;
-  
+
+  // Commands - 新增偏好设置（占位实现）
+  late final Command<double, void> updateTypeBalanceCommand;
+  late final Command<String, void> updateTimePreferenceCommand;
+  late final Command<String, void> updateMoodPreferenceCommand;
+  late final Command<String, void> toggleExcludedCategoryCommand;
+
   // UI状态 - 仅保留UI专用的状态，减少重复缓存
   bool _isLoading = false;
   String _errorMessage = '';
   bool _isDarkTheme = false; // UI状态，可以缓存
   String _appVersion = ''; // 缓存版本信息用于显示
-  
+
+  // 偏好设置状态（占位）- 仅UI显示，暂不影响推荐逻辑
+  double _typeBalanceWeight = 0.5; // 0.0 = diverse, 1.0 = single type
+  String _timePreference = 'any'; // 'short', 'medium', 'long', 'any'
+  String _moodPreference = 'any'; // 'relax', 'challenge', 'think', 'social', 'any'
+  List<String> _excludedCategories = []; // 排除的游戏类别
+
   SettingsViewModel({
     required OnboardingRepository onboardingRepository,
     required GameRepository gameRepository,
+    required SteamValidationService steamValidationService,
     required SharedPreferences prefs,
   }) : _onboardingRepository = onboardingRepository,
+       _gameRepository = gameRepository,
+       _steamValidationService = steamValidationService,
        _prefs = prefs {
     _initializeCommands();
     _loadSettings();
@@ -44,13 +62,20 @@ class SettingsViewModel extends ChangeNotifier {
   String get steamId => _prefs.getString('steam_id') ?? '';
   bool get isSteamConnected => apiKey.isNotEmpty && steamId.isNotEmpty;
   bool get isDarkTheme => _isDarkTheme;
-  int get gameCount => _prefs.getInt('game_count') ?? 0;
+  int get gameCount => _gameRepository.gameLibrary.length;
   String get appVersion => _appVersion; // 版本信息getter
   DateTime? get lastSyncTime {
     final syncTimeString = _prefs.getString('last_sync_time');
     return syncTimeString != null ? DateTime.tryParse(syncTimeString) : null;
   }
-  
+
+  // 偏好设置 Getters
+  double get typeBalanceWeight => _typeBalanceWeight;
+  String get timePreference => _timePreference;
+  String get moodPreference => _moodPreference;
+  List<String> get excludedCategories => List.unmodifiable(_excludedCategories);
+  int get excludedCategoriesCount => _excludedCategories.length;
+
   void _initializeCommands() {
     refreshSteamConnectionCommand = Command.createAsyncNoParam(
       _handleRefreshSteamConnection,
@@ -91,6 +116,27 @@ class SettingsViewModel extends ChangeNotifier {
       _handleGetVersion,
       initialValue: '',
     );
+
+    // 初始化偏好设置 Commands（占位）
+    updateTypeBalanceCommand = Command.createAsync<double, void>(
+      _handleUpdateTypeBalance,
+      initialValue: null,
+    );
+
+    updateTimePreferenceCommand = Command.createAsync<String, void>(
+      _handleUpdateTimePreference,
+      initialValue: null,
+    );
+
+    updateMoodPreferenceCommand = Command.createAsync<String, void>(
+      _handleUpdateMoodPreference,
+      initialValue: null,
+    );
+
+    toggleExcludedCategoryCommand = Command.createAsync<String, void>(
+      _handleToggleExcludedCategory,
+      initialValue: null,
+    );
   }
   
   void _loadSettings() {
@@ -98,10 +144,19 @@ class SettingsViewModel extends ChangeNotifier {
       // 只加载UI专用的状态，其他数据通过getter动态获取
       _isDarkTheme = _prefs.getBool('dark_theme') ?? false;
 
+      // 加载偏好设置（占位）
+      _typeBalanceWeight = _prefs.getDouble('type_balance_weight') ?? 0.5;
+      _timePreference = _prefs.getString('time_preference') ?? 'any';
+      _moodPreference = _prefs.getString('mood_preference') ?? 'any';
+
+      // 加载排除类别列表
+      final excludedCategoriesJson = _prefs.getStringList('excluded_categories');
+      _excludedCategories = excludedCategoriesJson ?? [];
+
       // 初始化时获取版本信息
       getVersionCommand.execute();
 
-      AppLogger.info('Settings loaded: Steam connected=$isSteamConnected, Game count=$gameCount');
+      AppLogger.info('Settings loaded: Steam connected=$isSteamConnected, Game count=$gameCount, Preferences loaded');
       notifyListeners();
     } catch (e, stackTrace) {
       AppLogger.error('Failed to load settings', e, stackTrace);
@@ -113,14 +168,34 @@ class SettingsViewModel extends ChangeNotifier {
   Future<void> _handleRefreshSteamConnection() async {
     try {
       _setLoading(true);
-      AppLogger.info('Refreshing Steam connection status');
-      
-      // 检查凭据是否有效，状态从 getter 动态获取
-      _setLoading(false);
-      AppLogger.info('Steam connection status refreshed: $isSteamConnected');
+      AppLogger.info('Checking Steam connection status');
+
+      if (!isSteamConnected) {
+        _setLoading(false);
+        _setError('请先配置 Steam 凭据');
+        return;
+      }
+
+      // 使用 SteamValidationService 验证凭据
+      final result = await _steamValidationService.validateCredentials(
+        apiKey: apiKey,
+        steamId: steamId,
+      );
+
+      result.fold(
+        (success) {
+          _setLoading(false);
+          AppLogger.info('Steam connection verified: valid');
+        },
+        (failure) {
+          _setLoading(false);
+          _setError(failure.message);
+          AppLogger.warning('Steam connection check failed: ${failure.message}');
+        },
+      );
     } catch (e, stackTrace) {
-      AppLogger.error('Failed to refresh Steam connection', e, stackTrace);
-      _setError('Failed to refresh connection status');
+      AppLogger.error('Failed to check Steam connection', e, stackTrace);
+      _setError('连接检查失败');
     }
   }
   
@@ -160,19 +235,12 @@ class SettingsViewModel extends ChangeNotifier {
     try {
       _setLoading(true);
       AppLogger.info('Syncing game library');
-      
+
       await _onboardingRepository.syncGameLibrary();
-      
-      // 更新同步时间到SharedPreferences
-      final now = DateTime.now();
-      await _prefs.setString('last_sync_time', now.toIso8601String());
-      
-      // 更新游戏数量（从状态动态获取）
-      final state = _onboardingRepository.currentState;
-      await _prefs.setInt('game_count', state.gameLibrary.length);
-      
+      // 同步时间已在 GameRepository.syncGameLibrary() 中统一保存
+
       _setLoading(false);
-      AppLogger.info('Game library sync completed: ${state.gameLibrary.length} games');
+      AppLogger.info('Game library sync completed');
     } catch (e, stackTrace) {
       AppLogger.error('Failed to sync game library', e, stackTrace);
       _setError('Failed to sync game library');
@@ -271,5 +339,74 @@ class SettingsViewModel extends ChangeNotifier {
   void clearError() {
     _errorMessage = '';
     notifyListeners();
+  }
+
+  // 偏好设置 Command Handlers（占位实现）
+
+  Future<void> _handleUpdateTypeBalance(double weight) async {
+    try {
+      AppLogger.info('Updating type balance weight: $weight');
+
+      _typeBalanceWeight = weight;
+      await _prefs.setDouble('type_balance_weight', weight);
+
+      AppLogger.info('Type balance weight updated successfully');
+      notifyListeners();
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to update type balance weight', e, stackTrace);
+      _setError('Failed to update preference');
+    }
+  }
+
+  Future<void> _handleUpdateTimePreference(String preference) async {
+    try {
+      AppLogger.info('Updating time preference: $preference');
+
+      _timePreference = preference;
+      await _prefs.setString('time_preference', preference);
+
+      AppLogger.info('Time preference updated successfully');
+      notifyListeners();
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to update time preference', e, stackTrace);
+      _setError('Failed to update preference');
+    }
+  }
+
+  Future<void> _handleUpdateMoodPreference(String preference) async {
+    try {
+      AppLogger.info('Updating mood preference: $preference');
+
+      _moodPreference = preference;
+      await _prefs.setString('mood_preference', preference);
+
+      AppLogger.info('Mood preference updated successfully');
+      notifyListeners();
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to update mood preference', e, stackTrace);
+      _setError('Failed to update preference');
+    }
+  }
+
+  Future<void> _handleToggleExcludedCategory(String category) async {
+    try {
+      AppLogger.info('Toggling excluded category: $category');
+
+      if (_excludedCategories.contains(category)) {
+        _excludedCategories.remove(category);
+        AppLogger.info('Removed category from exclusion list');
+      } else {
+        _excludedCategories.add(category);
+        AppLogger.info('Added category to exclusion list');
+      }
+
+      await _prefs.setStringList('excluded_categories', _excludedCategories);
+
+      AppLogger.info('Excluded categories updated: ${_excludedCategories.length} categories');
+      notifyListeners();
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to toggle excluded category', e, stackTrace);
+      _setError('Failed to update category preference');
+    }
   }
 }

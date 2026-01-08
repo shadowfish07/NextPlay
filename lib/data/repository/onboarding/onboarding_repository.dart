@@ -253,9 +253,9 @@ class OnboardingRepository {
       }
       
       final games = syncResult.getOrNull()!;
-      
+
       AppLogger.info('Successfully synced ${games.length} games to GameRepository');
-      
+
       // 模拟处理进度
       _currentState = _currentState.copyWith(syncProgress: 0.8);
       _stateController.add(_currentState);

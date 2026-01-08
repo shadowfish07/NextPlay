@@ -70,6 +70,7 @@ class Dependencies {
         create: (context) => SettingsViewModel(
           onboardingRepository: _onboardingRepository!,
           gameRepository: _gameRepository!,
+          steamValidationService: _steamValidationService!,
           prefs: _sharedPreferences!,
         ),
       ),

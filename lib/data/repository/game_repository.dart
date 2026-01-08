@@ -184,6 +184,10 @@ class GameRepository {
           }
 
           await _saveToStorage();
+
+          // 保存同步时间
+          await _prefs.setString('last_sync_time', DateTime.now().toIso8601String());
+
           _gameLibraryController.add(_gameLibrary);
           _gameStatusController.add(_gameStatuses);
 
