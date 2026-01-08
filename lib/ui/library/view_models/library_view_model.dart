@@ -36,6 +36,7 @@ class LibraryViewModel extends ChangeNotifier {
   late final Command<Set<GameStatus>, void> applyStatusFiltersCommand;
   late final Command<Set<String>, void> applyGenreFiltersCommand;
   late final Command<LibrarySortOption, void> changeSortCommand;
+  late final Command<bool, void> changeSortDirectionCommand;
   late final Command<void, void> toggleViewModeCommand;
   late final Command<GameStatusUpdate, void> updateGameStatusCommand;
   late final Command<void, void> toggleSelectionModeCommand;
@@ -82,14 +83,25 @@ class LibraryViewModel extends ChangeNotifier {
     );
   }
   
-  /// 获取所有唯一的游戏类型 - 直接从Repository获取
+  /// 获取所有唯一的游戏类型 - 直接从Repository获取,按游戏数量降序排序
   List<String> get availableGenres {
-    final genres = <String>{};
+    final genreCounts = <String, int>{};
+
+    // 统计每个类型的游戏数量
     for (final game in _gameRepository.gameLibrary) {
-      genres.addAll(game.genres);
+      for (final genre in game.genres) {
+        genreCounts[genre] = (genreCounts[genre] ?? 0) + 1;
+      }
     }
-    final sortedGenres = genres.toList()..sort();
-    return sortedGenres;
+
+    // 按游戏数量降序排序,数量相同则按字母顺序
+    final sortedGenres = genreCounts.entries.toList()
+      ..sort((a, b) {
+        final countCompare = b.value.compareTo(a.value);
+        return countCompare != 0 ? countCompare : a.key.compareTo(b.key);
+      });
+
+    return sortedGenres.map((e) => e.key).toList();
   }
   
   /// 获取选中游戏的数量
@@ -127,6 +139,13 @@ class LibraryViewModel extends ChangeNotifier {
         _sortOption = option;
         _sortAscending = true;
       }
+      notifyListeners(); // 触发UI重新计算排序结果
+    });
+
+    // 排序方向切换
+    changeSortDirectionCommand = Command.createSyncNoResult<bool>((ascending) {
+      _sortAscending = ascending;
+      AppLogger.info('排序方向切换为: ${ascending ? "升序" : "降序"}');
       notifyListeners(); // 触发UI重新计算排序结果
     });
 

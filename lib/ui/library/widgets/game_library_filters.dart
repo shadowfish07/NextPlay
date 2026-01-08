@@ -11,10 +11,12 @@ class GameLibraryFilters extends StatefulWidget {
   final LibrarySortOption sortOption;
   final bool sortAscending;
   final List<String> availableGenres;
+  final LibraryStats libraryStats;
   final Function(String) onSearchChanged;
   final Function(Set<GameStatus>) onStatusFiltersChanged;
   final Function(Set<String>) onGenreFiltersChanged;
   final Function(LibrarySortOption) onSortChanged;
+  final Function(bool) onSortDirectionChanged;
   final VoidCallback onClearFilters;
   final bool hasFilters;
 
@@ -26,10 +28,12 @@ class GameLibraryFilters extends StatefulWidget {
     required this.sortOption,
     required this.sortAscending,
     required this.availableGenres,
+    required this.libraryStats,
     required this.onSearchChanged,
     required this.onStatusFiltersChanged,
     required this.onGenreFiltersChanged,
     required this.onSortChanged,
+    required this.onSortDirectionChanged,
     required this.onClearFilters,
     required this.hasFilters,
   });
@@ -84,14 +88,16 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 16),
+
         // 搜索栏
         _buildSearchBar(context),
-        
+
         const SizedBox(height: 12),
-        
+
         // 快速筛选chips
         _buildQuickFilters(context),
-        
+
         // 展开的详细筛选
         SizeTransition(
           sizeFactor: _expandAnimation,
@@ -147,11 +153,7 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
         // 筛选展开按钮
         IconButton(
           onPressed: _toggleExpanded,
-          icon: AnimatedRotation(
-            turns: _isExpanded ? 0.5 : 0,
-            duration: const Duration(milliseconds: 300),
-            child: const Icon(Icons.tune),
-          ),
+          icon: const Icon(Icons.tune),
           style: IconButton.styleFrom(
             backgroundColor: theme.colorScheme.surfaceContainerHighest,
             foregroundColor: theme.colorScheme.onSurfaceVariant,
@@ -188,11 +190,12 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
           // 状态筛选chips
           ...GameStatusExtension.values.map((status) {
             final isSelected = widget.statusFilters.contains(status);
+            final count = _getStatusCount(status);
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilterChip(
                 selected: isSelected,
-                label: Text(status.displayName),
+                label: Text('${status.displayName} ($count)'),
                 onSelected: (selected) {
                   final newFilters = Set<GameStatus>.from(widget.statusFilters);
                   if (selected) {
@@ -202,7 +205,7 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
                   }
                   widget.onStatusFiltersChanged(newFilters);
                 },
-                avatar: Icon(
+                avatar: isSelected ? null : Icon(
                   GameStatusDisplay.getStatusIcon(status),
                   size: 16,
                 ),
@@ -219,7 +222,7 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
   /// 构建排序chip
   Widget _buildSortChip(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return ActionChip(
       label: Row(
         mainAxisSize: MainAxisSize.min,
@@ -232,7 +235,10 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
           ),
         ],
       ),
-      onPressed: () => _showSortOptions(context),
+      onPressed: () {
+        // 直接切换排序方向
+        widget.onSortDirectionChanged(!widget.sortAscending);
+      },
       backgroundColor: theme.colorScheme.secondaryContainer,
       labelStyle: TextStyle(
         color: theme.colorScheme.onSecondaryContainer,
@@ -325,19 +331,48 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
   /// 构建排序选项
   Widget _buildSortOptions(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '排序方式',
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+        // 标题和排序方向切换按钮
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '排序方式',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            // 排序方向切换按钮
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(
+                  value: true,
+                  icon: Icon(Icons.arrow_upward, size: 16),
+                  label: Text('升序'),
+                ),
+                ButtonSegment(
+                  value: false,
+                  icon: Icon(Icons.arrow_downward, size: 16),
+                  label: Text('降序'),
+                ),
+              ],
+              selected: {widget.sortAscending},
+              onSelectionChanged: (Set<bool> selected) {
+                widget.onSortDirectionChanged(selected.first);
+              },
+              style: SegmentedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ],
         ),
-        
+
         const SizedBox(height: 8),
-        
+
+        // 排序字段选择
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -353,7 +388,7 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
               },
               selectedColor: theme.colorScheme.primaryContainer,
               labelStyle: TextStyle(
-                color: isSelected 
+                color: isSelected
                     ? theme.colorScheme.onPrimaryContainer
                     : theme.colorScheme.onSurface,
               ),
@@ -364,172 +399,30 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
     );
   }
 
-  /// 显示排序选项对话框
-  void _showSortOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '选择排序方式',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            ...LibrarySortOption.values.map((option) {
-              final isSelected = widget.sortOption == option;
-              return ListTile(
-                title: Text(option.displayName),
-                leading: isSelected ? const Icon(Icons.check) : null,
-                trailing: isSelected
-                    ? Icon(
-                        widget.sortAscending 
-                            ? Icons.arrow_upward 
-                            : Icons.arrow_downward,
-                      )
-                    : null,
-                selected: isSelected,
-                onTap: () {
-                  Navigator.of(context).pop();
-                  widget.onSortChanged(option);
-                },
-              );
-            }),
-            
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
 
   /// 切换展开状态
   void _toggleExpanded() {
     setState(() {
       _isExpanded = !_isExpanded;
     });
-    
+
     if (_isExpanded) {
       _expandController.forward();
     } else {
       _expandController.reverse();
     }
   }
-}
 
-/// 游戏库统计信息组件
-class LibraryStatsCard extends StatelessWidget {
-  final LibraryStats stats;
-
-  const LibraryStatsCard({
-    super.key,
-    required this.stats,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '游戏库统计',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            
-            const SizedBox(height: 12),
-            
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    '总计',
-                    stats.totalGames.toString(),
-                    Icons.videogame_asset,
-                    theme.colorScheme.primary,
-                  ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    '未开始',
-                    stats.notStarted.toString(),
-                    Icons.play_arrow,
-                    theme.colorScheme.secondary,
-                  ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    '游玩中',
-                    stats.playing.toString(),
-                    Icons.pause,
-                    theme.colorScheme.tertiary,
-                  ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    '已完成',
-                    stats.completed.toString(),
-                    Icons.check_circle,
-                    theme.colorScheme.inversePrimary,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(
-    BuildContext context,
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    final theme = Theme.of(context);
-    
-    return Column(
-      children: [
-        Icon(
-          icon,
-          color: color,
-          size: 24,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
+  /// 获取指定状态的游戏数量
+  int _getStatusCount(GameStatus status) {
+    return status.when(
+      notStarted: () => widget.libraryStats.notStarted,
+      playing: () => widget.libraryStats.playing,
+      completed: () => widget.libraryStats.completed,
+      abandoned: () => widget.libraryStats.abandoned,
+      paused: () => 0, // 暂停状态暂时返回0，待统计数据添加此字段
+      multiplayer: () => widget.libraryStats.multiplayer,
     );
   }
 }
+

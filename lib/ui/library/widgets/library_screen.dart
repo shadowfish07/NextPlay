@@ -59,9 +59,9 @@ class _LibraryScreenState extends State<LibraryScreen>
               _buildSliverAppBar(context, viewModel),
               
               // 筛选器
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverToBoxAdapter(
                   child: GameLibraryFilters(
                     searchQuery: viewModel.searchQuery,
                     statusFilters: viewModel.statusFilters,
@@ -69,24 +69,17 @@ class _LibraryScreenState extends State<LibraryScreen>
                     sortOption: viewModel.sortOption,
                     sortAscending: viewModel.sortAscending,
                     availableGenres: viewModel.availableGenres,
+                    libraryStats: viewModel.libraryStats,
                     onSearchChanged: (query) => viewModel.searchCommand.execute(query),
                     onStatusFiltersChanged: (filters) => viewModel.applyStatusFiltersCommand.execute(filters),
                     onGenreFiltersChanged: (filters) => viewModel.applyGenreFiltersCommand.execute(filters),
                     onSortChanged: (option) => viewModel.changeSortCommand.execute(option),
+                    onSortDirectionChanged: (ascending) => viewModel.changeSortDirectionCommand.execute(ascending),
                     onClearFilters: () => viewModel.clearFiltersCommand.execute(),
                     hasFilters: viewModel.hasFilters,
                   ),
                 ),
               ),
-              
-              // 统计信息卡片
-              if (!viewModel.hasFilters)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: LibraryStatsCard(stats: viewModel.libraryStats),
-                  ),
-                ),
               
               // 游戏列表
               _buildGamesList(context, viewModel),
@@ -103,14 +96,15 @@ class _LibraryScreenState extends State<LibraryScreen>
   /// 构建可折叠应用栏
   Widget _buildSliverAppBar(BuildContext context, LibraryViewModel viewModel) {
     final theme = Theme.of(context);
-    
+    final stats = viewModel.libraryStats;
+
     return SliverAppBar(
       expandedHeight: viewModel.isInSelectionMode ? 80 : 120,
       floating: true,
       pinned: true,
       backgroundColor: theme.colorScheme.surface,
       flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
+        titlePadding: const EdgeInsets.only(left: 16, bottom: 16, right: 16),
         title: viewModel.isInSelectionMode
             ? Text(
                 '已选择 ${viewModel.selectedGamesCount} 个游戏',
@@ -118,11 +112,26 @@ class _LibraryScreenState extends State<LibraryScreen>
                   fontWeight: FontWeight.w600,
                 ),
               )
-            : Text(
-                '游戏库',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '游戏库',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (!viewModel.hasFilters) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '共 ${stats.totalGames} 款',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
               ),
         background: Container(
           decoration: BoxDecoration(
