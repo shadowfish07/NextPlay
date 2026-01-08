@@ -1,4 +1,4 @@
-import type { TwitchTokenResponse } from "./types";
+import type { TwitchTokenResponse, IGDBGame } from "./types";
 
 export class IGDBClient {
   private clientId: string;
@@ -69,5 +69,92 @@ export class IGDBClient {
     }
 
     return response.json();
+  }
+
+  async getSteamToIGDBMapping(steamId: number): Promise<number | null> {
+    const query = `where uid = "${steamId}" & category = 1; fields game;`;
+
+    try {
+      const results = await this.request("external_games", query);
+
+      if (results && results.length > 0) {
+        console.log(`[IGDB] Mapped Steam ${steamId} -> IGDB ${results[0].game}`);
+        return results[0].game;
+      }
+
+      console.log(`[IGDB] No mapping found for Steam ID ${steamId}`);
+      return null;
+    } catch (error) {
+      console.error(`[IGDB] Error mapping Steam ID ${steamId}:`, error);
+      throw error;
+    }
+  }
+
+  async getSteamToIGDBMappings(steamIds: number[]): Promise<Map<number, number>> {
+    const mappings = new Map<number, number>();
+
+    // Process in batches of 10 to avoid overwhelming API
+    for (let i = 0; i < steamIds.length; i += 10) {
+      const batch = steamIds.slice(i, i + 10);
+      const uidList = batch.map((id) => `"${id}"`).join(",");
+      const query = `where uid = (${uidList}) & category = 1; fields game, uid;`;
+
+      try {
+        const results = await this.request("external_games", query);
+
+        for (const result of results) {
+          const steamId = parseInt(result.uid);
+          mappings.set(steamId, result.game);
+        }
+      } catch (error) {
+        console.error(`[IGDB] Error mapping batch:`, error);
+      }
+
+      // Rate limiting: wait 250ms between batches (4 req/sec)
+      if (i + 10 < steamIds.length) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+    }
+
+    return mappings;
+  }
+
+  async getGames(igdbIds: number[]): Promise<IGDBGame[]> {
+    if (igdbIds.length === 0) return [];
+
+    const idList = igdbIds.join(",");
+    const query = `
+      where id = (${idList});
+      fields
+        name,
+        summary,
+        url,
+        cover.url,
+        cover.width,
+        cover.height,
+        first_release_date,
+        aggregated_rating,
+        total_rating,
+        game_status,
+        age_ratings.category,
+        age_ratings.rating,
+        platforms.name,
+        game_modes.name,
+        language_supports.language.name,
+        language_supports.language_support_type,
+        similar_games.name,
+        similar_games.cover.url,
+        tags;
+      limit ${igdbIds.length};
+    `;
+
+    try {
+      const results = await this.request("games", query);
+      console.log(`[IGDB] Fetched ${results.length} games`);
+      return results as IGDBGame[];
+    } catch (error) {
+      console.error(`[IGDB] Error fetching games:`, error);
+      throw error;
+    }
   }
 }
