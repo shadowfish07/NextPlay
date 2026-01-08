@@ -37,7 +37,6 @@ curl -fsSL https://bun.sh/install | bash
 ### 3. Configure Environment
 
 ```bash
-cd igdb_service
 cp .env.example .env
 ```
 
@@ -171,7 +170,7 @@ curl http://localhost:3000/health
 Run the test script:
 
 ```bash
-./test-requests.sh
+./igdb_service/test-requests.sh
 ```
 
 Tests cover:
