@@ -15,7 +15,11 @@ class OnboardingState with _$OnboardingState {
     @Default(false) bool isLoading,
     @Default('') String errorMessage,
     @Default(0.0) double syncProgress,
+    @Default('') String syncMessage,
     @Default([]) List<String> gameLibrary,
+    int? totalGames,
+    int? currentBatch,
+    int? totalBatches,
   }) = _OnboardingState;
 
   factory OnboardingState.initial() => const OnboardingState();

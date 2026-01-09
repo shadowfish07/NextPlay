@@ -219,40 +219,101 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildDataSyncStep(BuildContext context, OnboardingViewModel viewModel) {
+    final state = viewModel.state;
+    final hasError = state.errorMessage.isNotEmpty;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
-          Icons.sync,
+          hasError ? Icons.error_outline : Icons.sync,
           size: 80,
-          color: Theme.of(context).colorScheme.primary,
+          color: hasError ? colorScheme.error : colorScheme.primary,
         ),
         const SizedBox(height: 24),
         Text(
           '同步游戏库',
-          style: Theme.of(context).textTheme.headlineSmall,
+          style: theme.textTheme.headlineSmall,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
+        // 同步消息
         Text(
-          '正在同步您的游戏库数据，请稍候...',
-          style: Theme.of(context).textTheme.bodyMedium,
+          state.syncMessage.isNotEmpty
+              ? state.syncMessage
+              : '正在同步您的游戏库数据，请稍候...',
+          style: theme.textTheme.bodyMedium,
           textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 32),
-        LinearProgressIndicator(
-          value: viewModel.state.syncProgress,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          '${(viewModel.state.syncProgress * 100).toInt()}%',
-          style: Theme.of(context).textTheme.bodyLarge,
         ),
         const SizedBox(height: 24),
-        if (!viewModel.state.isLoading && viewModel.state.gameLibrary.isNotEmpty)
+        // 进度条
+        LinearProgressIndicator(
+          value: state.syncProgress,
+          backgroundColor: colorScheme.surfaceContainerHighest,
+        ),
+        const SizedBox(height: 12),
+        // 进度详情
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '${(state.syncProgress * 100).toInt()}%',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (state.totalGames != null)
+              Text(
+                '${state.totalGames} 个游戏',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+          ],
+        ),
+        // 错误信息
+        if (hasError) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: colorScheme.onErrorContainer,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    state.errorMessage,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 24),
+        // 操作按钮
+        if (!state.isLoading && state.gameLibrary.isNotEmpty)
           FilledButton(
             onPressed: () => viewModel.nextStepCommand.execute(),
             child: const Text('继续'),
+          ),
+        // 重试按钮
+        if (!state.isLoading && hasError && state.gameLibrary.isEmpty)
+          FilledButton.tonal(
+            onPressed: () => viewModel.syncGameLibraryCommand.execute(),
+            child: const Text('重试'),
           ),
       ],
     );

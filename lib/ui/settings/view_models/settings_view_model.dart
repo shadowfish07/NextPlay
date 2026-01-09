@@ -36,6 +36,14 @@ class SettingsViewModel extends ChangeNotifier {
   bool _isDarkTheme = false; // UI状态，可以缓存
   String _appVersion = ''; // 缓存版本信息用于显示
 
+  // 同步进度状态
+  double _syncProgress = 0.0;
+  String _syncMessage = '';
+  int? _syncTotalGames;
+  int? _syncCurrentBatch;
+  int? _syncTotalBatches;
+  StreamSubscription? _syncProgressSubscription;
+
   // 偏好设置状态（占位）- 仅UI显示，暂不影响推荐逻辑
   double _typeBalanceWeight = 0.5; // 0.0 = diverse, 1.0 = single type
   String _timePreference = 'any'; // 'short', 'medium', 'long', 'any'
@@ -68,6 +76,13 @@ class SettingsViewModel extends ChangeNotifier {
     final syncTimeString = _prefs.getString('last_sync_time');
     return syncTimeString != null ? DateTime.tryParse(syncTimeString) : null;
   }
+
+  // 同步进度 Getters
+  double get syncProgress => _syncProgress;
+  String get syncMessage => _syncMessage;
+  int? get syncTotalGames => _syncTotalGames;
+  int? get syncCurrentBatch => _syncCurrentBatch;
+  int? get syncTotalBatches => _syncTotalBatches;
 
   // 偏好设置 Getters
   double get typeBalanceWeight => _typeBalanceWeight;
@@ -234,16 +249,37 @@ class SettingsViewModel extends ChangeNotifier {
   Future<void> _handleSyncGameLibrary() async {
     try {
       _setLoading(true);
+      _syncProgress = 0.0;
+      _syncMessage = '正在准备同步...';
       AppLogger.info('Syncing game library');
 
+      // 监听同步进度
+      _syncProgressSubscription?.cancel();
+      _syncProgressSubscription = _gameRepository.syncProgressStream.listen((progress) {
+        _syncProgress = progress.progress;
+        _syncMessage = progress.message;
+        _syncTotalGames = progress.totalGames;
+        _syncCurrentBatch = progress.currentBatch;
+        _syncTotalBatches = progress.totalBatches;
+        if (progress.errorMessage != null && progress.errorMessage!.isNotEmpty) {
+          _errorMessage = progress.errorMessage!;
+        }
+        notifyListeners();
+      });
+
       await _onboardingRepository.syncGameLibrary();
-      // 同步时间已在 GameRepository.syncGameLibrary() 中统一保存
+
+      await _syncProgressSubscription?.cancel();
+      _syncProgressSubscription = null;
 
       _setLoading(false);
+      _syncMessage = '';
       AppLogger.info('Game library sync completed');
     } catch (e, stackTrace) {
       AppLogger.error('Failed to sync game library', e, stackTrace);
-      _setError('Failed to sync game library');
+      await _syncProgressSubscription?.cancel();
+      _syncProgressSubscription = null;
+      _setError('同步失败: $e');
     }
   }
   

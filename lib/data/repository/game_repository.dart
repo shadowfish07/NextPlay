@@ -247,7 +247,7 @@ class GameRepository {
       _syncProgressController.add(SyncProgress(
         stage: SyncStage.fetchingSteamLibrary,
         progress: 0.0,
-        message: '正在获取 Steam 游戏库...',
+        message: '正在连接 Steam...',
       ));
 
       // 第一步：获取 Steam 游戏库
@@ -257,16 +257,25 @@ class GameRepository {
       );
 
       if (steamResult.isError()) {
-        return Failure(steamResult.exceptionOrNull() ?? 'Failed to fetch Steam library');
+        final errorMsg = steamResult.exceptionOrNull() ?? 'Failed to fetch Steam library';
+        _syncProgressController.add(SyncProgress(
+          stage: SyncStage.error,
+          progress: 0.0,
+          message: '获取 Steam 游戏库失败',
+          errorMessage: errorMsg,
+        ));
+        return Failure(errorMsg);
       }
 
       final steamGames = steamResult.getOrNull()!;
-      AppLogger.info('Got ${steamGames.length} games from Steam');
+      final totalGames = steamGames.length;
+      AppLogger.info('Got $totalGames games from Steam');
 
       _syncProgressController.add(SyncProgress(
         stage: SyncStage.fetchingSteamLibrary,
-        progress: 0.2,
-        message: '获取到 ${steamGames.length} 个游戏',
+        progress: 0.15,
+        message: '获取到 $totalGames 个游戏',
+        totalGames: totalGames,
       ));
 
       // 第二步：保存 Steam 数据到数据库
@@ -288,26 +297,52 @@ class GameRepository {
       await _databaseService.upsertSteamGames(steamDataList);
 
       _syncProgressController.add(SyncProgress(
-        stage: SyncStage.fetchingIgdbData,
-        progress: 0.3,
-        message: '正在获取 IGDB 游戏详情...',
+        stage: SyncStage.fetchingSteamLibrary,
+        progress: 0.2,
+        message: '已保存 Steam 数据',
+        totalGames: totalGames,
       ));
 
-      // 第三步：批量获取 IGDB 数据
+      // 第三步：批量获取 IGDB 数据（带进度回调）
       final steamIds = steamGames.map((g) => g.appId).toList();
-      final igdbResult = await _igdbGameService.getBatchGameInfo(steamIds);
+
+      _syncProgressController.add(SyncProgress(
+        stage: SyncStage.fetchingIgdbData,
+        progress: 0.25,
+        message: '正在获取游戏详情...',
+        totalGames: totalGames,
+      ));
+
+      final igdbResult = await _igdbGameService.getBatchGameInfo(
+        steamIds,
+        onProgress: (completed, total) {
+          final igdbProgress = 0.25 + (completed / total) * 0.45;
+          _syncProgressController.add(SyncProgress(
+            stage: SyncStage.fetchingIgdbData,
+            progress: igdbProgress.clamp(0.25, 0.7),
+            message: '正在获取游戏详情...',
+            totalGames: totalGames,
+            processedGames: completed.clamp(0, total),
+          ));
+        },
+      );
 
       if (igdbResult.isSuccess()) {
         final igdbResponse = igdbResult.getOrNull()!;
+        final foundCount = igdbResponse.games.length;
+        final notFoundCount = igdbResponse.notFound.length;
+        final errorCount = igdbResponse.errors.length;
+
         AppLogger.info(
-          'IGDB: ${igdbResponse.games.length} found, '
-          '${igdbResponse.notFound.length} not found',
+          'IGDB: $foundCount found, $notFoundCount not found, $errorCount errors',
         );
 
         _syncProgressController.add(SyncProgress(
           stage: SyncStage.fetchingIgdbData,
-          progress: 0.7,
-          message: '获取到 ${igdbResponse.games.length} 个游戏详情',
+          progress: 0.75,
+          message: '获取到 $foundCount 个游戏详情',
+          totalGames: totalGames,
+          processedGames: foundCount,
         ));
 
         // 保存 IGDB 数据
@@ -338,14 +373,32 @@ class GameRepository {
 
         await _databaseService.clearIgdbGames();
         await _databaseService.upsertIgdbGames(igdbDataList);
+
+        _syncProgressController.add(SyncProgress(
+          stage: SyncStage.fetchingIgdbData,
+          progress: 0.8,
+          message: '已保存游戏详情数据',
+          totalGames: totalGames,
+          processedGames: foundCount,
+        ));
       } else {
-        AppLogger.warning('Failed to fetch IGDB data: ${igdbResult.exceptionOrNull()}');
+        final igdbError = igdbResult.exceptionOrNull() ?? 'Unknown error';
+        AppLogger.warning('Failed to fetch IGDB data: $igdbError');
+        // IGDB 失败不阻止整体同步，但记录警告
+        _syncProgressController.add(SyncProgress(
+          stage: SyncStage.fetchingIgdbData,
+          progress: 0.8,
+          message: '游戏详情获取部分失败',
+          errorMessage: '部分游戏详情获取失败: $igdbError',
+          totalGames: totalGames,
+        ));
       }
 
       _syncProgressController.add(SyncProgress(
         stage: SyncStage.initializingUserData,
         progress: 0.85,
         message: '正在初始化用户数据...',
+        totalGames: totalGames,
       ));
 
       // 第四步：为新游戏初始化用户数据
@@ -363,6 +416,7 @@ class GameRepository {
         stage: SyncStage.completed,
         progress: 1.0,
         message: '同步完成！共 ${_gameCache.length} 个游戏',
+        totalGames: _gameCache.length,
       ));
 
       AppLogger.info('Game library sync completed: ${_gameCache.length} games');

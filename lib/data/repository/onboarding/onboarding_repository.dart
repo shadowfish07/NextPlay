@@ -190,20 +190,23 @@ class OnboardingRepository {
   }
 
   Future<void> syncGameLibrary() async {
+    StreamSubscription? progressSubscription;
+
     try {
       AppLogger.info('Starting game library sync');
-      
+
       _currentState = _currentState.copyWith(
         isLoading: true,
         syncProgress: 0.0,
+        syncMessage: '正在准备同步...',
         errorMessage: '',
       );
       _stateController.add(_currentState);
-      
+
       // 获取存储的API Key和Steam ID
       final apiKey = _currentState.apiKey;
       final steamId = _currentState.steamId;
-      
+
       if (apiKey.isEmpty || steamId.isEmpty) {
         _currentState = _currentState.copyWith(
           isLoading: false,
@@ -212,16 +215,19 @@ class OnboardingRepository {
         _stateController.add(_currentState);
         return;
       }
-      
+
       // 首先验证凭据有效性
-      _currentState = _currentState.copyWith(syncProgress: 0.1);
+      _currentState = _currentState.copyWith(
+        syncProgress: 0.05,
+        syncMessage: '正在验证凭据...',
+      );
       _stateController.add(_currentState);
-      
+
       final credentialsResult = await _steamValidationService.validateCredentials(
         apiKey: apiKey,
         steamId: steamId,
       );
-      
+
       if (!credentialsResult.isSuccess()) {
         final error = credentialsResult.exceptionOrNull()!;
         _currentState = _currentState.copyWith(
@@ -231,16 +237,29 @@ class OnboardingRepository {
         _stateController.add(_currentState);
         return;
       }
-      
+
+      // 监听 GameRepository 的同步进度
+      progressSubscription = _gameRepository.syncProgressStream.listen((progress) {
+        _currentState = _currentState.copyWith(
+          syncProgress: progress.progress,
+          syncMessage: progress.message,
+          totalGames: progress.totalGames,
+          currentBatch: progress.currentBatch,
+          totalBatches: progress.totalBatches,
+          errorMessage: progress.errorMessage ?? '',
+        );
+        _stateController.add(_currentState);
+      });
+
       // 使用GameRepository同步游戏库数据
-      _currentState = _currentState.copyWith(syncProgress: 0.3);
-      _stateController.add(_currentState);
-      
       final syncResult = await _gameRepository.syncGameLibrary(
         apiKey: apiKey,
         steamId: steamId,
       );
-      
+
+      // 取消进度监听
+      await progressSubscription.cancel();
+
       if (!syncResult.isSuccess()) {
         final error = syncResult.exceptionOrNull()!;
         _currentState = _currentState.copyWith(
@@ -250,32 +269,29 @@ class OnboardingRepository {
         _stateController.add(_currentState);
         return;
       }
-      
+
       final games = syncResult.getOrNull()!;
+      AppLogger.info('Successfully synced ${games.length} games');
 
-      AppLogger.info('Successfully synced ${games.length} games to GameRepository');
-
-      // 模拟处理进度
-      _currentState = _currentState.copyWith(syncProgress: 0.8);
-      _stateController.add(_currentState);
-      await Future.delayed(const Duration(milliseconds: 500));
-      
       // 转换为游戏名称列表（保持与现有UI兼容）
       final gameLibrary = games.map((game) => game.name).toList();
-      
+
       _currentState = _currentState.copyWith(
         gameLibrary: gameLibrary,
         isLoading: false,
         syncProgress: 1.0,
+        syncMessage: '同步完成！',
+        totalGames: gameLibrary.length,
       );
       _stateController.add(_currentState);
-      
+
       AppLogger.info('Game library sync completed with ${gameLibrary.length} games');
     } catch (e, stackTrace) {
       AppLogger.error('Failed to sync game library', e, stackTrace);
+      await progressSubscription?.cancel();
       _stateController.add(_currentState.copyWith(
         isLoading: false,
-        errorMessage: 'Failed to sync game library: $e',
+        errorMessage: '同步失败: $e',
       ));
     }
   }

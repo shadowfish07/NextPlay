@@ -69,12 +69,71 @@ class DataSyncCard extends StatelessWidget {
           // 同步进度（如果正在同步）
           if (viewModel.isLoading) ...[
             const SizedBox(height: 16),
-            const LinearProgressIndicator(),
+            LinearProgressIndicator(
+              value: viewModel.syncProgress > 0 ? viewModel.syncProgress : null,
+              backgroundColor: colorScheme.surfaceContainerHighest,
+            ),
             const SizedBox(height: 8),
+            // 同步消息
             Text(
-              '正在同步游戏库...',
+              viewModel.syncMessage.isNotEmpty
+                  ? viewModel.syncMessage
+                  : '正在同步游戏库...',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            // 进度详情
+            if (viewModel.syncProgress > 0) ...[
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${(viewModel.syncProgress * 100).toInt()}%',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (viewModel.syncTotalGames != null)
+                    Text(
+                      '共 ${viewModel.syncTotalGames} 个游戏',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ],
+
+          // 错误信息
+          if (viewModel.errorMessage.isNotEmpty && !viewModel.isLoading) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: colorScheme.onErrorContainer,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      viewModel.errorMessage,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
