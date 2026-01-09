@@ -216,6 +216,7 @@ class LibraryListItem extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         // 成就进度
         if (game.hasAchievements && game.totalAchievements > 0)
