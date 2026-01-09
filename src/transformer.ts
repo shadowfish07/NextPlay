@@ -79,6 +79,7 @@ export function transformIGDBGame(
       : undefined,
     screenshots: igdbGame.screenshots
       ? igdbGame.screenshots.map((s) => ({
+          image_id: s.image_id,
           url: normalizeImageUrl(s.url.replace("t_thumb", "t_screenshot_big")),
           width: s.width,
           height: s.height,
@@ -86,9 +87,11 @@ export function transformIGDBGame(
       : [],
     artworks: igdbGame.artworks
       ? igdbGame.artworks.map((a) => ({
+          image_id: a.image_id,
           url: normalizeImageUrl(a.url.replace("t_thumb", "t_1080p")),
           width: a.width,
           height: a.height,
+          artwork_type: a.artwork_type,
         }))
       : [],
     videos: igdbGame.videos

@@ -153,6 +153,30 @@ pm2 save
         "width": 264,
         "height": 352
       },
+      "screenshots": [
+        {
+          "image_id": "scii5z",
+          "url": "https://images.igdb.com/igdb/image/upload/t_screenshot_big/scii5z.jpg",
+          "width": 1920,
+          "height": 1080
+        }
+      ],
+      "artworks": [
+        {
+          "image_id": "ar47zf",
+          "url": "https://images.igdb.com/igdb/image/upload/t_1080p/ar47zf.jpg",
+          "width": 2560,
+          "height": 1440,
+          "artwork_type": 3
+        }
+      ],
+      "videos": [
+        {
+          "name": "Trailer",
+          "video_id": "abc123",
+          "youtube_url": "https://www.youtube.com/watch?v=abc123"
+        }
+      ],
       "first_release_date": 1345075200,
       "aggregated_rating": 85.5,
       "total_rating": 88.2,
@@ -205,8 +229,31 @@ pm2 save
 - `games`: Successfully fetched games (from cache or IGDB)
   - `name`: Original game name (always in English)
   - `localizedName`: Localized name (only present when found and different from `name`)
+  - `screenshots`: Array of game screenshots
+  - `artworks`: Array of official artworks (key art, concept art, logos, etc.)
+  - `videos`: Array of game videos with YouTube links
 - `notFound`: Steam IDs with no IGDB mapping
 - `errors`: Steam IDs that failed to fetch (with reasons)
+
+### Artwork Types
+
+The `artwork_type` field indicates the type of artwork:
+
+| ID | Name | Description |
+|----|------|-------------|
+| 1 | Artwork | General artwork |
+| 2 | Key art without logo | Key art without game logo |
+| 3 | Key art with logo | Key art with game logo |
+| 4 | Concept art | Concept artwork |
+| 5 | Game logo (white) | White version of game logo |
+| 6 | Game logo (black) | Black version of game logo |
+| 7 | Game logo (color) | Color version of game logo |
+| 8 | Infographic | Infographic image |
+
+**Filter Key Art:**
+```javascript
+const keyArts = game.artworks.filter(a => a.artwork_type === 2 || a.artwork_type === 3);
+```
 
 ### Examples
 

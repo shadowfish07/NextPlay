@@ -145,6 +145,7 @@ export class IGDBClient {
         artworks.url,
         artworks.width,
         artworks.height,
+        artworks.artwork_type,
         videos.name,
         videos.video_id,
         first_release_date,

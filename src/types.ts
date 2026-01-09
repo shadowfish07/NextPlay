@@ -64,6 +64,7 @@ export interface IGDBCover {
 
 export interface IGDBScreenshot {
   id: number;
+  image_id: string;
   url: string;
   width: number;
   height: number;
@@ -71,9 +72,11 @@ export interface IGDBScreenshot {
 
 export interface IGDBArtwork {
   id: number;
+  image_id: string;
   url: string;
   width: number;
   height: number;
+  artwork_type?: number;
 }
 
 export interface IGDBVideo {
@@ -167,6 +170,7 @@ export interface GameData {
     url: string;
     width: number;
     height: number;
+    artwork_type?: number;
   }>;
   videos: Array<{
     name?: string;
