@@ -6,7 +6,6 @@ import '../../core/theme.dart';
 import '../../core/ui/game_status_display.dart';
 import '../../core/ui/achievement_compact.dart';
 import '../../core/ui/score_badge.dart';
-import '../../core/ui/last_played_text.dart';
 
 class LibraryListItem extends StatelessWidget {
   final Game game;
@@ -129,7 +128,7 @@ class LibraryListItem extends StatelessWidget {
 
   /// 构建状态、时长、最后游玩行
   Widget _buildStatusPlaytimeRow(ThemeData theme) {
-    final playtimeHours = game.playtimeForever / 60.0;
+    final hasRecentPlaytime = game.playtimeLastTwoWeeks > 0;
 
     return Row(
       children: [
@@ -151,7 +150,31 @@ class LibraryListItem extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        // 游玩时长
+        // 近两周时长（仅当有近期游玩时显示）
+        if (hasRecentPlaytime) ...[
+          Icon(
+            Icons.trending_up,
+            size: 14,
+            color: AppTheme.gameHighlight,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            _formatPlaytime(game.playtimeLastTwoWeeks),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: AppTheme.gameHighlight,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '•',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 6),
+        ],
+        // 总游玩时长
         Icon(
           Icons.schedule,
           size: 14,
@@ -159,32 +182,23 @@ class LibraryListItem extends StatelessWidget {
         ),
         const SizedBox(width: 4),
         Text(
-          playtimeHours >= 1
-              ? '${playtimeHours.toStringAsFixed(1)}h'
-              : '${game.playtimeForever}m',
+          game.playtimeForever > 0
+              ? _formatPlaytime(game.playtimeForever)
+              : '从未游玩',
           style: theme.textTheme.labelSmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        // 分隔符
-        const SizedBox(width: 6),
-        Text(
-          '•',
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(width: 6),
-        // 最后游玩时间
-        Flexible(
-          child: LastPlayedText(
-            lastPlayed: game.lastPlayed,
-            showLabel: true,
-            showIcon: false,
           ),
         ),
       ],
     );
+  }
+
+  /// 格式化游戏时长
+  String _formatPlaytime(int minutes) {
+    if (minutes < 60) return '$minutes分钟';
+    final hours = minutes / 60;
+    if (hours < 10) return '${hours.toStringAsFixed(1)}h';
+    return '${hours.toInt()}h';
   }
 
   /// 构建元数据行(成就 | 评分 | 标签)
