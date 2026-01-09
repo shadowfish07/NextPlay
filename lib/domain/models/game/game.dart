@@ -31,6 +31,7 @@ class Game with _$Game {
     @Default([]) List<String> gameModes,
     @Default([]) List<IgdbAgeRating> ageRatings,
     @Default([]) List<IgdbArtwork> artworks,
+    @Default([]) List<IgdbScreenshot> screenshots,
     @Default([]) List<String> developers,
     @Default([]) List<String> publishers,
     @Default(false) bool supportsChinese,
@@ -134,5 +135,33 @@ extension GameExtension on Game {
 
     // 兜底使用 cover
     return coverImageUrl;
+  }
+
+  /// 获取画廊图片列表
+  /// 顺序: 默认背景图 → 截图 → 其他 artwork
+  List<String> get galleryImages {
+    final images = <String>[];
+
+    // 1. 添加默认背景图
+    final backgroundUrl = detailBackgroundUrl;
+    if (backgroundUrl.isNotEmpty) {
+      images.add(backgroundUrl);
+    }
+
+    // 2. 添加截图
+    for (final screenshot in screenshots) {
+      if (!images.contains(screenshot.url)) {
+        images.add(screenshot.url);
+      }
+    }
+
+    // 3. 添加其他 artwork（排除已添加的背景图）
+    for (final artwork in artworks) {
+      if (!images.contains(artwork.url)) {
+        images.add(artwork.url);
+      }
+    }
+
+    return images;
   }
 }

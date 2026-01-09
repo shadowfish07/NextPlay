@@ -44,6 +44,7 @@ class SettingsViewModel extends ChangeNotifier {
   int? _syncCurrentBatch;
   int? _syncTotalBatches;
   StreamSubscription? _syncProgressSubscription;
+  StreamSubscription? _gameLibrarySubscription;
 
   // 偏好设置状态（占位）- 仅UI显示，暂不影响推荐逻辑
   double _typeBalanceWeight = 0.5; // 0.0 = diverse, 1.0 = single type
@@ -181,6 +182,12 @@ class SettingsViewModel extends ChangeNotifier {
 
       // 初始化时获取版本信息
       getVersionCommand.execute();
+
+      // 监听游戏库变化，当数据库加载完成时更新UI
+      _gameLibrarySubscription = _gameRepository.gameLibraryStream.listen((_) {
+        AppLogger.info('Game library updated, notifying listeners. Count: $gameCount');
+        notifyListeners();
+      });
 
       AppLogger.info('Settings loaded: Steam connected=$isSteamConnected, Game count=$gameCount, Preferences loaded');
       notifyListeners();
@@ -477,5 +484,12 @@ class SettingsViewModel extends ChangeNotifier {
       AppLogger.error('Failed to update IGDB language', e, stackTrace);
       _setError('更新语言设置失败');
     }
+  }
+
+  @override
+  void dispose() {
+    _syncProgressSubscription?.cancel();
+    _gameLibrarySubscription?.cancel();
+    super.dispose();
   }
 }

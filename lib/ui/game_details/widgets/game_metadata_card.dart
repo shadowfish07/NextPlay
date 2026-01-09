@@ -52,6 +52,17 @@ class GameMetadataCard extends StatelessWidget {
       );
     }
 
+    if (game.releaseDate != null) {
+      rows.add(
+        _buildInfoRow(
+          context,
+          icon: Icons.calendar_today,
+          label: '发布日期',
+          value: _formatReleaseDate(game.releaseDate!),
+        ),
+      );
+    }
+
     if (game.developers.isNotEmpty) {
       rows.add(
         _buildTagRow(
@@ -293,5 +304,54 @@ class GameMetadataCard extends StatelessWidget {
       colorScheme.primary.withValues(alpha: 0.12),
       colorScheme.surfaceContainerHighest,
     );
+  }
+
+  Widget _buildInfoRow(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    final theme = Theme.of(context);
+    final surfaceTone = _surfaceTone(theme.colorScheme);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: surfaceTone.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: surfaceTone),
+          ),
+          child: Text(
+            value,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatReleaseDate(DateTime date) {
+    return '${date.year}年${date.month}月${date.day}日';
   }
 }

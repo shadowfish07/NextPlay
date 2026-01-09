@@ -106,10 +106,11 @@ class GameDetailsScreen extends StatelessWidget {
                         viewModel.updateGameStatusCommand.execute(status),
                   ),
 
-                  const SizedBox(height: 16),
-
-                  // 游玩记录卡片
-                  GameProgressCard(game: game),
+                  // 游玩记录卡片（仅在有游玩时间时展示）
+                  if (game.playtimeForever > 0) ...[
+                    const SizedBox(height: 16),
+                    GameProgressCard(game: game),
+                  ],
 
                   const SizedBox(height: 16),
 

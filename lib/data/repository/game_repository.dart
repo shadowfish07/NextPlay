@@ -192,6 +192,7 @@ class GameRepository {
     List<String> gameModes = [];
     List<IgdbAgeRating> ageRatings = [];
     List<IgdbArtwork> artworks = [];
+    List<IgdbScreenshot> screenshots = [];
     List<String> developers = [];
     List<String> publishers = [];
 
@@ -202,6 +203,7 @@ class GameRepository {
       gameModes = _parseJsonList(igdb['game_modes'] as String?);
       ageRatings = _parseAgeRatings(igdb['age_ratings'] as String?);
       artworks = _parseArtworks(igdb['artworks'] as String?);
+      screenshots = _parseScreenshots(igdb['screenshots'] as String?);
       developers = _parseJsonList(igdb['developers'] as String?);
       publishers = _parseJsonList(igdb['publishers'] as String?);
     }
@@ -239,6 +241,7 @@ class GameRepository {
       gameModes: gameModes,
       ageRatings: ageRatings,
       artworks: artworks,
+      screenshots: screenshots,
       developers: developers,
       publishers: publishers,
       supportsChinese: (igdb?['supports_chinese'] as int? ?? 0) == 1,
@@ -290,6 +293,24 @@ class GameRepository {
           width: map['width'] as int?,
           height: map['height'] as int?,
           artworkType: map['artwork_type'] as int?,
+        );
+      }).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  List<IgdbScreenshot> _parseScreenshots(String? jsonStr) {
+    if (jsonStr == null || jsonStr.isEmpty) return [];
+    try {
+      final list = json.decode(jsonStr) as List;
+      return list.map((e) {
+        final map = e as Map<String, dynamic>;
+        return IgdbScreenshot(
+          imageId: map['image_id'] as String? ?? '',
+          url: map['url'] as String? ?? '',
+          width: map['width'] as int?,
+          height: map['height'] as int?,
         );
       }).toList();
     } catch (e) {
@@ -450,6 +471,12 @@ class GameRepository {
               'width': a.width,
               'height': a.height,
               'artwork_type': a.artworkType,
+            }).toList()),
+            'screenshots': json.encode(game.screenshots.map((s) => {
+              'image_id': s.imageId,
+              'url': s.url,
+              'width': s.width,
+              'height': s.height,
             }).toList()),
             'developers': json.encode(game.developers),
             'publishers': json.encode(game.publishers),

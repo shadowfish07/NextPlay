@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
+import '../../core/ui/fullscreen_image_viewer.dart';
 
 /// 游戏详情页可折叠应用栏
-class GameDetailsSliverAppBar extends StatelessWidget {
+class GameDetailsSliverAppBar extends StatefulWidget {
   final Game game;
   final GameStatus gameStatus;
   final String displayTitle;
@@ -27,6 +28,37 @@ class GameDetailsSliverAppBar extends StatelessWidget {
   static const double _expandedHeight = 300.0;
 
   @override
+  State<GameDetailsSliverAppBar> createState() =>
+      _GameDetailsSliverAppBarState();
+}
+
+class _GameDetailsSliverAppBarState extends State<GameDetailsSliverAppBar> {
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  List<String> get _galleryImages => widget.game.galleryImages;
+
+  void _openFullscreenViewer(int index) {
+    if (_galleryImages.isEmpty) return;
+    FullscreenImageViewer.open(
+      context,
+      imageUrls: _galleryImages,
+      initialIndex: index,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -36,7 +68,7 @@ class GameDetailsSliverAppBar extends StatelessWidget {
     const titleColor = Colors.white;
 
     return SliverAppBar(
-      expandedHeight: _expandedHeight,
+      expandedHeight: GameDetailsSliverAppBar._expandedHeight,
       pinned: true,
       stretch: true,
       centerTitle: false,
@@ -51,8 +83,9 @@ class GameDetailsSliverAppBar extends StatelessWidget {
           final collapsedHeight = kToolbarHeight + topPadding;
           final currentHeight = constraints.maxHeight;
           final collapseRatio =
-              ((_expandedHeight - currentHeight) /
-                      (_expandedHeight - collapsedHeight))
+              ((GameDetailsSliverAppBar._expandedHeight - currentHeight) /
+                      (GameDetailsSliverAppBar._expandedHeight -
+                          collapsedHeight))
                   .clamp(0.0, 1.0);
 
           // 动态计算左间距：展开时 0，收起时 48（避开返回按钮）
@@ -85,10 +118,10 @@ class GameDetailsSliverAppBar extends StatelessWidget {
     );
 
     return GestureDetector(
-      onTap: hasLocalizedName ? onTitleTap : null,
+      onTap: widget.hasLocalizedName ? widget.onTitleTap : null,
       behavior: HitTestBehavior.opaque,
       child: Text(
-        displayTitle,
+        widget.displayTitle,
         style: titleStyle,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
@@ -96,45 +129,83 @@ class GameDetailsSliverAppBar extends StatelessWidget {
     );
   }
 
-  /// 构建hero背景图片
+  /// 构建hero背景图片（支持滑动和点击）
   Widget _buildHeroImage(BuildContext context) {
     final theme = Theme.of(context);
+    final images = _galleryImages;
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        // 背景图片
+        // 背景图片（PageView 或单张图片）
         Container(
           color: theme.colorScheme.surfaceContainerHighest,
-          child: game.detailBackgroundUrl.isNotEmpty
-              ? Image.network(
-                  game.detailBackgroundUrl,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  filterQuality: FilterQuality.medium,
-                  errorBuilder: (context, error, stackTrace) =>
-                      _buildFallbackImage(context),
-                )
-              : _buildFallbackImage(context),
+          child: images.isEmpty
+              ? _buildFallbackImage(context)
+              : images.length == 1
+                  ? _buildSingleImage(context, images.first)
+                  : _buildImagePageView(context, images),
         ),
 
-        // 渐变遮罩
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.transparent,
-                Colors.transparent,
-                Colors.black54,
-                Colors.black87,
-              ],
-              stops: [0.0, 0.3, 0.7, 1.0],
+        // 渐变遮罩（忽略点击事件，让下层图片可点击）
+        Positioned.fill(
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.transparent,
+                    Colors.black54,
+                    Colors.black87,
+                  ],
+                  stops: [0.0, 0.3, 0.7, 1.0],
+                ),
+              ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  /// 构建单张图片（可点击）
+  Widget _buildSingleImage(BuildContext context, String url) {
+    return GestureDetector(
+      onTap: () => _openFullscreenViewer(0),
+      child: Image.network(
+        url,
+        fit: BoxFit.cover,
+        alignment: Alignment.center,
+        gaplessPlayback: true,
+        filterQuality: FilterQuality.medium,
+        errorBuilder: (context, error, stackTrace) =>
+            _buildFallbackImage(context),
+      ),
+    );
+  }
+
+  /// 构建图片 PageView（可滑动、可点击）
+  Widget _buildImagePageView(BuildContext context, List<String> images) {
+    return PageView.builder(
+      controller: _pageController,
+      itemCount: images.length,
+      itemBuilder: (context, index) {
+        return GestureDetector(
+          onTap: () => _openFullscreenViewer(index),
+          child: Image.network(
+            images[index],
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+            gaplessPlayback: true,
+            filterQuality: FilterQuality.medium,
+            errorBuilder: (context, error, stackTrace) =>
+                _buildFallbackImage(context),
+          ),
+        );
+      },
     );
   }
 

@@ -23,111 +23,9 @@ class GameInfoHeaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildGameInfoCard(context),
-        if (game.releaseDate != null) const SizedBox(height: 12),
         _buildStatusCard(context),
         const SizedBox(height: 12),
         _buildQuickActions(context),
-      ],
-    );
-  }
-
-  /// 单独展示游戏基础信息
-  Widget _buildGameInfoCard(BuildContext context) {
-    final theme = Theme.of(context);
-
-    // 如果没有发布日期，不显示此卡片
-    if (game.releaseDate == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Card(
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 18,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '游戏信息',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildInfoChip(
-              context,
-              icon: Icons.calendar_today,
-              label: '发布日期',
-              value: _formatReleaseDate(game.releaseDate!),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoChip(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    final theme = Theme.of(context);
-    final borderColor = Color.alphaBlend(
-      theme.colorScheme.primary.withValues(alpha: 0.14),
-      theme.colorScheme.surfaceContainerHighest,
-    );
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Container(
-          constraints: const BoxConstraints(maxWidth: 240),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: borderColor.withValues(alpha: 0.85),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: theme.colorScheme.primary),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  value,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -274,10 +172,5 @@ class GameInfoHeaderCard extends StatelessWidget {
         duration: const Duration(seconds: 2),
       ),
     );
-  }
-
-  /// 格式化发布日期
-  String _formatReleaseDate(DateTime date) {
-    return '${date.year}年${date.month}月${date.day}日';
   }
 }

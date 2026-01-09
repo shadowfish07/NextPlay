@@ -6,7 +6,7 @@ import '../../utils/logger.dart';
 /// 游戏数据库服务 - 管理本地 SQLite 存储
 class GameDatabaseService {
   static const String _databaseName = 'nextplay.db';
-  static const int _databaseVersion = 2;
+  static const int _databaseVersion = 3;
 
   Database? _database;
 
@@ -69,6 +69,7 @@ class GameDatabaseService {
         game_modes TEXT,
         age_ratings TEXT,
         artworks TEXT,
+        screenshots TEXT,
         developers TEXT,
         publishers TEXT,
         supports_chinese INTEGER DEFAULT 0,
@@ -128,6 +129,13 @@ class GameDatabaseService {
       await db.execute('ALTER TABLE igdb_games ADD COLUMN developers TEXT');
       await db.execute('ALTER TABLE igdb_games ADD COLUMN publishers TEXT');
       AppLogger.info('Migration v1 -> v2 completed');
+    }
+
+    // v2 -> v3: 添加 screenshots 字段
+    if (oldVersion < 3) {
+      AppLogger.info('Applying migration v2 -> v3');
+      await db.execute('ALTER TABLE igdb_games ADD COLUMN screenshots TEXT');
+      AppLogger.info('Migration v2 -> v3 completed');
     }
   }
 

@@ -23,6 +23,7 @@ class IgdbGameData with _$IgdbGameData {
     @Default([]) List<String> gameModes,
     @Default([]) List<IgdbAgeRating> ageRatings,
     @Default([]) List<IgdbArtwork> artworks,
+    @Default([]) List<IgdbScreenshot> screenshots,
     @Default([]) List<String> developers,
     @Default([]) List<String> publishers,
     @Default(false) bool supportsChinese,
@@ -58,4 +59,18 @@ class IgdbArtwork with _$IgdbArtwork {
 
   factory IgdbArtwork.fromJson(Map<String, dynamic> json) =>
       _$IgdbArtworkFromJson(json);
+}
+
+/// IGDB Screenshot 截图
+@freezed
+class IgdbScreenshot with _$IgdbScreenshot {
+  const factory IgdbScreenshot({
+    required String imageId,
+    required String url,
+    int? width,
+    int? height,
+  }) = _IgdbScreenshot;
+
+  factory IgdbScreenshot.fromJson(Map<String, dynamic> json) =>
+      _$IgdbScreenshotFromJson(json);
 }
