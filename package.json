@@ -5,7 +5,14 @@
   "scripts": {
     "dev": "bun --hot src/index.ts",
     "start": "bun src/index.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "build": "bun build src/index.ts --compile --outfile dist/igdb-service",
+    "deploy": "bun run build && pm2 restart igdb-service",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop igdb-service",
+    "pm2:restart": "pm2 restart igdb-service",
+    "pm2:logs": "pm2 logs igdb-service",
+    "pm2:status": "pm2 status"
   },
   "dependencies": {
     "bun": "^1.0.0"

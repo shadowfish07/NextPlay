@@ -66,6 +66,55 @@ bun run start
 
 Server will start at `http://localhost:3000`
 
+## PM2 Deployment
+
+Use PM2 to run the service in the background with auto-restart.
+
+### Install PM2
+
+```bash
+npm install -g pm2
+```
+
+### Build & Deploy
+
+```bash
+# Build standalone executable
+bun run build
+
+# First time: start service
+bun run pm2:start
+
+# After code changes: rebuild and restart
+bun run deploy
+```
+
+### PM2 Commands
+
+```bash
+# Stop service
+bun run pm2:stop
+
+# Restart service
+bun run pm2:restart
+
+# View logs
+bun run pm2:logs
+
+# Check status
+bun run pm2:status
+```
+
+### Auto-start on System Boot
+
+```bash
+# Generate startup script
+pm2 startup
+
+# Save current process list
+pm2 save
+```
+
 ## API Usage
 
 ### Endpoint
@@ -103,11 +152,12 @@ Server will start at `http://localhost:3000`
       "first_release_date": 1345075200,
       "aggregated_rating": 85.5,
       "total_rating": 88.2,
-      "game_status": 0,
+      "game_status": "Released",
       "age_ratings": [
         {
-          "category": 1,
-          "rating": 13
+          "organization": "ESRB",
+          "rating": "Mature",
+          "synopsis": "..."
         }
       ],
       "platforms": [
@@ -116,10 +166,16 @@ Server will start at `http://localhost:3000`
       "game_modes": [
         { "name": "Multiplayer" }
       ],
+      "genres": [
+        { "name": "Shooter" }
+      ],
+      "themes": [
+        { "name": "Action" }
+      ],
       "language_supports": [
         {
-          "language": { "name": "English" },
-          "language_support_type": 0
+          "language": "English",
+          "support_type": "Audio"
         }
       ],
       "similar_games": [
@@ -127,8 +183,7 @@ Server will start at `http://localhost:3000`
           "name": "Counter-Strike",
           "cover": { "url": "..." }
         }
-      ],
-      "tags": []
+      ]
     }
   ],
   "notFound": [],

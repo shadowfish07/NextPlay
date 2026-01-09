@@ -1,4 +1,17 @@
 import type { IGDBGame, GameData } from "./types";
+import {
+  AgeRatingOrganization,
+  AgeRatingCategory,
+  GameStatus,
+  LanguageSupportType,
+} from "./enums";
+
+function normalizeImageUrl(url: string): string {
+  if (url.startsWith("//")) {
+    return `https:${url}`;
+  }
+  return url;
+}
 
 export function transformIGDBGame(
   igdbGame: IGDBGame,
@@ -11,7 +24,7 @@ export function transformIGDBGame(
     url: igdbGame.url || "",
     cover: igdbGame.cover
       ? {
-          url: igdbGame.cover.url.replace("t_thumb", "t_cover_big"),
+          url: normalizeImageUrl(igdbGame.cover.url.replace("t_thumb", "t_cover_big")),
           width: igdbGame.cover.width,
           height: igdbGame.cover.height,
         }
@@ -19,11 +32,14 @@ export function transformIGDBGame(
     first_release_date: igdbGame.first_release_date,
     aggregated_rating: igdbGame.aggregated_rating,
     total_rating: igdbGame.total_rating,
-    game_status: igdbGame.game_status,
+    game_status: igdbGame.game_status !== undefined
+      ? GameStatus[igdbGame.game_status] || `Unknown (${igdbGame.game_status})`
+      : undefined,
     age_ratings: igdbGame.age_ratings
       ? igdbGame.age_ratings.map((ar) => ({
-          category: ar.category,
-          rating: ar.rating,
+          organization: AgeRatingOrganization[ar.organization] || `Unknown (${ar.organization})`,
+          rating: AgeRatingCategory[`${ar.organization}_${ar.rating_category}`] || `Unknown (${ar.rating_category})`,
+          synopsis: ar.synopsis,
         }))
       : [],
     platforms: igdbGame.platforms
@@ -34,16 +50,21 @@ export function transformIGDBGame(
       : [],
     language_supports: igdbGame.language_supports
       ? igdbGame.language_supports.map((ls) => ({
-          language: { name: ls.language.name },
-          language_support_type: ls.language_support_type,
+          language: ls.language.name,
+          support_type: LanguageSupportType[ls.language_support_type] || `Unknown (${ls.language_support_type})`,
         }))
+      : [],
+    genres: igdbGame.genres
+      ? igdbGame.genres.map((g) => ({ name: g.name }))
+      : [],
+    themes: igdbGame.themes
+      ? igdbGame.themes.map((t) => ({ name: t.name }))
       : [],
     similar_games: igdbGame.similar_games
       ? igdbGame.similar_games.slice(0, 5).map((sg) => ({
           name: sg.name,
-          cover: sg.cover ? { url: sg.cover.url.replace("t_thumb", "t_cover_big") } : undefined,
+          cover: sg.cover ? { url: normalizeImageUrl(sg.cover.url.replace("t_thumb", "t_cover_big")) } : undefined,
         }))
       : [],
-    tags: igdbGame.tags || [],
   };
 }

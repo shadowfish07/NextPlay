@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BASE_URL="http://localhost:3000"
+BASE_URL="http://localhost:61000"
 
 echo "=== Test 1: Health Check ==="
 curl -s "$BASE_URL/health" | jq

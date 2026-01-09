@@ -29,6 +29,8 @@ export interface IGDBGame {
   age_ratings?: IGDBAgeRating[];
   platforms?: IGDBPlatform[];
   game_modes?: IGDBGameMode[];
+  genres?: IGDBGenre[];
+  themes?: IGDBTheme[];
   language_supports?: IGDBLanguageSupport[];
   similar_games?: IGDBSimilarGame[];
   tags?: unknown[];
@@ -42,8 +44,10 @@ export interface IGDBCover {
 }
 
 export interface IGDBAgeRating {
-  category: number;
-  rating: number;
+  id: number;
+  organization: number;
+  rating_category: number;
+  synopsis?: string;
 }
 
 export interface IGDBPlatform {
@@ -72,6 +76,16 @@ export interface IGDBSimilarGame {
   };
 }
 
+export interface IGDBGenre {
+  id: number;
+  name: string;
+}
+
+export interface IGDBTheme {
+  id: number;
+  name: string;
+}
+
 export interface IGDBExternalGame {
   id: number;
   uid: string;
@@ -93,10 +107,11 @@ export interface GameData {
   first_release_date?: number;
   aggregated_rating?: number;
   total_rating?: number;
-  game_status?: number;
+  game_status?: string;
   age_ratings: Array<{
-    category: number;
-    rating: number;
+    organization: string;
+    rating: string;
+    synopsis?: string;
   }>;
   platforms: Array<{
     name: string;
@@ -105,14 +120,19 @@ export interface GameData {
     name: string;
   }>;
   language_supports: Array<{
-    language: { name: string };
-    language_support_type: number;
+    language: string;
+    support_type: string;
+  }>;
+  genres: Array<{
+    name: string;
+  }>;
+  themes: Array<{
+    name: string;
   }>;
   similar_games: Array<{
     name: string;
     cover?: { url: string };
   }>;
-  tags: unknown[];
 }
 
 // Cache Types

@@ -72,7 +72,9 @@ export class IGDBClient {
   }
 
   async getSteamToIGDBMapping(steamId: number): Promise<number | null> {
-    const query = `where uid = "${steamId}" & category = 1; fields game;`;
+    // IGDB deprecated the `category` field in favor of `external_game_source`
+    // (Steam = 1). Using the new field keeps mappings working post‑deprecation.
+    const query = `where uid = "${steamId}" & external_game_source = 1; fields game;`;
 
     try {
       const results = await this.request("external_games", query);
@@ -97,7 +99,7 @@ export class IGDBClient {
     for (let i = 0; i < steamIds.length; i += 10) {
       const batch = steamIds.slice(i, i + 10);
       const uidList = batch.map((id) => `"${id}"`).join(",");
-      const query = `where uid = (${uidList}) & category = 1; fields game, uid;`;
+      const query = `where uid = (${uidList}) & external_game_source = 1; fields game, uid; limit ${batch.length};`;
 
       try {
         const results = await this.request("external_games", query);
@@ -108,6 +110,9 @@ export class IGDBClient {
         }
       } catch (error) {
         console.error(`[IGDB] Error mapping batch:`, error);
+        // Bubble up so callers can surface an error instead of silently
+        // returning notFound for every ID.
+        throw error;
       }
 
       // Rate limiting: wait 250ms between batches (4 req/sec)
@@ -136,10 +141,11 @@ export class IGDBClient {
         aggregated_rating,
         total_rating,
         game_status,
-        age_ratings.category,
-        age_ratings.rating,
+        age_ratings.*,
         platforms.name,
         game_modes.name,
+        genres.name,
+        themes.name,
         language_supports.language.name,
         language_supports.language_support_type,
         similar_games.name,

@@ -7,3 +7,4 @@ data/*.db-wal
 .DS_Store
 .cursor/
 CLAUDE.md
+dist/
