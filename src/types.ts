@@ -2,6 +2,7 @@
 export interface GamesRequest {
   steamIds: number[];
   forceRefresh?: boolean;
+  language?: string; // e.g., "en", "zh-CN", "ja"
 }
 
 export interface GamesResponse {

@@ -9,6 +9,7 @@ TypeScript + Bun server for querying IGDB game data using Steam IDs with persist
 - ⚡ Fast responses via in-memory + disk cache
 - 🔄 OAuth token management with auto-refresh
 - 📊 Partial success responses (found/notFound/errors)
+- 🌐 Multi-language support for genres/themes
 - 🚀 Built with Bun for optimal performance
 
 ## Prerequisites
@@ -126,13 +127,15 @@ pm2 save
 ```json
 {
   "steamIds": [730, 570, 440],
-  "forceRefresh": false
+  "forceRefresh": false,
+  "language": "en"
 }
 ```
 
 **Parameters:**
 - `steamIds` (required): Array of Steam app IDs (max 100)
 - `forceRefresh` (optional): Skip cache and fetch fresh data from IGDB
+- `language` (optional): Language code for genres/themes (default: `en`)
 
 ### Response
 
@@ -214,11 +217,49 @@ curl -X POST http://localhost:3000/api/games \
   -d '{"steamIds": [730], "forceRefresh": true}'
 ```
 
+**Fetch with Chinese translations:**
+
+```bash
+curl -X POST http://localhost:3000/api/games \
+  -H "Content-Type: application/json" \
+  -d '{"steamIds": [730], "language": "zh-CN"}'
+```
+
 **Health check:**
 
 ```bash
 curl http://localhost:3000/health
 ```
+
+## Multi-language Support
+
+The service supports translated genres and themes. Translations are pre-generated and stored in static JSON files.
+
+### Supported Languages
+
+- `en` - English (default)
+- `zh-CN` - Simplified Chinese
+
+### Generate Translations
+
+To add or update translations, use the translation generator script:
+
+```bash
+bun run generate-translations --lang zh-CN,ja,ko
+```
+
+**Required Environment Variables:**
+
+```env
+AI_API_KEY=your-api-key
+AI_BASE_URL=https://your-api-endpoint.com/v1
+AI_MODEL=gpt-4o-mini
+```
+
+The script will:
+1. Fetch all genres and themes from IGDB
+2. Translate them using AI
+3. Save to `src/i18n/genres.json` and `src/i18n/themes.json`
 
 ## Testing
 
@@ -335,7 +376,14 @@ igdb_service/
 │   ├── igdb-client.ts   # IGDB API client + OAuth
 │   ├── cache.ts         # SQLite cache manager
 │   ├── transformer.ts   # Data transformation
-│   └── types.ts         # TypeScript definitions
+│   ├── types.ts         # TypeScript definitions
+│   ├── enums.ts         # IGDB enum mappings
+│   └── i18n/
+│       ├── index.ts     # Translation loader
+│       ├── genres.json  # Genre translations
+│       └── themes.json  # Theme translations
+├── scripts/
+│   └── generate-translations.ts  # AI translation generator
 ├── data/
 │   └── cache.db         # SQLite database (generated)
 ├── .env                 # Environment variables

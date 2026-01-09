@@ -39,7 +39,7 @@ const server = Bun.serve({
     // Main endpoint
     if (url.pathname === "/api/games" && req.method === "POST") {
       try {
-        const body = await req.json() as { steamIds?: unknown; forceRefresh?: unknown };
+        const body = await req.json() as { steamIds?: unknown; forceRefresh?: unknown; language?: unknown };
 
         // Validation
         if (!body.steamIds || !Array.isArray(body.steamIds)) {
@@ -74,6 +74,7 @@ const server = Bun.serve({
         const request: GamesRequest = {
           steamIds: body.steamIds,
           forceRefresh: typeof body.forceRefresh === "boolean" ? body.forceRefresh : false,
+          language: typeof body.language === "string" ? body.language : "en",
         };
 
         console.log(

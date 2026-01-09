@@ -5,6 +5,7 @@ import {
   GameStatus,
   LanguageSupportType,
 } from "./enums";
+import { getGenreName, getThemeName } from "./i18n";
 
 function normalizeImageUrl(url: string): string {
   if (url.startsWith("//")) {
@@ -15,7 +16,8 @@ function normalizeImageUrl(url: string): string {
 
 export function transformIGDBGame(
   igdbGame: IGDBGame,
-  steamId: number
+  steamId: number,
+  language: string = "en"
 ): GameData {
   return {
     steamId,
@@ -55,10 +57,10 @@ export function transformIGDBGame(
         }))
       : [],
     genres: igdbGame.genres
-      ? igdbGame.genres.map((g) => ({ name: g.name }))
+      ? igdbGame.genres.map((g) => ({ name: getGenreName(g.id, language) }))
       : [],
     themes: igdbGame.themes
-      ? igdbGame.themes.map((t) => ({ name: t.name }))
+      ? igdbGame.themes.map((t) => ({ name: getThemeName(t.id, language) }))
       : [],
     similar_games: igdbGame.similar_games
       ? igdbGame.similar_games.slice(0, 5).map((sg) => ({

@@ -6,6 +6,7 @@ A TypeScript HTTP service that queries game data from the IGDB (Internet Game Da
 - Persistent SQLite caching for fast responses
 - OAuth token management for Twitch/IGDB API authentication
 - Partial success responses (found/notFound/errors)
+- Multi-language support for genres and themes
 
 ## Tech Stack
 - **Runtime**: Bun v1.0+
@@ -13,6 +14,7 @@ A TypeScript HTTP service that queries game data from the IGDB (Internet Game Da
 - **HTTP Server**: Bun.serve()
 - **Database**: bun:sqlite for persistent caching
 - **External API**: IGDB API (via Twitch OAuth)
+- **AI SDK**: Vercel AI SDK (@ai-sdk/openai-compatible) for translation generation
 
 ## Project Conventions
 
@@ -33,6 +35,9 @@ A TypeScript HTTP service that queries game data from the IGDB (Internet Game Da
   - `transformer.ts` - Data transformation between API and client formats
   - `types.ts` - TypeScript type definitions
   - `enums.ts` - Enum definitions for IGDB constants
+  - `i18n/` - Multi-language translation files and loader
+- **Scripts**:
+  - `scripts/generate-translations.ts` - AI-powered translation generator
 - **Separation of concerns**: Each module has a single responsibility
 - **Graceful shutdown**: Process signal handling for clean exits
 
@@ -69,3 +74,6 @@ A TypeScript HTTP service that queries game data from the IGDB (Internet Game Da
   - `TWITCH_CLIENT_ID`: Twitch application client ID
   - `TWITCH_CLIENT_SECRET`: Twitch application client secret
   - `PORT`: Server port (default: 3000)
+  - `AI_API_KEY`: API key for AI translation service (for generate-translations script)
+  - `AI_BASE_URL`: AI API endpoint URL (for generate-translations script)
+  - `AI_MODEL`: AI model name (default: gpt-4o-mini)

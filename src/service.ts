@@ -13,7 +13,7 @@ export class GameService {
   }
 
   async getGames(request: GamesRequest): Promise<GamesResponse> {
-    const { steamIds, forceRefresh = false } = request;
+    const { steamIds, forceRefresh = false, language = "en" } = request;
 
     // Validation
     if (steamIds.length === 0) {
@@ -91,7 +91,7 @@ export class GameService {
         const igdbGame = igdbGameMap.get(igdbId);
 
         if (igdbGame) {
-          const gameData = transformIGDBGame(igdbGame, steamId);
+          const gameData = transformIGDBGame(igdbGame, steamId, language);
           response.games.push(gameData);
           this.cache.set(steamId, igdbId, gameData);
         } else {
