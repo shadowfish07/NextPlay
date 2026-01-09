@@ -137,6 +137,16 @@ export class IGDBClient {
         cover.url,
         cover.width,
         cover.height,
+        screenshots.image_id,
+        screenshots.url,
+        screenshots.width,
+        screenshots.height,
+        artworks.image_id,
+        artworks.url,
+        artworks.width,
+        artworks.height,
+        videos.name,
+        videos.video_id,
         first_release_date,
         aggregated_rating,
         total_rating,
@@ -150,7 +160,14 @@ export class IGDBClient {
         language_supports.language_support_type,
         similar_games.name,
         similar_games.cover.url,
-        tags;
+        tags,
+        game_localizations.name,
+        game_localizations.region,
+        alternative_names.name,
+        alternative_names.comment,
+        involved_companies.company.name,
+        involved_companies.developer,
+        involved_companies.publisher;
       limit ${igdbIds.length};
     `;
 

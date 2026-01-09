@@ -9,7 +9,7 @@ TypeScript + Bun server for querying IGDB game data using Steam IDs with persist
 - ⚡ Fast responses via in-memory + disk cache
 - 🔄 OAuth token management with auto-refresh
 - 📊 Partial success responses (found/notFound/errors)
-- 🌐 Multi-language support for genres/themes
+- 🌐 Multi-language support for game names, genres and themes
 - 🚀 Built with Bun for optimal performance
 
 ## Prerequisites
@@ -135,7 +135,7 @@ pm2 save
 **Parameters:**
 - `steamIds` (required): Array of Steam app IDs (max 100)
 - `forceRefresh` (optional): Skip cache and fetch fresh data from IGDB
-- `language` (optional): Language code for genres/themes (default: `en`)
+- `language` (optional): Language code for game names/genres/themes (default: `en`)
 
 ### Response
 
@@ -145,6 +145,7 @@ pm2 save
     {
       "steamId": 730,
       "name": "Counter-Strike: Global Offensive",
+      "localizedName": "反恐精英：全球攻势",
       "summary": "Counter-Strike: Global Offensive...",
       "url": "https://www.igdb.com/games/counter-strike-global-offensive",
       "cover": {
@@ -186,6 +187,12 @@ pm2 save
           "name": "Counter-Strike",
           "cover": { "url": "..." }
         }
+      ],
+      "developers": [
+        { "name": "Valve Corporation" }
+      ],
+      "publishers": [
+        { "name": "Valve Corporation" }
       ]
     }
   ],
@@ -196,6 +203,8 @@ pm2 save
 
 **Response Fields:**
 - `games`: Successfully fetched games (from cache or IGDB)
+  - `name`: Original game name (always in English)
+  - `localizedName`: Localized name (only present when found and different from `name`)
 - `notFound`: Steam IDs with no IGDB mapping
 - `errors`: Steam IDs that failed to fetch (with reasons)
 
@@ -233,16 +242,34 @@ curl http://localhost:3000/health
 
 ## Multi-language Support
 
-The service supports translated genres and themes. Translations are pre-generated and stored in static JSON files.
+The service supports localized game names, genres and themes.
 
 ### Supported Languages
 
-- `en` - English (default)
-- `zh-CN` - Simplified Chinese
+| Code | Language | Game Names | Genres/Themes |
+|------|----------|------------|---------------|
+| `en` | English (default) | ✅ | ✅ |
+| `zh-CN` | Simplified Chinese | ✅ | ✅ |
+| `zh-TW` | Traditional Chinese | ✅ | ❌ |
+| `zh` | Chinese | ✅ | ❌ |
+| `ja` | Japanese | ✅ | ❌ |
+| `ko` | Korean | ✅ | ❌ |
+| `pt-BR` | Brazilian Portuguese | ✅ | ❌ |
+
+### Game Name Localization
+
+Game names are fetched from IGDB using two sources (in priority order):
+
+1. **game_localizations** - Official localized names by region
+2. **alternative_names** - Alternative titles with language comments
+
+If no localized name is found, the original English name is returned.
+
+> **Note:** IGDB's localized name coverage varies by game. Many games may not have Chinese or other language names available.
 
 ### Generate Translations
 
-To add or update translations, use the translation generator script:
+To add or update genre/theme translations, use the translation generator script:
 
 ```bash
 bun run generate-translations --lang zh-CN,ja,ko

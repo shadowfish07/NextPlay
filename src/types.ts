@@ -23,6 +23,9 @@ export interface IGDBGame {
   summary?: string;
   url?: string;
   cover?: IGDBCover;
+  screenshots?: IGDBScreenshot[];
+  artworks?: IGDBArtwork[];
+  videos?: IGDBVideo[];
   first_release_date?: number;
   aggregated_rating?: number;
   total_rating?: number;
@@ -35,6 +38,21 @@ export interface IGDBGame {
   language_supports?: IGDBLanguageSupport[];
   similar_games?: IGDBSimilarGame[];
   tags?: unknown[];
+  game_localizations?: IGDBGameLocalization[];
+  alternative_names?: IGDBAlternativeName[];
+  involved_companies?: IGDBInvolvedCompany[];
+}
+
+export interface IGDBGameLocalization {
+  id: number;
+  name: string;
+  region: number;
+}
+
+export interface IGDBAlternativeName {
+  id: number;
+  name: string;
+  comment?: string;
 }
 
 export interface IGDBCover {
@@ -42,6 +60,26 @@ export interface IGDBCover {
   url: string;
   width: number;
   height: number;
+}
+
+export interface IGDBScreenshot {
+  id: number;
+  url: string;
+  width: number;
+  height: number;
+}
+
+export interface IGDBArtwork {
+  id: number;
+  url: string;
+  width: number;
+  height: number;
+}
+
+export interface IGDBVideo {
+  id: number;
+  name?: string;
+  video_id: string; // YouTube video ID
 }
 
 export interface IGDBAgeRating {
@@ -87,6 +125,18 @@ export interface IGDBTheme {
   name: string;
 }
 
+export interface IGDBCompany {
+  id: number;
+  name: string;
+}
+
+export interface IGDBInvolvedCompany {
+  id: number;
+  company: IGDBCompany;
+  developer: boolean;
+  publisher: boolean;
+}
+
 export interface IGDBExternalGame {
   id: number;
   uid: string;
@@ -98,6 +148,7 @@ export interface IGDBExternalGame {
 export interface GameData {
   steamId: number;
   name: string;
+  localizedName?: string;
   summary: string;
   url: string;
   cover?: {
@@ -105,6 +156,23 @@ export interface GameData {
     width: number;
     height: number;
   };
+  screenshots: Array<{
+    image_id: string;
+    url: string;
+    width: number;
+    height: number;
+  }>;
+  artworks: Array<{
+    image_id: string;
+    url: string;
+    width: number;
+    height: number;
+  }>;
+  videos: Array<{
+    name?: string;
+    video_id: string;
+    youtube_url: string;
+  }>;
   first_release_date?: number;
   aggregated_rating?: number;
   total_rating?: number;
@@ -133,6 +201,12 @@ export interface GameData {
   similar_games: Array<{
     name: string;
     cover?: { url: string };
+  }>;
+  developers: Array<{
+    name: string;
+  }>;
+  publishers: Array<{
+    name: string;
   }>;
 }
 
