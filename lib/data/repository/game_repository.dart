@@ -10,6 +10,7 @@ import '../../domain/models/game/igdb_game_data.dart';
 import '../../domain/models/game/sync_progress.dart';
 import '../../domain/models/discover/filter_criteria.dart';
 import '../../domain/models/discover/game_recommendation.dart';
+import '../../domain/models/discover/game_activity_stats.dart';
 import '../service/completion_time_service.dart';
 import '../service/steam_api_service.dart';
 import '../service/igdb_game_service.dart';
@@ -537,6 +538,69 @@ class GameRepository {
       AppLogger.error(error, e, stackTrace);
       return Failure(error);
     }
+  }
+
+  // ==================== 活动统计 ====================
+
+  /// 获取游戏活动统计
+  GameActivityStats getActivityStats() {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final weekStart = todayStart.subtract(Duration(days: now.weekday - 1));
+    final monthStart = DateTime(now.year, now.month, 1);
+
+    int todayCount = 0;
+    int weekCount = 0;
+    int monthCount = 0;
+    int twoWeeksMinutes = 0;
+
+    for (final game in _gameCache.values) {
+      if (game.lastPlayed != null) {
+        if (game.lastPlayed!.isAfter(todayStart)) todayCount++;
+        if (game.lastPlayed!.isAfter(weekStart)) weekCount++;
+        if (game.lastPlayed!.isAfter(monthStart)) monthCount++;
+      }
+      twoWeeksMinutes += game.playtimeLastTwoWeeks;
+    }
+
+    return GameActivityStats(
+      todayGamesCount: todayCount,
+      weekGamesCount: weekCount,
+      monthGamesCount: monthCount,
+      twoWeeksPlaytimeMinutes: twoWeeksMinutes,
+    );
+  }
+
+  /// 获取最近在玩的游戏
+  List<Game> getRecentlyPlayedGames({int limit = 10}) {
+    final games = _gameCache.values
+        .where((g) => g.lastPlayed != null)
+        .toList()
+      ..sort((a, b) => b.lastPlayed!.compareTo(a.lastPlayed!));
+    return games.take(limit).toList();
+  }
+
+  /// 获取本月热玩游戏（按近两周时长排序）
+  List<Game> getMonthlyTopGames({int limit = 5}) {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+
+    final games = _gameCache.values
+        .where((g) => g.lastPlayed != null && g.lastPlayed!.isAfter(monthStart))
+        .where((g) => g.playtimeLastTwoWeeks > 0)
+        .toList()
+      ..sort((a, b) => b.playtimeLastTwoWeeks.compareTo(a.playtimeLastTwoWeeks));
+    return games.take(limit).toList();
+  }
+
+  /// 获取未玩游戏（用于推荐）
+  List<Game> getUnplayedGames({int limit = 10}) {
+    final random = Random();
+    final games = _gameCache.values
+        .where((g) => g.playtimeForever == 0)
+        .toList()
+      ..shuffle(random);
+    return games.take(limit).toList();
   }
 
   // ==================== 推荐系统 ====================

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/theme.dart';
-import '../../core/ui/game_status_display.dart';
 
 /// 小尺寸游戏卡片 - 用于横向滑动列表
 /// 适用于"正在游玩"和"待玩队列"区域
@@ -165,13 +164,6 @@ class SmallGameCard extends StatelessWidget {
               child: _buildQueuePositionBadge(),
             ),
 
-          // 状态角标 (右下角)
-          Positioned(
-            bottom: 6,
-            right: 6,
-            child: _buildStatusBadge(),
-          ),
-
           // 渐变遮罩
           Positioned(
             bottom: 0,
@@ -192,37 +184,6 @@ class SmallGameCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-
-  /// 构建状态角标
-  Widget _buildStatusBadge() {
-    final statusData = GameStatusDisplay.getStatusIconAndColor(status);
-    
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: BoxDecoration(
-        color: statusData.color,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Icon(
-        statusData.icon,
-        size: 12,
-        color: Colors.white,
       ),
     );
   }
