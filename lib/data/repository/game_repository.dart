@@ -571,25 +571,15 @@ class GameRepository {
     );
   }
 
-  /// 获取最近在玩的游戏
+  /// 获取最近在玩的游戏（近两周内玩过，按最后游玩时间排序）
   List<Game> getRecentlyPlayedGames({int limit = 10}) {
+    final now = DateTime.now();
+    final twoWeeksAgo = now.subtract(const Duration(days: 14));
+
     final games = _gameCache.values
-        .where((g) => g.lastPlayed != null)
+        .where((g) => g.lastPlayed != null && g.lastPlayed!.isAfter(twoWeeksAgo))
         .toList()
       ..sort((a, b) => b.lastPlayed!.compareTo(a.lastPlayed!));
-    return games.take(limit).toList();
-  }
-
-  /// 获取本月热玩游戏（按近两周时长排序）
-  List<Game> getMonthlyTopGames({int limit = 5}) {
-    final now = DateTime.now();
-    final monthStart = DateTime(now.year, now.month, 1);
-
-    final games = _gameCache.values
-        .where((g) => g.lastPlayed != null && g.lastPlayed!.isAfter(monthStart))
-        .where((g) => g.playtimeLastTwoWeeks > 0)
-        .toList()
-      ..sort((a, b) => b.playtimeLastTwoWeeks.compareTo(a.playtimeLastTwoWeeks));
     return games.take(limit).toList();
   }
 

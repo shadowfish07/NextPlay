@@ -53,9 +53,6 @@ class DiscoverViewModel extends ChangeNotifier {
   /// 获取最近在玩的游戏
   List<Game> get recentlyPlayedGames => _gameRepository.getRecentlyPlayedGames(limit: 10);
 
-  /// 获取本月热玩游戏
-  List<Game> get monthlyTopGames => _gameRepository.getMonthlyTopGames(limit: 5);
-
   /// 获取未玩游戏（用于推荐）
   List<Game> get unplayedGames => _gameRepository.getUnplayedGames(limit: 10);
 

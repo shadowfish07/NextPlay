@@ -145,7 +145,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   /// 构建已加载状态
   Widget _buildLoadedState(BuildContext context, DiscoverViewModel viewModel) {
     final recentlyPlayed = viewModel.recentlyPlayedGames;
-    final monthlyTop = viewModel.monthlyTopGames;
     final gameStatuses = viewModel.gameStatuses;
 
     return SliverList(
@@ -168,20 +167,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             onGameTap: (game) => _onGameTap(game),
           ),
 
-        // 3. 本月热玩（无数据时隐藏）
-        if (monthlyTop.isNotEmpty)
-          HorizontalGameList(
-            title: '本月热玩',
-            games: monthlyTop,
-            statuses: monthlyTop
-                .map(
-                  (g) => gameStatuses[g.appId] ?? const GameStatus.notStarted(),
-                )
-                .toList(),
-            onGameTap: (game) => _onGameTap(game),
-          ),
-
-        // 4. 发现新游戏
+        // 3. 发现新游戏
         _buildRecommendationSection(context, viewModel),
 
         const SizedBox(height: 32),
