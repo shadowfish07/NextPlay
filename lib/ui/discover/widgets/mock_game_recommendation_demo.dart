@@ -82,14 +82,10 @@ class MockGameRecommendationDemo extends StatelessWidget {
       genres: ["MOBA", "Strategy", "Free to Play"],
       releaseDate: DateTime(2013, 7, 9),
       estimatedCompletionHours: 100.0,
-      headerImage: "https://cdn.akamai.steamstatic.com/steam/apps/570/header.jpg",
-      publisherName: "Valve",
-      developerName: "Valve",
-      averageRating: 4.5,
-      reviewCount: 1500000,
+      aggregatedRating: 4.5,
       isMultiplayer: true,
       isSinglePlayer: false,
-      shortDescription: "Every day, millions of players worldwide enter battle as one of over a hundred Dota heroes. And no matter if it's their 10th hour of play or 1,000th, there's always something new to discover.",
+      summary: "Every day, millions of players worldwide enter battle as one of over a hundred Dota heroes. And no matter if it's their 10th hour of play or 1,000th, there's always something new to discover.",
     );
   }
 
@@ -101,14 +97,10 @@ class MockGameRecommendationDemo extends StatelessWidget {
       genres: ["Simulation", "Indie", "RPG"],
       releaseDate: DateTime(2016, 2, 26),
       estimatedCompletionHours: 52.5,
-      headerImage: "https://cdn.akamai.steamstatic.com/steam/apps/413150/header.jpg",
-      publisherName: "ConcernedApe",
-      developerName: "ConcernedApe",
-      averageRating: 4.8,
-      reviewCount: 250000,
+      aggregatedRating: 4.8,
       isMultiplayer: true,
       isSinglePlayer: true,
-      shortDescription: "You've inherited your grandfather's old farm plot in Stardew Valley. Armed with hand-me-down tools and a few coins, you set out to begin your new life.",
+      summary: "You've inherited your grandfather's old farm plot in Stardew Valley. Armed with hand-me-down tools and a few coins, you set out to begin your new life.",
     );
   }
 
@@ -118,17 +110,14 @@ class MockGameRecommendationDemo extends StatelessWidget {
       Game(
         appId: 440,
         name: "Team Fortress 2",
-        headerImage: "https://cdn.akamai.steamstatic.com/steam/apps/440/header.jpg",
       ),
       Game(
         appId: 730,
         name: "Counter-Strike 2",
-        headerImage: "https://cdn.akamai.steamstatic.com/steam/apps/730/header.jpg",
       ),
       Game(
         appId: 1938090,
-        name: "Call of Duty®: Modern Warfare® II",
-        headerImage: "https://cdn.akamai.steamstatic.com/steam/apps/1938090/header.jpg",
+        name: "Call of Duty: Modern Warfare II",
       ),
     ];
   }
@@ -139,17 +128,14 @@ class MockGameRecommendationDemo extends StatelessWidget {
       Game(
         appId: 244850,
         name: "Space Engineers",
-        headerImage: "https://cdn.akamai.steamstatic.com/steam/apps/244850/header.jpg",
       ),
       Game(
         appId: 105600,
         name: "Terraria",
-        headerImage: "https://cdn.akamai.steamstatic.com/steam/apps/105600/header.jpg",
       ),
       Game(
         appId: 433340,
         name: "Slime Rancher",
-        headerImage: "https://cdn.akamai.steamstatic.com/steam/apps/433340/header.jpg",
       ),
     ];
   }

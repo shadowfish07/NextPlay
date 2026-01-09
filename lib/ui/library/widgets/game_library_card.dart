@@ -279,19 +279,6 @@ class GameLibraryCard extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(height: 4),
-
-        // 开发商
-        if (game.developerName.isNotEmpty)
-          Text(
-            game.developerName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-
         const SizedBox(height: 8),
 
         // 游戏类型标签
@@ -364,7 +351,7 @@ class GameLibraryCard extends StatelessWidget {
           ),
 
         // 评分 (如果有)
-        if (game.averageRating > 0) ...[
+        if (game.aggregatedRating > 0) ...[
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -375,20 +362,13 @@ class GameLibraryCard extends StatelessWidget {
                   Icon(Icons.star, size: 14, color: theme.colorScheme.primary),
                   const SizedBox(width: 2),
                   Text(
-                    game.averageRating.toStringAsFixed(1),
+                    game.aggregatedRating.toStringAsFixed(1),
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
-              if (game.metacriticScore?.isNotEmpty == true)
-                Text(
-                  'MC: ${game.metacriticScore}',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
             ],
           ),
         ],

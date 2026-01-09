@@ -107,31 +107,15 @@ class LibraryListItem extends StatelessWidget {
     );
   }
 
-  /// 构建标题部分(游戏名称 + 开发商)
+  /// 构建标题部分(游戏名称)
   Widget _buildTitleSection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          game.name,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        if (game.developerName.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            game.developerName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ],
+    return Text(
+      game.name,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 
@@ -195,11 +179,12 @@ class LibraryListItem extends StatelessWidget {
     );
   }
 
-  /// 构建元数据行(成就 | MC | 标签)
+  /// 构建元数据行(成就 | 评分 | 标签)
   Widget _buildMetadataRow(ThemeData theme) {
     final visibleGenres = game.genres.take(2).toList();
+    final hasRating = game.aggregatedRating > 0;
     final hasMetadata = (game.hasAchievements && game.totalAchievements > 0) ||
-        (game.metacriticScore != null && game.metacriticScore!.isNotEmpty) ||
+        hasRating ||
         visibleGenres.isNotEmpty;
 
     if (!hasMetadata) {
@@ -217,24 +202,21 @@ class LibraryListItem extends StatelessWidget {
             total: game.totalAchievements,
           ),
         // 分隔符
-        if ((game.hasAchievements && game.totalAchievements > 0) &&
-            (game.metacriticScore != null && game.metacriticScore!.isNotEmpty))
+        if ((game.hasAchievements && game.totalAchievements > 0) && hasRating)
           Text(
             '|',
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-        // MetaCritic评分
-        if (game.metacriticScore != null && game.metacriticScore!.isNotEmpty)
+        // 评分
+        if (hasRating)
           MetacriticBadge(
-            score: game.metacriticScore,
+            score: game.aggregatedRating,
             compact: true,
           ),
         // 分隔符
-        if ((game.hasAchievements && game.totalAchievements > 0 ||
-                (game.metacriticScore != null &&
-                    game.metacriticScore!.isNotEmpty)) &&
+        if ((game.hasAchievements && game.totalAchievements > 0 || hasRating) &&
             visibleGenres.isNotEmpty)
           Text(
             '|',

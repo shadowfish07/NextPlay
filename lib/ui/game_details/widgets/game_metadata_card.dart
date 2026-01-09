@@ -14,8 +14,8 @@ class GameMetadataCard extends StatelessWidget {
 
     final rows = <Widget>[];
 
-    if (game.metacriticScore != null && game.metacriticScore!.isNotEmpty) {
-      rows.add(_buildMetacriticHighlight(context));
+    if (game.aggregatedRating > 0) {
+      rows.add(_buildRatingHighlight(context));
     }
 
     if (game.genres.isNotEmpty) {
@@ -41,13 +41,13 @@ class GameMetadataCard extends StatelessWidget {
       );
     }
 
-    if (game.steamTags.isNotEmpty) {
+    if (game.themes.isNotEmpty) {
       rows.add(
         _buildTagRow(
           context,
           icon: Icons.local_offer_outlined,
-          label: 'Steam标签',
-          tags: game.steamTags.take(12).toList(),
+          label: '游戏主题',
+          tags: game.themes.take(12).toList(),
         ),
       );
     }
@@ -109,10 +109,10 @@ class GameMetadataCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMetacriticHighlight(BuildContext context) {
+  Widget _buildRatingHighlight(BuildContext context) {
     final theme = Theme.of(context);
-    final score = int.tryParse(game.metacriticScore ?? '') ?? 0;
-    final color = _getMetacriticColor(theme, score);
+    final score = game.aggregatedRating.round();
+    final color = _getRatingColor(theme, score);
 
     return Container(
       width: double.infinity,
@@ -127,20 +127,20 @@ class GameMetadataCard extends StatelessWidget {
           Icon(Icons.star, color: color, size: 18),
           const SizedBox(width: 8),
           Text(
-            'Metacritic',
+            '综合评分',
             style: theme.textTheme.labelLarge?.copyWith(
               color: color,
               fontWeight: FontWeight.w700,
             ),
           ),
           const Spacer(),
-          _buildMetacriticBadge(context, score, overrideColor: color),
+          _buildRatingBadge(context, score, overrideColor: color),
         ],
       ),
     );
   }
 
-  Color _getMetacriticColor(ThemeData theme, int score) {
+  Color _getRatingColor(ThemeData theme, int score) {
     if (score >= 75) return theme.colorScheme.primary;
     if (score >= 50) return theme.colorScheme.tertiary;
     return theme.colorScheme.error;
@@ -150,19 +150,18 @@ class GameMetadataCard extends StatelessWidget {
     final features = <String>[];
     if (game.isSinglePlayer) features.add('单人');
     if (game.isMultiplayer) features.add('多人');
-    if (game.hasControllerSupport) features.add('手柄支持');
     if (game.hasAchievements) features.add('成就系统');
     return features;
   }
 
-  Widget _buildMetacriticBadge(
+  Widget _buildRatingBadge(
     BuildContext context,
     int score, {
     Color? overrideColor,
   }) {
     final theme = Theme.of(context);
-    final color = overrideColor ?? _getMetacriticColor(theme, score);
-    final label = _getMetacriticLabel(score);
+    final color = overrideColor ?? _getRatingColor(theme, score);
+    final label = _getRatingLabel(score);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -259,7 +258,7 @@ class GameMetadataCard extends StatelessWidget {
     );
   }
 
-  String _getMetacriticLabel(int score) {
+  String _getRatingLabel(int score) {
     if (score >= 85) return '好评如潮';
     if (score >= 75) return '广受好评';
     if (score >= 60) return '褒贬不一';

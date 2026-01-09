@@ -68,7 +68,7 @@ class GameDetailsSliverAppBar extends StatelessWidget {
         // 背景图片
         Container(
           color: theme.colorScheme.surfaceContainerHighest,
-          child: game.headerImage != null && game.headerImage!.isNotEmpty
+          child: game.coverImageUrl.isNotEmpty
               ? Image.network(
                   game.coverImageUrl,
                   fit: BoxFit.cover,
@@ -97,7 +97,7 @@ class GameDetailsSliverAppBar extends StatelessWidget {
         ),
         
         // 游戏评分（如果有）
-        if (game.averageRating > 0)
+        if (game.aggregatedRating > 0)
           Positioned(
             top: 60,
             right: 16,
@@ -143,7 +143,7 @@ class GameDetailsSliverAppBar extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            game.averageRating.toStringAsFixed(1),
+            game.aggregatedRating.toStringAsFixed(1),
             style: theme.textTheme.labelSmall?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.bold,

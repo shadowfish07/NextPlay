@@ -59,8 +59,6 @@ class GameDetailsViewModel extends ChangeNotifier {
   
   // 便捷getters
   String get gameTitle => _game?.name ?? '未知游戏';
-  String get developer => _game?.developerName ?? '未知开发商';
-  String get publisher => _game?.publisherName ?? '未知发行商';
   List<String> get genres => _game?.genres ?? [];
   String get steamStoreUrl => _game?.steamStoreUrl ?? '';
   String get steamGameUrl => 'steam://launch/$_gameAppId';
@@ -242,50 +240,11 @@ class GameDetailsViewModel extends ChangeNotifier {
 
       _setLoading(false);
       AppLogger.info('Game data loaded successfully for ${game.name}');
-
-      final shouldLoadStoreData = _shouldFetchStoreData(game);
-      final shouldLoadAchievements = _shouldFetchAchievements(game);
-
-      if (shouldLoadStoreData || shouldLoadAchievements) {
-        final detailsResult = await _gameRepository.refreshGameDetails(
-          _gameAppId,
-          includeStoreData: shouldLoadStoreData,
-          includeAchievements: shouldLoadAchievements,
-        );
-
-        detailsResult.fold(
-          (updatedGame) {
-            if (_game != updatedGame) {
-              _game = updatedGame;
-              notifyListeners();
-              AppLogger.info('Game details refreshed for ${updatedGame.name}');
-            }
-          },
-          (error) {
-            AppLogger.warning('Failed to refresh game details: $error');
-          },
-        );
-      }
     } catch (e, stackTrace) {
       _setError('加载游戏数据失败: $e');
       _setLoading(false);
       AppLogger.error('Error loading game data', e, stackTrace);
     }
-  }
-
-  bool _shouldFetchStoreData(Game game) {
-    return game.genres.isEmpty ||
-        (game.shortDescription == null || game.shortDescription!.isEmpty) ||
-        game.developerName.isEmpty ||
-        game.publisherName.isEmpty ||
-        game.releaseDate == null ||
-        game.steamTags.isEmpty;
-  }
-
-  bool _shouldFetchAchievements(Game game) {
-    return !game.hasAchievements &&
-        game.totalAchievements == 0 &&
-        game.unlockedAchievements == 0;
   }
 
   List<Game> _generateRandomRecommendations({int count = 5}) {

@@ -89,12 +89,12 @@ class CompletionTimeService {
         return 50.0;
       }
 
-      // 5. 基于Steam标签推断
-      if (game.steamTags.isNotEmpty) {
-        for (final tag in game.steamTags) {
-          final hours = _genreAverageHours[tag];
+      // 5. 基于主题标签推断
+      if (game.themes.isNotEmpty) {
+        for (final theme in game.themes) {
+          final hours = _genreAverageHours[theme];
           if (hours != null) {
-            AppLogger.info('Estimated completion time for ${game.name} based on Steam tag "$tag": ${hours.toInt()}h');
+            AppLogger.info('Estimated completion time for ${game.name} based on theme "$theme": ${hours.toInt()}h');
             return hours;
           }
         }
@@ -168,5 +168,27 @@ class CompletionTimeService {
     if (hours <= 20.0) return '中等 (${hours.toInt()}h)';
     if (hours <= 50.0) return '长篇 (${hours.toInt()}h)';
     return '超长 (${hours.toInt()}h+)';
+  }
+
+  /// 基于类型列表估算完成时长
+  static double estimateCompletionTimeFromGenres(List<String> genres) {
+    if (genres.isEmpty) return 15.0;
+
+    double totalEstimate = 0.0;
+    int validGenres = 0;
+
+    for (final genre in genres) {
+      final hours = _genreAverageHours[genre];
+      if (hours != null) {
+        totalEstimate += hours;
+        validGenres++;
+      }
+    }
+
+    if (validGenres > 0) {
+      return totalEstimate / validGenres;
+    }
+
+    return 15.0;
   }
 }

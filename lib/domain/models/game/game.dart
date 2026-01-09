@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'igdb_game_data.dart';
 
 part 'game.freezed.dart';
 part 'game.g.dart';
@@ -8,30 +9,31 @@ class Game with _$Game {
   const factory Game({
     required int appId,
     required String name,
+    // Steam 玩家数据
     @Default(0) int playtimeForever,
     @Default(0) int playtimeLastTwoWeeks,
-    String? iconUrl,
-    String? logoUrl,
     DateTime? lastPlayed,
-    @Default([]) List<String> genres,
-    @Default([]) List<String> tags,
-    String? shortDescription,
-    String? headerImage,
     @Default(false) bool hasAchievements,
     @Default(0) int totalAchievements,
     @Default(0) int unlockedAchievements,
+    // IGDB 数据
+    String? summary,
+    String? coverUrl,
+    int? coverWidth,
+    int? coverHeight,
+    DateTime? releaseDate,
+    @Default(0.0) double aggregatedRating,
+    String? igdbUrl,
+    @Default([]) List<String> genres,
+    @Default([]) List<String> themes,
+    @Default([]) List<String> platforms,
+    @Default([]) List<String> gameModes,
+    @Default([]) List<IgdbAgeRating> ageRatings,
+    @Default(false) bool supportsChinese,
     // 推荐系统相关字段
     @Default(15.0) double estimatedCompletionHours,
-    @Default('') String publisherName,
-    @Default('') String developerName,
-    DateTime? releaseDate,
-    @Default(0.0) double averageRating,
-    @Default(0) int reviewCount,
-    @Default([]) List<String> steamTags,
     @Default(false) bool isMultiplayer,
     @Default(false) bool isSinglePlayer,
-    @Default(false) bool hasControllerSupport,
-    String? metacriticScore,
     // 用户数据
     @Default('') String userNotes,
   }) = _Game;
@@ -51,7 +53,8 @@ extension GameExtension on Game {
   bool get isShortGame => estimatedCompletionHours < 5.0;
 
   /// 是否为中等游戏（5-20小时）
-  bool get isMediumGame => estimatedCompletionHours >= 5.0 && estimatedCompletionHours <= 20.0;
+  bool get isMediumGame =>
+      estimatedCompletionHours >= 5.0 && estimatedCompletionHours <= 20.0;
 
   /// 是否为长游戏（>20小时）
   bool get isLongGame => estimatedCompletionHours > 20.0;
@@ -75,19 +78,19 @@ extension GameExtension on Game {
   /// 完成进度百分比（基于平均时长）
   double get completionProgress {
     if (estimatedCompletionHours <= 0) return 0.0;
-    final hoursPlayed = playtimeForever / 60.0; // Steam API返回的是分钟
+    final hoursPlayed = playtimeForever / 60.0;
     return (hoursPlayed / estimatedCompletionHours).clamp(0.0, 1.0);
   }
 
-  /// 获取游戏封面图URL
+  /// 获取游戏封面图URL（IGDB优先，回退Steam）
   String get coverImageUrl {
-    if (headerImage != null && headerImage!.isNotEmpty) {
-      return headerImage!;
+    if (coverUrl != null && coverUrl!.isNotEmpty) {
+      return coverUrl!;
     }
     return 'https://cdn.akamai.steamstatic.com/steam/apps/$appId/header.jpg';
   }
 
-  /// 获取游戏库存图标URL  
+  /// 获取游戏库存图标URL
   String get libraryImageUrl {
     return 'https://cdn.akamai.steamstatic.com/steam/apps/$appId/library_600x900.jpg';
   }

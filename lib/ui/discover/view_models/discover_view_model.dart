@@ -65,7 +65,7 @@ class DiscoverViewModel extends ChangeNotifier {
       return status == const GameStatus.playing();
     }).toList();
   }
-  List<Game> get playQueueGames => _gameRepository.playQueue;
+  List<Game> get playQueueGames => []; // 待玩队列现在是异步的，需要通过 Stream 获取
   
   /// 获取游戏状态映射
   Map<int, GameStatus> get gameStatuses => _gameRepository.gameStatuses;
@@ -139,17 +139,7 @@ class DiscoverViewModel extends ChangeNotifier {
     handleRecommendationActionCommand = Command.createAsyncNoResult<GameRecommendationAction>(
       (action) async {
         AppLogger.info('Handling recommendation action: ${action.action} for game ${action.gameAppId}');
-        
-        // 记录推荐操作
-        final recordResult = await _gameRepository.recordRecommendationAction(
-          gameAppId: action.gameAppId,
-          action: action.action,
-        );
-        
-        if (recordResult.isError()) {
-          AppLogger.error('Failed to record recommendation action: ${recordResult.exceptionOrNull()}');
-        }
-        
+
         // 根据操作类型更新游戏状态
         switch (action.action) {
           case RecommendationAction.accepted:

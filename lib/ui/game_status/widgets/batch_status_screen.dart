@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../view_models/batch_status_view_model.dart';
 import '../../../domain/models/game_status/batch_operation_state.dart';
+import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../../utils/logger.dart';
 import '../../core/ui/game_status_selector.dart';
@@ -638,20 +639,12 @@ class _SuggestionPreviewSheetState extends State<_SuggestionPreviewSheet> {
                             decoration: BoxDecoration(
                               color: theme.colorScheme.surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(6),
-                              image: game.headerImage != null
-                                  ? DecorationImage(
-                                      image: NetworkImage(game.headerImage!),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
+                              image: DecorationImage(
+                                image: NetworkImage(game.coverImageUrl),
+                                fit: BoxFit.cover,
+                              ),
                             ),
-                            child: game.headerImage == null
-                                ? Icon(
-                                    Icons.videogame_asset,
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                    size: 20,
-                                  )
-                                : null,
+                            child: null,
                           ),
 
                           const SizedBox(width: 12),

@@ -239,7 +239,6 @@ class OnboardingRepository {
       final syncResult = await _gameRepository.syncGameLibrary(
         apiKey: apiKey,
         steamId: steamId,
-        enhanceWithStoreData: false, // 避免频控，改为按需加载
       );
       
       if (!syncResult.isSuccess()) {

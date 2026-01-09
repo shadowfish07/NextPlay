@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// MetaCritic评分徽章组件
+/// 评分徽章组件
 ///
-/// 用于显示MetaCritic评分,支持紧凑模式和完整模式
+/// 用于显示游戏评分(如IGDB aggregatedRating),支持紧凑模式和完整模式
 class MetacriticBadge extends StatelessWidget {
-  /// 评分(字符串格式,可能为null)
-  final String? score;
+  /// 评分(double格式,0-100)
+  final double score;
 
   /// 是否使用紧凑模式(仅圆形徽章)
   final bool compact;
@@ -22,24 +22,21 @@ class MetacriticBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 边界处理:评分为null或无效时不显示
-    if (score == null || score!.isEmpty) {
+    // 边界处理:评分为0或无效时不显示
+    if (score <= 0) {
       return const SizedBox.shrink();
     }
 
-    final parsedScore = int.tryParse(score!);
-    if (parsedScore == null) {
-      return const SizedBox.shrink();
-    }
+    final intScore = score.round();
 
     final theme = Theme.of(context);
-    final color = _getScoreColor(theme, parsedScore);
+    final color = _getScoreColor(theme, intScore);
     final badgeSize = size ?? (compact ? 24.0 : 32.0);
 
     if (compact) {
-      return _buildCompactBadge(theme, parsedScore, color, badgeSize);
+      return _buildCompactBadge(theme, intScore, color, badgeSize);
     } else {
-      return _buildFullBadge(theme, parsedScore, color, badgeSize);
+      return _buildFullBadge(theme, intScore, color, badgeSize);
     }
   }
 

@@ -178,7 +178,7 @@ class _GameCard extends StatelessWidget {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surfaceContainerHighest,
-                      image: game.headerImage != null
+                      image: game.coverImageUrl.isNotEmpty
                           ? DecorationImage(
                               image: NetworkImage(game.coverImageUrl),
                               fit: BoxFit.cover,
@@ -188,7 +188,7 @@ class _GameCard extends StatelessWidget {
                             )
                           : null,
                     ),
-                    child: game.headerImage == null
+                    child: game.coverImageUrl.isEmpty
                         ? Icon(
                             Icons.videogame_asset,
                             size: 32,

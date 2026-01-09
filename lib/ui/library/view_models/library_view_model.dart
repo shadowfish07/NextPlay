@@ -227,8 +227,6 @@ class LibraryViewModel extends ChangeNotifier {
       final query = _searchQuery.toLowerCase();
       filtered = filtered.where((game) {
         return game.name.toLowerCase().contains(query) ||
-               game.developerName.toLowerCase().contains(query) ||
-               game.publisherName.toLowerCase().contains(query) ||
                game.genres.any((genre) => genre.toLowerCase().contains(query));
       }).toList();
     }
@@ -274,7 +272,7 @@ class LibraryViewModel extends ChangeNotifier {
           comparison = a.estimatedCompletionHours.compareTo(b.estimatedCompletionHours);
           break;
         case LibrarySortOption.rating:
-          comparison = a.averageRating.compareTo(b.averageRating);
+          comparison = a.aggregatedRating.compareTo(b.aggregatedRating);
           break;
         case LibrarySortOption.releaseDate:
           if (a.releaseDate == null && b.releaseDate == null) {
@@ -311,23 +309,21 @@ class LibraryViewModel extends ChangeNotifier {
   /// 批量更新游戏状态
   Future<void> _batchUpdateStatus(GameStatus status) async {
     if (_selectedGameIds.isEmpty) return;
-    
+
     _setLoading(true);
     try {
-      final updates = <int, GameStatus>{};
+      int successCount = 0;
       for (final appId in _selectedGameIds) {
-        updates[appId] = status;
+        final result = await _gameRepository.updateGameStatus(appId, status);
+        if (result.isSuccess()) {
+          successCount++;
+        }
       }
-      
-      final result = await _gameRepository.batchUpdateGameStatuses(updates);
-      if (result.isSuccess()) {
-        final successCount = result.getOrNull()!;
-        AppLogger.info('Batch updated $successCount games to ${status.displayName}');
-        _selectedGameIds.clear();
-        _isInSelectionMode = false;
-      } else {
-        _setError('批量更新失败: ${result.exceptionOrNull()}');
-      }
+
+      AppLogger.info('Batch updated $successCount games to ${status.displayName}');
+      _selectedGameIds.clear();
+      _isInSelectionMode = false;
+      notifyListeners();
     } catch (e, stackTrace) {
       _setError('批量更新失败: $e');
       AppLogger.error('Failed to batch update status', e, stackTrace);

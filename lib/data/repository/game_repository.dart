@@ -6,47 +6,50 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/models/game/game.dart';
 import '../../domain/models/game/game_status.dart';
+import '../../domain/models/game/igdb_game_data.dart';
+import '../../domain/models/game/sync_progress.dart';
 import '../../domain/models/discover/filter_criteria.dart';
 import '../../domain/models/discover/game_recommendation.dart';
-import '../../domain/models/discover/discover_state.dart';
 import '../service/completion_time_service.dart';
 import '../service/steam_api_service.dart';
-import '../service/steam_store_service.dart';
+import '../service/igdb_game_service.dart';
+import '../service/game_database_service.dart';
 import '../../utils/logger.dart';
 
 /// 游戏仓库 - 管理游戏数据、状态和推荐算法
+///
+/// 数据分离架构：
+/// - Steam 数据：来自 Steam API，同步时替换
+/// - IGDB 数据：来自 IGDB Service，同步时替换
+/// - 用户数据：用户自定义，同步时保留
 class GameRepository {
   final SharedPreferences _prefs;
   final SteamApiService _steamApiService;
-  final SteamStoreService _steamStoreService;
-  
+  final IgdbGameService _igdbGameService;
+  final GameDatabaseService _databaseService;
+
   // 内存缓存
-  List<Game> _gameLibrary = [];
-  Map<int, GameStatus> _gameStatuses = {};
-  List<GameRecommendation> _recentRecommendations = [];
-  List<int> _playQueue = []; // 待玩队列 - 存储游戏AppID
-  RecommendationStats _stats = const RecommendationStats();
-  RecommendationResult? _currentRecommendations; // 当前推荐结果
-  
+  final Map<int, Game> _gameCache = {};
+  final RecommendationStats _stats = const RecommendationStats();
+  RecommendationResult? _currentRecommendations;
+
   // 数据变更流
   final _gameLibraryController = StreamController<List<Game>>.broadcast();
   final _gameStatusController = StreamController<Map<int, GameStatus>>.broadcast();
   final _recommendationController = StreamController<RecommendationResult>.broadcast();
   final _playQueueController = StreamController<List<Game>>.broadcast();
-  
-  // 配置
-  static const String _gameLibraryKey = 'game_library';
-  static const String _gameStatusesKey = 'game_statuses';
-  static const String _playQueueKey = 'play_queue';
-  
+  final _syncProgressController = StreamController<SyncProgress>.broadcast();
+
   GameRepository({
     required SharedPreferences prefs,
     required SteamApiService steamApiService,
-    required SteamStoreService steamStoreService,
-  }) : _prefs = prefs,
-       _steamApiService = steamApiService,
-       _steamStoreService = steamStoreService {
-    _loadFromStorage();
+    required IgdbGameService igdbGameService,
+    required GameDatabaseService databaseService,
+  })  : _prefs = prefs,
+        _steamApiService = steamApiService,
+        _igdbGameService = igdbGameService,
+        _databaseService = databaseService {
+    _loadFromDatabase();
   }
 
   // 公开的数据流
@@ -54,242 +57,333 @@ class GameRepository {
   Stream<Map<int, GameStatus>> get gameStatusStream => _gameStatusController.stream;
   Stream<RecommendationResult> get recommendationStream => _recommendationController.stream;
   Stream<List<Game>> get playQueueStream => _playQueueController.stream;
+  Stream<SyncProgress> get syncProgressStream => _syncProgressController.stream;
 
   // Getters
   List<Game> get gameLibrary {
-    AppLogger.info('GameRepository.gameLibrary getter called: ${_gameLibrary.length} games');
-    return List.unmodifiable(_gameLibrary);
+    final games = _gameCache.values.toList();
+    AppLogger.info('GameRepository.gameLibrary getter: ${games.length} games');
+    return List.unmodifiable(games);
   }
+
   Map<int, GameStatus> get gameStatuses {
-    AppLogger.info('GameRepository.gameStatuses getter called: ${_gameStatuses.length} statuses');
-    return Map.unmodifiable(_gameStatuses);
-  }
-  List<Game> get playQueue {
-    final queueGames = <Game>[];
-    for (final appId in _playQueue) {
-      try {
-        final game = _gameLibrary.firstWhere((game) => game.appId == appId);
-        queueGames.add(game);
-      } catch (e) {
-        // 忽略找不到的游戏，可能已被删除
-        AppLogger.warning('Game not found in library for play queue appId: $appId');
-      }
+    final statuses = <int, GameStatus>{};
+    for (final game in _gameCache.values) {
+      statuses[game.appId] = _getGameStatus(game.appId);
     }
-    AppLogger.info('GameRepository.playQueue getter called: ${queueGames.length} games in queue');
-    return List.unmodifiable(queueGames);
+    return Map.unmodifiable(statuses);
   }
+
   RecommendationStats get stats => _stats;
-  RecommendationResult? get currentRecommendations => _currentRecommendations; // 暴露当前推荐结果
+  RecommendationResult? get currentRecommendations => _currentRecommendations;
 
-  /// 从本地存储加载数据
-  Future<void> _loadFromStorage() async {
+  /// 从数据库加载数据到内存缓存
+  Future<void> _loadFromDatabase() async {
     try {
-      // 加载游戏库
-      final gameLibraryJson = _prefs.getString(_gameLibraryKey);
-      if (gameLibraryJson != null) {
-        final gameList = json.decode(gameLibraryJson) as List;
-        _gameLibrary = gameList.map((json) => Game.fromJson(json)).toList();
-        AppLogger.info('Loaded ${_gameLibrary.length} games from storage');
+      AppLogger.info('Loading game data from database...');
+
+      final steamGames = await _databaseService.getAllSteamGames();
+      final igdbGames = await _databaseService.getAllIgdbGames();
+      final userData = await _databaseService.getAllUserGameData();
+
+      // 构建 IGDB 数据映射
+      final igdbMap = <int, Map<String, dynamic>>{};
+      for (final igdb in igdbGames) {
+        igdbMap[igdb['steam_id'] as int] = igdb;
       }
 
-      // 加载游戏状态
-      final gameStatusesJson = _prefs.getString(_gameStatusesKey);
-      if (gameStatusesJson != null) {
-        final statusMap = json.decode(gameStatusesJson) as Map<String, dynamic>;
-        _gameStatuses = statusMap.map((key, value) => 
-          MapEntry(int.parse(key), GameStatus.fromJson(value)));
-        AppLogger.info('Loaded ${_gameStatuses.length} game statuses from storage');
+      // 构建用户数据映射
+      final userMap = <int, Map<String, dynamic>>{};
+      for (final user in userData) {
+        userMap[user['app_id'] as int] = user;
       }
 
-      // 推荐数据不再持久化，仅保持内存状态
-      AppLogger.info('Recommendation data is kept in memory only');
+      // 组合 Game 对象
+      _gameCache.clear();
+      for (final steam in steamGames) {
+        final appId = steam['app_id'] as int;
+        final igdb = igdbMap[appId];
+        final user = userMap[appId];
 
-      // 加载待玩队列
-      final playQueueJson = _prefs.getString(_playQueueKey);
-      if (playQueueJson != null) {
-        final playQueueList = json.decode(playQueueJson) as List;
-        _playQueue = playQueueList.cast<int>();
-        AppLogger.info('Loaded ${_playQueue.length} games in play queue');
+        final game = _buildGame(steam, igdb, user);
+        _gameCache[appId] = game;
       }
 
-      _gameLibraryController.add(_gameLibrary);
-      _gameStatusController.add(_gameStatuses);
-      _playQueueController.add(playQueue);
+      AppLogger.info('Loaded ${_gameCache.length} games from database');
+
+      _gameLibraryController.add(gameLibrary);
+      _gameStatusController.add(gameStatuses);
+      _notifyPlayQueueChanged();
     } catch (e, stackTrace) {
-      AppLogger.error('Error loading data from storage', e, stackTrace);
+      AppLogger.error('Error loading from database', e, stackTrace);
     }
   }
 
-  /// 保存数据到本地存储
-  Future<void> _saveToStorage() async {
+  /// 获取游戏状态
+  GameStatus _getGameStatus(int appId) {
+    // 从数据库获取用户数据中的状态
+    // 这里使用同步方式，因为数据已经在内存中
+    final game = _gameCache[appId];
+    if (game == null) return const GameStatus.notStarted();
+
+    // 状态存储在用户数据中，需要从数据库读取
+    // 为了性能，我们在内存中维护一个状态缓存
+    return const GameStatus.notStarted(); // 临时返回，实际从数据库读取
+  }
+
+  /// 构建 Game 对象
+  Game _buildGame(
+    Map<String, dynamic> steam,
+    Map<String, dynamic>? igdb,
+    Map<String, dynamic>? user,
+  ) {
+    final appId = steam['app_id'] as int;
+
+    // 解析 IGDB 数据
+    List<String> genres = [];
+    List<String> themes = [];
+    List<String> platforms = [];
+    List<String> gameModes = [];
+    List<IgdbAgeRating> ageRatings = [];
+
+    if (igdb != null) {
+      genres = _parseJsonList(igdb['genres'] as String?);
+      themes = _parseJsonList(igdb['themes'] as String?);
+      platforms = _parseJsonList(igdb['platforms'] as String?);
+      gameModes = _parseJsonList(igdb['game_modes'] as String?);
+      ageRatings = _parseAgeRatings(igdb['age_ratings'] as String?);
+    }
+
+    // 判断多人/单人游戏
+    final isMultiplayer = gameModes.any(
+      (m) => m.toLowerCase().contains('multiplayer') || m.toLowerCase().contains('co-op'),
+    );
+    final isSinglePlayer = gameModes.any(
+      (m) => m.toLowerCase().contains('single'),
+    );
+
+    return Game(
+      appId: appId,
+      name: igdb?['name'] as String? ?? steam['name'] as String? ?? '',
+      // Steam 数据
+      playtimeForever: steam['playtime_forever'] as int? ?? 0,
+      playtimeLastTwoWeeks: steam['playtime_last_two_weeks'] as int? ?? 0,
+      lastPlayed: _parseTimestamp(steam['last_played'] as int?),
+      hasAchievements: (steam['has_achievements'] as int? ?? 0) == 1,
+      totalAchievements: steam['total_achievements'] as int? ?? 0,
+      unlockedAchievements: steam['unlocked_achievements'] as int? ?? 0,
+      // IGDB 数据
+      summary: igdb?['summary'] as String?,
+      coverUrl: igdb?['cover_url'] as String?,
+      coverWidth: igdb?['cover_width'] as int?,
+      coverHeight: igdb?['cover_height'] as int?,
+      releaseDate: _parseTimestamp(igdb?['release_date'] as int?),
+      aggregatedRating: (igdb?['aggregated_rating'] as num?)?.toDouble() ?? 0.0,
+      igdbUrl: igdb?['igdb_url'] as String?,
+      genres: genres,
+      themes: themes,
+      platforms: platforms,
+      gameModes: gameModes,
+      ageRatings: ageRatings,
+      supportsChinese: (igdb?['supports_chinese'] as int? ?? 0) == 1,
+      // 推荐系统
+      estimatedCompletionHours: CompletionTimeService.estimateCompletionTimeFromGenres(genres),
+      isMultiplayer: isMultiplayer,
+      isSinglePlayer: isSinglePlayer,
+      // 用户数据
+      userNotes: user?['user_notes'] as String? ?? '',
+    );
+  }
+
+  List<String> _parseJsonList(String? jsonStr) {
+    if (jsonStr == null || jsonStr.isEmpty) return [];
     try {
-      // 保存游戏库
-      final gameLibraryJson = json.encode(_gameLibrary.map((game) => game.toJson()).toList());
-      await _prefs.setString(_gameLibraryKey, gameLibraryJson);
-
-      // 保存游戏状态
-      final gameStatusesJson = json.encode(_gameStatuses.map((key, value) => 
-        MapEntry(key.toString(), value.toJson())));
-      await _prefs.setString(_gameStatusesKey, gameStatusesJson);
-
-      // 推荐数据不再持久化到存储
-
-      // 保存待玩队列
-      final playQueueJson = json.encode(_playQueue);
-      await _prefs.setString(_playQueueKey, playQueueJson);
-
-      AppLogger.info('Saved repository data to storage');
-    } catch (e, stackTrace) {
-      AppLogger.error('Error saving data to storage', e, stackTrace);
+      final list = json.decode(jsonStr) as List;
+      return list.map((e) => e.toString()).toList();
+    } catch (e) {
+      return [];
     }
   }
 
-  /// 从Steam API同步游戏库
+  List<IgdbAgeRating> _parseAgeRatings(String? jsonStr) {
+    if (jsonStr == null || jsonStr.isEmpty) return [];
+    try {
+      final list = json.decode(jsonStr) as List;
+      return list.map((e) {
+        final map = e as Map<String, dynamic>;
+        return IgdbAgeRating(
+          organization: map['organization'] as String? ?? '',
+          rating: map['rating'] as String? ?? '',
+          synopsis: map['synopsis'] as String?,
+        );
+      }).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  DateTime? _parseTimestamp(int? timestamp) {
+    if (timestamp == null || timestamp == 0) return null;
+    return DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+  }
+
+  /// 通知待玩队列变更
+  Future<void> _notifyPlayQueueChanged() async {
+    final queue = await _databaseService.getPlayQueue();
+    final games = queue
+        .map((appId) => _gameCache[appId])
+        .whereType<Game>()
+        .toList();
+    _playQueueController.add(games);
+  }
+
+  /// 从 Steam API 同步游戏库（一次性同步所有数据）
   Future<Result<List<Game>, String>> syncGameLibrary({
     required String apiKey,
     required String steamId,
-    bool enhanceWithStoreData = true,
   }) async {
     try {
-      AppLogger.info('Starting game library sync');
-      
-      final result = await _steamApiService.getOwnedGames(
+      AppLogger.info('Starting full game library sync...');
+      _syncProgressController.add(SyncProgress(
+        stage: SyncStage.fetchingSteamLibrary,
+        progress: 0.0,
+        message: '正在获取 Steam 游戏库...',
+      ));
+
+      // 第一步：获取 Steam 游戏库
+      final steamResult = await _steamApiService.getOwnedGames(
         apiKey: apiKey,
         steamId: steamId,
       );
 
-      return result.fold(
-        (games) async {
-          AppLogger.info('Got ${games.length} games from Steam Web API');
-          
-          List<Game> enhancedGames = games;
-          
-          // Steam Store API数据改为按需异步加载，避免频控限制
-          // Store数据将在游戏卡片渲染时按需加载
-          AppLogger.info('Skipping store data enhancement during sync to avoid rate limits');
-          
-          // 增强游戏数据 - 预估完成时长
-          enhancedGames = enhancedGames.map((game) {
-            final estimatedTime = CompletionTimeService.estimateCompletionTime(game);
-            return game.copyWith(estimatedCompletionHours: estimatedTime);
-          }).toList();
+      if (steamResult.isError()) {
+        return Failure(steamResult.exceptionOrNull() ?? 'Failed to fetch Steam library');
+      }
 
-          _gameLibrary = enhancedGames;
-          
-          // 为新游戏初始化状态
-          for (final game in enhancedGames) {
-            if (!_gameStatuses.containsKey(game.appId)) {
-              _gameStatuses[game.appId] = _inferGameStatus(game);
-            }
-          }
+      final steamGames = steamResult.getOrNull()!;
+      AppLogger.info('Got ${steamGames.length} games from Steam');
 
-          await _saveToStorage();
+      _syncProgressController.add(SyncProgress(
+        stage: SyncStage.fetchingSteamLibrary,
+        progress: 0.2,
+        message: '获取到 ${steamGames.length} 个游戏',
+      ));
 
-          // 保存同步时间
-          await _prefs.setString('last_sync_time', DateTime.now().toIso8601String());
+      // 第二步：保存 Steam 数据到数据库
+      final steamDataList = steamGames.map((game) {
+        final lastPlayedTs = game.lastPlayed?.millisecondsSinceEpoch;
+        return {
+          'app_id': game.appId,
+          'name': game.name,
+          'playtime_forever': game.playtimeForever,
+          'playtime_last_two_weeks': game.playtimeLastTwoWeeks,
+          'last_played': lastPlayedTs != null ? lastPlayedTs ~/ 1000 : null,
+          'has_achievements': game.hasAchievements ? 1 : 0,
+          'total_achievements': game.totalAchievements,
+          'unlocked_achievements': game.unlockedAchievements,
+        };
+      }).toList();
 
-          _gameLibraryController.add(_gameLibrary);
-          _gameStatusController.add(_gameStatuses);
+      await _databaseService.clearSteamGames();
+      await _databaseService.upsertSteamGames(steamDataList);
 
-          AppLogger.info('Game library sync completed: ${enhancedGames.length} games');
-          return Success(enhancedGames);
-        },
-        (error) {
-          AppLogger.error('Game library sync failed: $error');
-          return Failure(error);
-        },
-      );
+      _syncProgressController.add(SyncProgress(
+        stage: SyncStage.fetchingIgdbData,
+        progress: 0.3,
+        message: '正在获取 IGDB 游戏详情...',
+      ));
+
+      // 第三步：批量获取 IGDB 数据
+      final steamIds = steamGames.map((g) => g.appId).toList();
+      final igdbResult = await _igdbGameService.getBatchGameInfo(steamIds);
+
+      if (igdbResult.isSuccess()) {
+        final igdbResponse = igdbResult.getOrNull()!;
+        AppLogger.info(
+          'IGDB: ${igdbResponse.games.length} found, '
+          '${igdbResponse.notFound.length} not found',
+        );
+
+        _syncProgressController.add(SyncProgress(
+          stage: SyncStage.fetchingIgdbData,
+          progress: 0.7,
+          message: '获取到 ${igdbResponse.games.length} 个游戏详情',
+        ));
+
+        // 保存 IGDB 数据
+        final igdbDataList = igdbResponse.games.map((game) {
+          final releaseDateTs = game.releaseDate?.millisecondsSinceEpoch;
+          return {
+            'steam_id': game.steamId,
+            'name': game.name,
+            'summary': game.summary,
+            'cover_url': game.coverUrl,
+            'cover_width': game.coverWidth,
+            'cover_height': game.coverHeight,
+            'release_date': releaseDateTs != null ? releaseDateTs ~/ 1000 : null,
+            'aggregated_rating': game.aggregatedRating,
+            'igdb_url': game.igdbUrl,
+            'genres': json.encode(game.genres),
+            'themes': json.encode(game.themes),
+            'platforms': json.encode(game.platforms),
+            'game_modes': json.encode(game.gameModes),
+            'age_ratings': json.encode(game.ageRatings.map((r) => {
+              'organization': r.organization,
+              'rating': r.rating,
+              'synopsis': r.synopsis,
+            }).toList()),
+            'supports_chinese': game.supportsChinese ? 1 : 0,
+          };
+        }).toList();
+
+        await _databaseService.clearIgdbGames();
+        await _databaseService.upsertIgdbGames(igdbDataList);
+      } else {
+        AppLogger.warning('Failed to fetch IGDB data: ${igdbResult.exceptionOrNull()}');
+      }
+
+      _syncProgressController.add(SyncProgress(
+        stage: SyncStage.initializingUserData,
+        progress: 0.85,
+        message: '正在初始化用户数据...',
+      ));
+
+      // 第四步：为新游戏初始化用户数据
+      for (final game in steamGames) {
+        await _databaseService.getOrCreateUserGameData(game.appId);
+      }
+
+      // 第五步：重新加载内存缓存
+      await _loadFromDatabase();
+
+      // 保存同步时间
+      await _prefs.setString('last_sync_time', DateTime.now().toIso8601String());
+
+      _syncProgressController.add(SyncProgress(
+        stage: SyncStage.completed,
+        progress: 1.0,
+        message: '同步完成！共 ${_gameCache.length} 个游戏',
+      ));
+
+      AppLogger.info('Game library sync completed: ${_gameCache.length} games');
+      return Success(gameLibrary);
     } catch (e, stackTrace) {
       final error = 'Game library sync error: $e';
       AppLogger.error(error, e, stackTrace);
+      _syncProgressController.add(SyncProgress(
+        stage: SyncStage.error,
+        progress: 0.0,
+        message: '同步失败: $e',
+      ));
       return Failure(error);
     }
-  }
-
-  /// 使用Steam Store API增强游戏数据 - 暂时未使用，后续按需加载时启用
-  // TODO: 实现按需异步加载Store数据，避免频控限制
-  /*
-  Future<List<Game>> _enhanceGamesWithStoreData(List<Game> games) async {
-    try {
-      if (games.isEmpty) return games;
-      
-      AppLogger.info('Starting store data enhancement for ${games.length} games');
-      
-      // 获取所有游戏的AppID
-      final appIds = games.map((game) => game.appId).toList();
-      
-      // 分批获取Steam Store数据，避免API限制
-      final storeDataResult = await _steamStoreService.getBatchAppDetails(
-        appIds,
-        batchSize: 20, // 减小批次大小，避免超时
-        delayBetweenBatches: const Duration(milliseconds: 200),
-      );
-      
-      if (storeDataResult.isError()) {
-        AppLogger.warning('Failed to fetch store data: ${storeDataResult.exceptionOrNull()}');
-        return games;
-      }
-      
-      final storeDataMap = storeDataResult.getOrNull()!;
-      AppLogger.info('Successfully fetched store data for ${storeDataMap.length} games');
-      
-      // 增强游戏数据
-      final enhancedGames = <Game>[];
-      for (final game in games) {
-        final storeData = storeDataMap[game.appId];
-        if (storeData != null) {
-          enhancedGames.add(_steamStoreService.enhanceGameWithStoreData(game, storeData));
-        } else {
-          enhancedGames.add(game);
-        }
-      }
-      
-      AppLogger.info('Enhanced ${enhancedGames.where((g) => g.genres.isNotEmpty).length}/${games.length} games with store data');
-      return enhancedGames;
-      
-    } catch (e, stackTrace) {
-      AppLogger.error('Error enhancing games with store data', e, stackTrace);
-      return games; // 返回原始数据，不影响主流程
-    }
-  }
-  */
-
-  /// 推断游戏状态
-  GameStatus _inferGameStatus(Game game) {
-    // 如果是多人游戏
-    if (game.isMultiplayer || 
-        game.genres.any((g) => ['Multiplayer', 'MMO', 'Co-op'].contains(g))) {
-      return const GameStatus.multiplayer();
-    }
-
-    // 基于游戏时长判断
-    final hoursPlayed = game.playtimeForever / 60.0;
-    
-    if (hoursPlayed == 0) {
-      return const GameStatus.notStarted();
-    }
-    
-    if (hoursPlayed > 0 && hoursPlayed < game.estimatedCompletionHours * 0.8) {
-      // 判断是否长期未玩
-      if (game.lastPlayed != null) {
-        final daysSinceLastPlay = DateTime.now().difference(game.lastPlayed!).inDays;
-        if (daysSinceLastPlay > 90) {
-          return const GameStatus.abandoned();
-        }
-      }
-      return const GameStatus.playing();
-    }
-    
-    return const GameStatus.completed();
   }
 
   /// 更新游戏状态
   Future<Result<void, String>> updateGameStatus(int appId, GameStatus status) async {
     try {
-      _gameStatuses[appId] = status;
-      await _saveToStorage();
-      _gameStatusController.add(_gameStatuses);
-      
+      await _databaseService.updateUserGameStatus(appId, status.toJson().toString());
+      _gameStatusController.add(gameStatuses);
       AppLogger.info('Updated game status for $appId to ${status.displayName}');
       return const Success(());
     } catch (e, stackTrace) {
@@ -299,616 +393,18 @@ class GameRepository {
     }
   }
 
-  /// 生成游戏推荐
-  Future<Result<RecommendationResult, String>> generateRecommendations({
-    FilterCriteria criteria = const FilterCriteria(),
-    int count = 4,
-  }) async {
-    try {
-      AppLogger.info('Generating recommendations with criteria: $criteria');
-
-      if (_gameLibrary.isEmpty) {
-        return const Failure('游戏库为空，请先同步Steam游戏库');
-      }
-
-      // 获取可推荐的游戏
-      final recommendableGames = _getRecommendableGames(criteria);
-      
-      if (recommendableGames.isEmpty) {
-        final emptyResult = RecommendationResult(
-          heroRecommendation: null,
-          alternatives: [],
-          totalGamesCount: _gameLibrary.length,
-          recommendableGamesCount: 0,
-          generatedAt: DateTime.now(),
-        );
-        
-        // 更新当前推荐结果缓存
-        _currentRecommendations = emptyResult;
-        _recommendationController.add(emptyResult);
-        
-        return Success(emptyResult);
-      }
-
-      // 生成推荐
-      final recommendations = _generateRecommendationList(
-        games: recommendableGames,
-        criteria: criteria,
-        count: count,
-      );
-
-      // 创建结果
-      final result = RecommendationResult(
-        heroRecommendation: recommendations.isNotEmpty ? recommendations.first : null,
-        alternatives: recommendations.length > 1 ? recommendations.skip(1).toList() : [],
-        totalGamesCount: _gameLibrary.length,
-        recommendableGamesCount: recommendableGames.length,
-        generatedAt: DateTime.now(),
-      );
-
-      // 更新推荐历史
-      _recentRecommendations.insertAll(0, recommendations);
-      if (_recentRecommendations.length > 50) {
-        _recentRecommendations = _recentRecommendations.take(50).toList();
-      }
-
-      // 更新当前推荐结果缓存
-      _currentRecommendations = result;
-
-      await _saveToStorage();
-      _recommendationController.add(result);
-
-      AppLogger.info('Generated ${recommendations.length} recommendations');
-      return Success(result);
-
-    } catch (e, stackTrace) {
-      final error = 'Failed to generate recommendations: $e';
-      AppLogger.error(error, e, stackTrace);
-      return Failure(error);
-    }
-  }
-
-  /// 获取可推荐的游戏列表
-  List<Game> _getRecommendableGames(FilterCriteria criteria) {
-    return _gameLibrary.where((game) {
-      final status = _gameStatuses[game.appId] ?? const GameStatus.notStarted();
-      
-      // 新的推荐策略：只推荐未开始和暂时搁置的游戏
-      if (status != const GameStatus.notStarted() && status != const GameStatus.abandoned()) {
-        return false;
-      }
-      
-      // 时间筛选
-      if (criteria.timeFilter != TimeFilter.any) {
-        switch (criteria.timeFilter) {
-          case TimeFilter.short:
-            if (!game.isShortGame) return false;
-            break;
-          case TimeFilter.medium:
-            if (!game.isMediumGame) return false;
-            break;
-          case TimeFilter.long:
-            if (!game.isLongGame) return false;
-            break;
-          case TimeFilter.any:
-            break;
-        }
-      }
-      
-      // 类型筛选
-      if (criteria.selectedGenres.isNotEmpty) {
-        final hasMatchingGenre = game.genres.any((genre) => 
-          criteria.selectedGenres.contains(genre));
-        if (!hasMatchingGenre) return false;
-      }
-      
-      return true;
-    }).toList();
-  }
-
-  /// 生成推荐列表
-  List<GameRecommendation> _generateRecommendationList({
-    required List<Game> games,
-    required FilterCriteria criteria,
-    required int count,
-  }) {
-    final scoredGames = <_ScoredGame>[];
-    final recentGenres = _getRecentRecommendationGenres();
-
-    for (final game in games) {
-      final status = _gameStatuses[game.appId] ?? const GameStatus.notStarted();
-      final score = _calculateRecommendationScore(
-        game: game,
-        status: status,
-        criteria: criteria,
-        recentGenres: recentGenres,
-      );
-
-      if (score > 0) {
-        scoredGames.add(_ScoredGame(game: game, status: status, score: score));
-      }
-    }
-
-    // 排序并选择前N个
-    scoredGames.sort((a, b) => b.score.compareTo(a.score));
-    final selectedGames = scoredGames.take(count).toList();
-
-    // 转换为推荐结果
-    return selectedGames.map((scored) => GameRecommendation(
-      game: scored.game,
-      status: scored.status,
-      score: scored.score,
-      reason: _generateRecommendationReason(scored, criteria),
-      recommendedAt: DateTime.now(),
-    )).toList();
-  }
-
-  /// 计算推荐分数
-  double _calculateRecommendationScore({
-    required Game game,
-    required GameStatus status,
-    required FilterCriteria criteria,
-    required List<String> recentGenres,
-  }) {
-    double score = status.priorityScore;
-
-    // 类型平衡调整
-    score *= _calculateGenreBalance(game, recentGenres);
-
-    // 时间匹配调整
-    score *= _calculateTimeMatch(game, criteria);
-
-    // 心情匹配调整
-    score *= _calculateMoodMatch(game, criteria.moodFilter);
-
-    // 最近活跃度调整
-    if (game.hasRecentActivity) {
-      score *= 1.1;
-    }
-
-    // 长期未玩的游戏中降权
-    if (status == const GameStatus.playing() && game.lastPlayed != null) {
-      final daysSinceLastPlay = DateTime.now().difference(game.lastPlayed!).inDays;
-      if (daysSinceLastPlay > 30) {
-        score *= 0.6;
-      }
-    }
-
-    // 添加随机因子，增加推荐多样性
-    final random = Random();
-    score *= (0.9 + random.nextDouble() * 0.2); // 90%-110%的随机调整
-
-    return score;
-  }
-
-  /// 计算类型平衡分数
-  double _calculateGenreBalance(Game game, List<String> recentGenres) {
-    if (recentGenres.isEmpty) return 1.0;
-
-    double balanceScore = 1.0;
-    final genreFrequency = <String, int>{};
-    
-    // 统计最近推荐的类型频率
-    for (final genre in recentGenres) {
-      genreFrequency[genre] = (genreFrequency[genre] ?? 0) + 1;
-    }
-
-    // 对当前游戏的类型进行平衡调整
-    for (final genre in game.genres) {
-      final frequency = genreFrequency[genre] ?? 0;
-      if (frequency > 0) {
-        balanceScore *= (1.0 - (frequency * 0.15));
-      }
-    }
-
-    return balanceScore.clamp(0.1, 1.0);
-  }
-
-  /// 计算时间匹配分数
-  double _calculateTimeMatch(Game game, FilterCriteria criteria) {
-    double timeScore = 1.0;
-
-    // 游戏总时长匹配
-    switch (criteria.timeFilter) {
-      case TimeFilter.short:
-        if (!game.isShortGame) timeScore *= 0.3;
-        break;
-      case TimeFilter.medium:
-        if (!game.isMediumGame) timeScore *= 0.5;
-        break;
-      case TimeFilter.long:
-        if (!game.isLongGame) timeScore *= 0.7;
-        break;
-      case TimeFilter.any:
-        break;
-    }
-
-    // 单次游戏时间匹配
-    final hasQuickSession = game.genres.any((g) => 
-      ['Arcade', 'Puzzle', 'Casual'].contains(g));
-    
-    switch (criteria.sessionTime) {
-      case SessionTime.quick:
-        if (hasQuickSession) timeScore *= 1.3;
-        if (game.genres.contains('RPG')) timeScore *= 0.4;
-        break;
-      case SessionTime.medium:
-        if (game.genres.contains('Action')) timeScore *= 1.2;
-        break;
-      case SessionTime.long:
-        if (game.genres.any((g) => ['RPG', 'Strategy'].contains(g))) {
-          timeScore *= 1.3;
-        }
-        break;
-      case SessionTime.weekend:
-        if (game.estimatedCompletionHours > 10) timeScore *= 1.2;
-        break;
-    }
-
-    return timeScore;
-  }
-
-  /// 计算心情匹配分数
-  double _calculateMoodMatch(Game game, MoodFilter mood) {
-    if (mood == MoodFilter.any) return 1.0;
-
-    final moodGenres = mood.associatedGenres;
-    final matchingGenres = game.genres.where((genre) => 
-      moodGenres.contains(genre)).length;
-
-    if (matchingGenres == 0) return 0.3;
-    return 1.0 + (matchingGenres * 0.2);
-  }
-
-  /// 生成推荐理由
-  String _generateRecommendationReason(_ScoredGame scored, FilterCriteria criteria) {
-    final reasons = <String>[];
-
-    // 基于状态的理由
-    scored.status.when(
-      notStarted: () => reasons.add('全新体验'),
-      playing: () => reasons.add('继续冒险'),
-      completed: () => reasons.add('值得重玩'),
-      abandoned: () => {},
-      paused: () => reasons.add('重新出发'),
-      multiplayer: () => reasons.add('在线体验'),
-    );
-
-    // 基于心情的理由
-    if (criteria.moodFilter != MoodFilter.any) {
-      reasons.add(criteria.moodFilter.displayName);
-    }
-
-    // 基于时长的理由
-    if (criteria.timeFilter != TimeFilter.any) {
-      switch (criteria.timeFilter) {
-        case TimeFilter.short:
-          reasons.add('快速游戏');
-          break;
-        case TimeFilter.medium:
-          reasons.add('适中时长');
-          break;
-        case TimeFilter.long:
-          reasons.add('深度体验');
-          break;
-        case TimeFilter.any:
-          break;
-      }
-    }
-
-    return reasons.isEmpty ? '推荐游戏' : reasons.join(' • ');
-  }
-
-  /// 获取最近推荐的游戏类型
-  List<String> _getRecentRecommendationGenres() {
-    return _recentRecommendations
-        .take(10)
-        .expand((rec) => rec.game.genres)
-        .toList();
-  }
-
-  /// 记录推荐操作
-  Future<Result<void, String>> recordRecommendationAction({
-    required int gameAppId,
-    required RecommendationAction action,
-  }) async {
-    try {
-      // 更新统计数据
-      _stats = _stats.copyWith(
-        totalRecommendations: _stats.totalRecommendations + 1,
-        acceptedRecommendations: action == RecommendationAction.accepted
-            ? _stats.acceptedRecommendations + 1
-            : _stats.acceptedRecommendations,
-        dismissedRecommendations: action == RecommendationAction.dismissed
-            ? _stats.dismissedRecommendations + 1
-            : _stats.dismissedRecommendations,
-        lastRecommendationAt: DateTime.now(),
-      );
-
-      await _saveToStorage();
-      AppLogger.info('Recorded recommendation action: $action for game $gameAppId');
-      return const Success(());
-    } catch (e, stackTrace) {
-      final error = 'Failed to record recommendation action: $e';
-      AppLogger.error(error, e, stackTrace);
-      return Failure(error);
-    }
-  }
-
-  /// 批量更新游戏状态
-  Future<Result<int, String>> batchUpdateGameStatuses(Map<int, GameStatus> updates) async {
-    try {
-      int successCount = 0;
-      final errors = <String>[];
-      
-      for (final entry in updates.entries) {
-        final appId = entry.key;
-        final status = entry.value;
-        
-        final result = await updateGameStatus(appId, status);
-        if (result.isSuccess()) {
-          successCount++;
-        } else {
-          errors.add('Failed to update game $appId: ${result.exceptionOrNull()}');
-        }
-      }
-      
-      AppLogger.info('Batch update completed: $successCount/${updates.length} games updated');
-      
-      if (errors.isNotEmpty) {
-        AppLogger.warning('Batch update had ${errors.length} errors');
-      }
-      
-      return Success(successCount);
-    } catch (e, stackTrace) {
-      final error = 'Batch update failed: $e';
-      AppLogger.error(error, e, stackTrace);
-      return Failure(error);
-    }
-  }
-
-  /// 获取需要状态确认的游戏（用于批量操作）
-  List<Game> getGamesNeedingStatusConfirmation() {
-    return _gameLibrary.where((game) {
-      final status = _gameStatuses[game.appId] ?? const GameStatus.notStarted();
-      final hoursPlayed = game.playtimeForever / 60.0;
-      
-      // 0时长但不是未开始状态
-      if (game.playtimeForever == 0 && status != const GameStatus.notStarted()) {
-        return true;
-      }
-      
-      // 高时长但状态可能不准确
-      if (hoursPlayed > game.estimatedCompletionHours * 0.8 && hoursPlayed > 5.0) {
-        if (hoursPlayed >= game.estimatedCompletionHours && status != const GameStatus.completed()) {
-          return true;
-        }
-        if (game.isMultiplayer && status != const GameStatus.multiplayer()) {
-          return true;
-        }
-        if (!game.isMultiplayer && hoursPlayed < game.estimatedCompletionHours && status == const GameStatus.notStarted()) {
-          return true;
-        }
-      }
-      
-      return false;
-    }).toList();
-  }
-
-  /// 根据游戏特征智能推荐状态
-  GameStatus suggestGameStatus(Game game) {
-    final hoursPlayed = game.playtimeForever / 60.0;
-    
-    // 0时长游戏
-    if (game.playtimeForever == 0) {
-      return const GameStatus.notStarted();
-    }
-    
-    // 多人游戏
-    if (game.isMultiplayer || game.genres.any((g) => ['Multiplayer', 'MMO', 'Co-op'].contains(g))) {
-      return const GameStatus.multiplayer();
-    }
-    
-    // 基于时长判断
-    if (hoursPlayed >= game.estimatedCompletionHours) {
-      return const GameStatus.completed();
-    } else if (hoursPlayed > 1.0) {
-      // 检查是否长期未玩
-      if (game.lastPlayed != null) {
-        final daysSinceLastPlay = DateTime.now().difference(game.lastPlayed!).inDays;
-        if (daysSinceLastPlay > 180 && hoursPlayed < game.estimatedCompletionHours * 0.3) {
-          return const GameStatus.abandoned();
-        }
-      }
-      return const GameStatus.playing();
-    }
-    
-    return const GameStatus.notStarted();
-  }
-
-  /// 根据AppId获取游戏
-  Game? getGameByAppId(int appId) {
-    try {
-      return _gameLibrary.firstWhere((game) => game.appId == appId);
-    } catch (e) {
-      AppLogger.warning('Game not found for appId: $appId');
-      return null;
-    }
-  }
-
-  /// 按需刷新游戏详情和成就数据
-  Future<Result<Game, String>> refreshGameDetails(
-    int appId, {
-    bool includeStoreData = true,
-    bool includeAchievements = true,
-  }) async {
-    try {
-      final gameIndex = _gameLibrary.indexWhere((game) => game.appId == appId);
-      if (gameIndex == -1) {
-        return const Failure('Game not found');
-      }
-
-      final currentGame = _gameLibrary[gameIndex];
-      var updatedGame = currentGame;
-      var hasChanges = false;
-
-      if (includeStoreData) {
-        final storeResult = await _steamStoreService.getAppDetails(appId);
-        if (storeResult.isSuccess()) {
-          updatedGame = _steamStoreService.enhanceGameWithStoreData(
-            updatedGame,
-            storeResult.getOrNull()!,
-          );
-          hasChanges = hasChanges || updatedGame != currentGame;
-        } else {
-          AppLogger.warning(
-            'Failed to fetch store details for $appId: ${storeResult.exceptionOrNull()}',
-          );
-        }
-      }
-
-      if (includeAchievements) {
-        final apiKey = _prefs.getString('api_key') ?? '';
-        final steamId = _prefs.getString('steam_id') ?? '';
-
-        if (apiKey.isNotEmpty && steamId.isNotEmpty) {
-          final achievementResult = await _steamApiService.getPlayerAchievements(
-            apiKey: apiKey,
-            steamId: steamId,
-            appId: appId,
-          );
-
-          if (achievementResult.isSuccess()) {
-            final summary = achievementResult.getOrNull();
-            if (summary != null) {
-              updatedGame = updatedGame.copyWith(
-                hasAchievements: summary.total > 0,
-                totalAchievements: summary.total,
-                unlockedAchievements: summary.unlocked,
-              );
-              hasChanges = hasChanges || updatedGame != currentGame;
-            }
-          } else {
-            AppLogger.warning(
-              'Failed to fetch achievements for $appId: ${achievementResult.exceptionOrNull()}',
-            );
-          }
-        }
-      }
-
-      if (hasChanges) {
-        _gameLibrary[gameIndex] = updatedGame;
-        await _saveToStorage();
-        _gameLibraryController.add(_gameLibrary);
-      }
-
-      return Success(updatedGame);
-    } catch (e, stackTrace) {
-      final error = 'Failed to refresh game details: $e';
-      AppLogger.error(error, e, stackTrace);
-      return Failure(error);
-    }
-  }
-
-  /// 按条件筛选游戏
-  List<Game> filterGames({
-    int? minPlaytime,
-    int? maxPlaytime,
-    double? minCompletionHours,
-    double? maxCompletionHours,
-    List<String>? genres,
-    List<GameStatus>? statuses,
-    bool? isMultiplayer,
-    DateTime? lastPlayedAfter,
-    DateTime? lastPlayedBefore,
-  }) {
-    return _gameLibrary.where((game) {
-      // 游戏时长筛选
-      if (minPlaytime != null && game.playtimeForever < minPlaytime) return false;
-      if (maxPlaytime != null && game.playtimeForever > maxPlaytime) return false;
-      
-      // 完成时长筛选
-      if (minCompletionHours != null && game.estimatedCompletionHours < minCompletionHours) return false;
-      if (maxCompletionHours != null && game.estimatedCompletionHours > maxCompletionHours) return false;
-      
-      // 类型筛选
-      if (genres != null && genres.isNotEmpty) {
-        if (!game.genres.any((genre) => genres.contains(genre))) return false;
-      }
-      
-      // 状态筛选
-      if (statuses != null && statuses.isNotEmpty) {
-        final currentStatus = _gameStatuses[game.appId] ?? const GameStatus.notStarted();
-        if (!statuses.contains(currentStatus)) return false;
-      }
-      
-      // 多人游戏筛选
-      if (isMultiplayer != null && game.isMultiplayer != isMultiplayer) return false;
-      
-      // 最后游玩时间筛选
-      if (lastPlayedAfter != null && (game.lastPlayed == null || game.lastPlayed!.isBefore(lastPlayedAfter))) return false;
-      if (lastPlayedBefore != null && (game.lastPlayed == null || game.lastPlayed!.isAfter(lastPlayedBefore))) return false;
-      
-      return true;
-    }).toList();
-  }
-
-  /// 获取游戏库统计信息
-  Map<String, int> getGameLibraryStats() {
-    final stats = <String, int>{
-      'total': _gameLibrary.length,
-      'notStarted': 0,
-      'playing': 0,
-      'completed': 0,
-      'abandoned': 0,
-      'multiplayer': 0,
-      'withPlaytime': 0,
-      'recentlyPlayed': 0,
-    };
-    
-    final now = DateTime.now();
-    final twoWeeksAgo = now.subtract(const Duration(days: 14));
-    
-    for (final game in _gameLibrary) {
-      final status = _gameStatuses[game.appId] ?? const GameStatus.notStarted();
-      
-      // 按状态统计
-      status.when(
-        notStarted: () => stats['notStarted'] = stats['notStarted']! + 1,
-        playing: () => stats['playing'] = stats['playing']! + 1,
-        completed: () => stats['completed'] = stats['completed']! + 1,
-        abandoned: () => stats['abandoned'] = stats['abandoned']! + 1,
-        paused: () => stats['paused'] = (stats['paused'] ?? 0) + 1,
-        multiplayer: () => stats['multiplayer'] = stats['multiplayer']! + 1,
-      );
-      
-      // 其他统计
-      if (game.playtimeForever > 0) {
-        stats['withPlaytime'] = stats['withPlaytime']! + 1;
-      }
-      
-      if (game.lastPlayed != null && game.lastPlayed!.isAfter(twoWeeksAgo)) {
-        stats['recentlyPlayed'] = stats['recentlyPlayed']! + 1;
-      }
-    }
-    
-    return stats;
-  }
-
   /// 更新用户游戏笔记
   Future<Result<void, String>> updateGameNotes(int appId, String notes) async {
     try {
-      final gameIndex = _gameLibrary.indexWhere((game) => game.appId == appId);
-      if (gameIndex == -1) {
-        return const Failure('Game not found');
+      await _databaseService.updateUserGameNotes(appId, notes);
+
+      // 更新内存缓存
+      final game = _gameCache[appId];
+      if (game != null) {
+        _gameCache[appId] = game.copyWith(userNotes: notes);
+        _gameLibraryController.add(gameLibrary);
       }
 
-      final updatedGame = _gameLibrary[gameIndex].copyWith(userNotes: notes);
-      _gameLibrary[gameIndex] = updatedGame;
-      
-      await _saveToStorage();
-      _gameLibraryController.add(_gameLibrary);
-      
       AppLogger.info('Updated notes for game $appId');
       return const Success(());
     } catch (e, stackTrace) {
@@ -918,36 +414,42 @@ class GameRepository {
     }
   }
 
+  /// 根据 AppId 获取游戏
+  Game? getGameByAppId(int appId) {
+    return _gameCache[appId];
+  }
+
   /// 获取游戏用户笔记
   String getGameNotes(int appId) {
-    final game = getGameByAppId(appId);
-    return game?.userNotes ?? '';
+    return _gameCache[appId]?.userNotes ?? '';
+  }
+
+  // ==================== 待玩队列操作 ====================
+
+  /// 获取待玩队列
+  Future<List<Game>> get playQueue async {
+    final queue = await _databaseService.getPlayQueue();
+    return queue
+        .map((appId) => _gameCache[appId])
+        .whereType<Game>()
+        .toList();
   }
 
   /// 添加游戏到待玩队列
   Future<Result<void, String>> addToPlayQueue(int appId) async {
     try {
-      // 检查游戏是否存在
-      final game = getGameByAppId(appId);
+      final game = _gameCache[appId];
       if (game == null) {
         return const Failure('游戏不存在');
       }
 
-      // 检查是否已在队列中
-      if (_playQueue.contains(appId)) {
-        return const Failure('游戏已在待玩队列中');
-      }
+      await _databaseService.addToPlayQueue(appId);
+      await _notifyPlayQueueChanged();
 
-      // 添加到队列末尾
-      _playQueue.add(appId);
-      
-      await _saveToStorage();
-      _playQueueController.add(playQueue);
-      
-      AppLogger.info('Added game $appId (${game.name}) to play queue');
+      AppLogger.info('Added game $appId to play queue');
       return const Success(());
     } catch (e, stackTrace) {
-      final error = 'Failed to add game to play queue: $e';
+      final error = 'Failed to add to play queue: $e';
       AppLogger.error(error, e, stackTrace);
       return Failure(error);
     }
@@ -956,44 +458,13 @@ class GameRepository {
   /// 从待玩队列移除游戏
   Future<Result<void, String>> removeFromPlayQueue(int appId) async {
     try {
-      final removed = _playQueue.remove(appId);
-      if (!removed) {
-        return const Failure('游戏不在待玩队列中');
-      }
+      await _databaseService.removeFromPlayQueue(appId);
+      await _notifyPlayQueueChanged();
 
-      await _saveToStorage();
-      _playQueueController.add(playQueue);
-      
       AppLogger.info('Removed game $appId from play queue');
       return const Success(());
     } catch (e, stackTrace) {
-      final error = 'Failed to remove game from play queue: $e';
-      AppLogger.error(error, e, stackTrace);
-      return Failure(error);
-    }
-  }
-
-  /// 调整待玩队列中游戏的位置
-  Future<Result<void, String>> reorderPlayQueue(int appId, int newPosition) async {
-    try {
-      final currentIndex = _playQueue.indexOf(appId);
-      if (currentIndex == -1) {
-        return const Failure('游戏不在待玩队列中');
-      }
-
-      final clampedPosition = newPosition.clamp(0, _playQueue.length - 1);
-      
-      // 移动游戏到新位置
-      _playQueue.removeAt(currentIndex);
-      _playQueue.insert(clampedPosition, appId);
-
-      await _saveToStorage();
-      _playQueueController.add(playQueue);
-      
-      AppLogger.info('Reordered game $appId to position $clampedPosition in play queue');
-      return const Success(());
-    } catch (e, stackTrace) {
-      final error = 'Failed to reorder play queue: $e';
+      final error = 'Failed to remove from play queue: $e';
       AppLogger.error(error, e, stackTrace);
       return Failure(error);
     }
@@ -1002,11 +473,9 @@ class GameRepository {
   /// 清空待玩队列
   Future<Result<void, String>> clearPlayQueue() async {
     try {
-      _playQueue.clear();
-      
-      await _saveToStorage();
-      _playQueueController.add(playQueue);
-      
+      await _databaseService.clearPlayQueue();
+      await _notifyPlayQueueChanged();
+
       AppLogger.info('Cleared play queue');
       return const Success(());
     } catch (e, stackTrace) {
@@ -1016,24 +485,65 @@ class GameRepository {
     }
   }
 
+  // ==================== 推荐系统 ====================
+
+  /// 生成游戏推荐
+  Future<Result<RecommendationResult, String>> generateRecommendations({
+    FilterCriteria criteria = const FilterCriteria(),
+    int count = 4,
+  }) async {
+    try {
+      if (_gameCache.isEmpty) {
+        return const Failure('游戏库为空，请先同步');
+      }
+
+      final games = _gameCache.values.toList();
+      final random = Random();
+      games.shuffle(random);
+      final selected = games.take(count).toList();
+
+      final recommendations = selected.map((game) {
+        return GameRecommendation(
+          game: game,
+          status: const GameStatus.notStarted(),
+          score: random.nextDouble() * 100,
+          reason: '随机推荐',
+          recommendedAt: DateTime.now(),
+        );
+      }).toList();
+
+      final result = RecommendationResult(
+        heroRecommendation: recommendations.isNotEmpty ? recommendations.first : null,
+        alternatives: recommendations.skip(1).toList(),
+        totalGamesCount: _gameCache.length,
+        recommendableGamesCount: _gameCache.length,
+        generatedAt: DateTime.now(),
+      );
+
+      _currentRecommendations = result;
+      _recommendationController.add(result);
+      return Success(result);
+    } catch (e, stackTrace) {
+      final error = 'Failed to generate recommendations: $e';
+      AppLogger.error(error, e, stackTrace);
+      return Failure(error);
+    }
+  }
+
+  /// 获取游戏库统计信息
+  Map<String, int> getGameLibraryStats() {
+    return {
+      'total': _gameCache.length,
+      'withPlaytime': _gameCache.values.where((g) => g.playtimeForever > 0).length,
+    };
+  }
+
   /// 清理资源
   void dispose() {
     _gameLibraryController.close();
     _gameStatusController.close();
     _recommendationController.close();
     _playQueueController.close();
+    _syncProgressController.close();
   }
-}
-
-/// 内部评分游戏类
-class _ScoredGame {
-  final Game game;
-  final GameStatus status;
-  final double score;
-
-  _ScoredGame({
-    required this.game,
-    required this.status,
-    required this.score,
-  });
 }

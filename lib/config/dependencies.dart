@@ -2,7 +2,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/service/steam_validation_service.dart';
 import '../data/service/steam_api_service.dart';
-import '../data/service/steam_store_service.dart';
+import '../data/service/igdb_game_service.dart';
+import '../data/service/game_database_service.dart';
 import '../data/repository/onboarding/onboarding_repository.dart';
 import '../data/repository/game_repository.dart';
 import '../ui/onboarding/view_models/onboarding_view_model.dart';
@@ -15,7 +16,8 @@ class Dependencies {
   // 单例实例缓存
   static SharedPreferences? _sharedPreferences;
   static SteamApiService? _steamApiService;
-  static SteamStoreService? _steamStoreService;
+  static IgdbGameService? _igdbGameService;
+  static GameDatabaseService? _gameDatabaseService;
   static SteamValidationService? _steamValidationService;
   static GameRepository? _gameRepository;
   static OnboardingRepository? _onboardingRepository;
@@ -23,20 +25,22 @@ class Dependencies {
   /// 初始化所有依赖
   static Future<void> _initializeDependencies() async {
     if (_sharedPreferences != null) return; // 已初始化
-    
+
     _sharedPreferences = await SharedPreferences.getInstance();
     _steamApiService = SteamApiService();
-    _steamStoreService = SteamStoreService();
+    _igdbGameService = IgdbGameService();
+    _gameDatabaseService = GameDatabaseService();
     _steamValidationService = SteamValidationService(
       steamApiService: _steamApiService!,
     );
-    
+
     _gameRepository = GameRepository(
       prefs: _sharedPreferences!,
       steamApiService: _steamApiService!,
-      steamStoreService: _steamStoreService!,
+      igdbGameService: _igdbGameService!,
+      databaseService: _gameDatabaseService!,
     );
-    
+
     _onboardingRepository = OnboardingRepository(
       sharedPreferences: _sharedPreferences!,
       steamValidationService: _steamValidationService!,
@@ -88,7 +92,8 @@ class Dependencies {
     return [
       Provider<SharedPreferences>.value(value: _sharedPreferences!),
       Provider<SteamApiService>.value(value: _steamApiService!),
-      Provider<SteamStoreService>.value(value: _steamStoreService!),
+      Provider<IgdbGameService>.value(value: _igdbGameService!),
+      Provider<GameDatabaseService>.value(value: _gameDatabaseService!),
       Provider<SteamValidationService>.value(value: _steamValidationService!),
       Provider<OnboardingRepository>.value(value: _onboardingRepository!),
       Provider<GameRepository>.value(value: _gameRepository!),

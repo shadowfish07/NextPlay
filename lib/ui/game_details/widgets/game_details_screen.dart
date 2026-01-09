@@ -148,13 +148,13 @@ class GameDetailsScreen extends StatelessWidget {
                       switchInCurve: Curves.easeOut,
                       switchOutCurve: Curves.easeIn,
                       child:
-                          (game.shortDescription != null &&
-                              game.shortDescription!.isNotEmpty)
+                          (game.summary != null &&
+                              game.summary!.isNotEmpty)
                           ? Column(
                               key: const ValueKey('description'),
                               children: [
                                 GameDescriptionCard(
-                                  description: game.shortDescription!,
+                                  description: game.summary!,
                                 ),
                                 const SizedBox(height: 16),
                               ],

@@ -20,8 +20,8 @@ class GameInfoHeaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildDeveloperCard(context),
-        const SizedBox(height: 12),
+        _buildGameInfoCard(context),
+        if (game.releaseDate != null) const SizedBox(height: 12),
         _buildStatusCard(context),
         const SizedBox(height: 12),
         _buildQuickActions(context),
@@ -29,42 +29,13 @@ class GameInfoHeaderCard extends StatelessWidget {
     );
   }
 
-  /// 单独展示制作团队信息
-  Widget _buildDeveloperCard(BuildContext context) {
+  /// 单独展示游戏基础信息
+  Widget _buildGameInfoCard(BuildContext context) {
     final theme = Theme.of(context);
-    final chips = <Widget>[];
 
-    if (game.developerName.isNotEmpty) {
-      chips.add(
-        _buildInfoChip(
-          context,
-          icon: Icons.code,
-          label: '开发商',
-          value: game.developerName,
-        ),
-      );
-    }
-
-    if (game.publisherName.isNotEmpty) {
-      chips.add(
-        _buildInfoChip(
-          context,
-          icon: Icons.business,
-          label: '发行商',
-          value: game.publisherName,
-        ),
-      );
-    }
-
-    if (game.releaseDate != null) {
-      chips.add(
-        _buildInfoChip(
-          context,
-          icon: Icons.calendar_today,
-          label: '发布日期',
-          value: _formatReleaseDate(game.releaseDate!),
-        ),
-      );
+    // 如果没有发布日期，不显示此卡片
+    if (game.releaseDate == null) {
+      return const SizedBox.shrink();
     }
 
     return Card(
@@ -77,13 +48,13 @@ class GameInfoHeaderCard extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  Icons.badge_outlined,
+                  Icons.info_outline,
                   size: 18,
                   color: theme.colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '制作团队',
+                  '游戏信息',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w600,
@@ -92,15 +63,12 @@ class GameInfoHeaderCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            if (chips.isEmpty)
-              Text(
-                '暂无开发商/发行商信息',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              )
-            else
-              Wrap(spacing: 10, runSpacing: 10, children: chips),
+            _buildInfoChip(
+              context,
+              icon: Icons.calendar_today,
+              label: '发布日期',
+              value: _formatReleaseDate(game.releaseDate!),
+            ),
           ],
         ),
       ),
