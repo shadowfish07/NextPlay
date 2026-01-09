@@ -93,9 +93,10 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard> {
   }
 
   /// 构建封面图片
+  /// 使用与详情页相同的优先级策略: artwork_type=3 > artwork_type=2 > cover
   Widget _buildCoverImage() {
     return Image.network(
-      widget.game.coverImageUrl,
+      widget.game.detailBackgroundUrl,
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) => Container(
         color: AppTheme.gameMetaBackground,

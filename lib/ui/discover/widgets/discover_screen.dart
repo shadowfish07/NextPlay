@@ -189,10 +189,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     DiscoverViewModel viewModel,
   ) {
     final heroGame = viewModel.heroRecommendation;
-    final alternatives = viewModel.alternativeRecommendations;
     final gameStatuses = viewModel.gameStatuses;
 
-    if (heroGame == null && alternatives.isEmpty) {
+    if (heroGame == null) {
       return const SizedBox.shrink();
     }
 
@@ -203,43 +202,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         _buildSectionTitle(context, '发现新游戏'),
 
         // 主推荐大卡片
-        if (heroGame != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: NewGameRecommendationCard(
-              game: heroGame,
-              gameStatus:
-                  gameStatuses[heroGame.appId] ?? const GameStatus.notStarted(),
-              onAddToQueue: () => _handleAddToQueue(viewModel, heroGame),
-              onSkip: () => viewModel.generateRecommendationsCommand.execute(),
-              onTap: () => _onGameTap(heroGame),
-              onStatusChange: (status) =>
-                  _handleStatusChange(viewModel, heroGame, status),
-            ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: NewGameRecommendationCard(
+            game: heroGame,
+            gameStatus:
+                gameStatuses[heroGame.appId] ?? const GameStatus.notStarted(),
+            onAddToQueue: () => _handleAddToQueue(viewModel, heroGame),
+            onSkip: () => viewModel.generateRecommendationsCommand.execute(),
+            onTap: () => _onGameTap(heroGame),
+            onStatusChange: (status) =>
+                _handleStatusChange(viewModel, heroGame, status),
           ),
-
-        // 备选推荐小卡片
-        if (alternatives.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 212,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              itemCount: alternatives.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final game = alternatives[index];
-                return SmallGameCard(
-                  game: game,
-                  status:
-                      gameStatuses[game.appId] ?? const GameStatus.notStarted(),
-                  onTap: () => _onGameTap(game),
-                );
-              },
-            ),
-          ),
-        ],
+        ),
       ],
     );
   }
