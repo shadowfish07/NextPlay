@@ -2,28 +2,27 @@ import 'package:flutter/material.dart';
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/theme.dart';
+import '../../core/ui/score_badge.dart';
 
 /// 重新设计的游戏推荐卡片
 /// 包含：名称/封面、发行年份、类型标签、评分、相似游戏、交互按钮
 class NewGameRecommendationCard extends StatefulWidget {
   final Game game;
   final GameStatus gameStatus;
-  final double rating;
   final List<Game> similarGames;
   final VoidCallback? onAddToQueue;
   final VoidCallback? onSkip;
-  final VoidCallback? onViewDetails;
+  final VoidCallback? onTap;
   final Function(GameStatus)? onStatusChange;
 
   const NewGameRecommendationCard({
     super.key,
     required this.game,
     this.gameStatus = const GameStatus.notStarted(),
-    this.rating = 4.2,
     this.similarGames = const [],
     this.onAddToQueue,
     this.onSkip,
-    this.onViewDetails,
+    this.onTap,
     this.onStatusChange,
   });
 
@@ -67,9 +66,11 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.zero,
-      decoration: BoxDecoration(
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        margin: EdgeInsets.zero,
+        decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -126,6 +127,7 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard>
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -195,14 +197,7 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard>
               ),
             ),
           ),
-          
-          // 状态标签 - 左上角
-          Positioned(
-            top: 16,
-            left: 16,
-            child: _buildStatusBadge(),
-          ),
-          
+
           // 发行年份 - 右上角
           Positioned(
             top: 16,
@@ -231,59 +226,6 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard>
             },
           ),
         ],
-      ),
-    );
-  }
-
-  /// 构建状态标签
-  Widget _buildStatusBadge() {
-    final theme = Theme.of(context);
-    String statusText = '';
-    Color statusColor = AppTheme.statusNotStarted;
-
-    _currentStatus.when(
-      notStarted: () {
-        statusText = '未开始';
-        statusColor = AppTheme.statusNotStarted;
-      },
-      playing: () {
-        statusText = '游玩中';
-        statusColor = AppTheme.statusPlaying;
-      },
-      completed: () {
-        statusText = '已完成';
-        statusColor = AppTheme.statusCompleted;
-      },
-      abandoned: () {
-        statusText = '已放弃';
-        statusColor = AppTheme.statusAbandoned;
-      },
-      multiplayer: () {
-        statusText = '多人游戏';
-        statusColor = AppTheme.statusMultiplayer;
-      },
-      paused: () {
-        statusText = '暂时搁置';
-        statusColor = AppTheme.statusPaused;
-      },
-    );
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: statusColor,
-          width: 1,
-        ),
-      ),
-      child: Text(
-        statusText,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }
@@ -368,43 +310,13 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard>
             }).toList(),
           ),
         ),
-        
+
         const SizedBox(width: 12),
-        
+
         // 评分
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppTheme.gameHighlight.withValues(alpha: 0.2),
-                AppTheme.accentColor.withValues(alpha: 0.2),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppTheme.gameHighlight.withValues(alpha: 0.5),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.star,
-                size: 14,
-                color: AppTheme.gameHighlight,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '${widget.rating}',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: AppTheme.gameHighlight,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
+        ScoreBadge(
+          score: widget.game.aggregatedRating,
+          compact: true,
         ),
       ],
     );
@@ -495,7 +407,6 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard>
           children: [
             // 加入待玩队列
             Expanded(
-              flex: 2,
               child: _buildPrimaryButton(
                 context,
                 label: '加入待玩',
@@ -503,9 +414,9 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard>
                 onTap: widget.onAddToQueue,
               ),
             ),
-            
+
             const SizedBox(width: 8),
-            
+
             // 换一个
             Expanded(
               child: _buildSecondaryButton(
@@ -515,23 +426,11 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard>
                 onTap: widget.onSkip,
               ),
             ),
-            
-            const SizedBox(width: 8),
-            
-            // 查看详情
-            Expanded(
-              child: _buildSecondaryButton(
-                context,
-                label: '详情',
-                icon: Icons.info_outline,
-                onTap: widget.onViewDetails,
-              ),
-            ),
           ],
         ),
-        
+
         const SizedBox(height: 12),
-        
+
         // 状态更新按钮
         _buildStatusUpdateButton(theme),
       ],

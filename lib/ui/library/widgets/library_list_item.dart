@@ -5,7 +5,7 @@ import '../../../domain/models/game/game_status.dart';
 import '../../core/theme.dart';
 import '../../core/ui/game_status_display.dart';
 import '../../core/ui/achievement_compact.dart';
-import '../../core/ui/metacritic_badge.dart';
+import '../../core/ui/score_badge.dart';
 import '../../core/ui/last_played_text.dart';
 
 class LibraryListItem extends StatelessWidget {
@@ -211,7 +211,7 @@ class LibraryListItem extends StatelessWidget {
           ),
         // 评分
         if (hasRating)
-          MetacriticBadge(
+          ScoreBadge(
             score: game.aggregatedRating,
             compact: true,
           ),

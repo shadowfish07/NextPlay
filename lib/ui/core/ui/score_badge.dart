@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// 评分徽章组件
 ///
 /// 用于显示游戏评分(如IGDB aggregatedRating),支持紧凑模式和完整模式
-class MetacriticBadge extends StatelessWidget {
+class ScoreBadge extends StatelessWidget {
   /// 评分(double格式,0-100)
   final double score;
 
@@ -13,7 +13,7 @@ class MetacriticBadge extends StatelessWidget {
   /// 徽章尺寸(紧凑模式下的圆形大小)
   final double? size;
 
-  const MetacriticBadge({
+  const ScoreBadge({
     super.key,
     required this.score,
     this.compact = false,
@@ -48,40 +48,27 @@ class MetacriticBadge extends StatelessWidget {
     double badgeSize,
   ) {
     return Semantics(
-      label: 'Metacritic评分$score分',
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'MC',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
+      label: '评分$score分',
+      child: Container(
+        width: badgeSize,
+        height: badgeSize,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color.withValues(alpha: 0.15),
+          border: Border.all(
+            color: color.withValues(alpha: 0.6),
+            width: 1.2,
           ),
-          const SizedBox(width: 4),
-          Container(
-            width: badgeSize,
-            height: badgeSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withValues(alpha: 0.15),
-              border: Border.all(
-                color: color.withValues(alpha: 0.6),
-                width: 1.2,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              score.toString(),
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w800,
-                fontSize: 11,
-              ),
-            ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          score.toString(),
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w800,
+            fontSize: 11,
           ),
-        ],
+        ),
       ),
     );
   }

@@ -210,11 +210,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               game: heroGame,
               gameStatus:
                   gameStatuses[heroGame.appId] ?? const GameStatus.notStarted(),
-              rating: heroGame.aggregatedRating / 20,
               similarGames: const [],
               onAddToQueue: () => _handleAddToQueue(viewModel, heroGame),
               onSkip: () => viewModel.generateRecommendationsCommand.execute(),
-              onViewDetails: () => _onGameTap(heroGame),
+              onTap: () => _onGameTap(heroGame),
               onStatusChange: (status) =>
                   _handleStatusChange(viewModel, heroGame, status),
             ),
