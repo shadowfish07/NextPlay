@@ -270,7 +270,7 @@ class GameInfoHeaderCard extends StatelessWidget {
   void _viewSteamPage(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('正在打开 ${game.name} 的Steam页面...'),
+        content: Text('正在打开 ${game.displayName} 的Steam页面...'),
         duration: const Duration(seconds: 2),
       ),
     );

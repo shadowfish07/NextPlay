@@ -29,6 +29,7 @@ class SettingsViewModel extends ChangeNotifier {
   late final Command<String, void> updateTimePreferenceCommand;
   late final Command<String, void> updateMoodPreferenceCommand;
   late final Command<String, void> toggleExcludedCategoryCommand;
+  late final Command<String, void> updateIgdbLanguageCommand;
 
   // UI状态 - 仅保留UI专用的状态，减少重复缓存
   bool _isLoading = false;
@@ -49,6 +50,7 @@ class SettingsViewModel extends ChangeNotifier {
   String _timePreference = 'any'; // 'short', 'medium', 'long', 'any'
   String _moodPreference = 'any'; // 'relax', 'challenge', 'think', 'social', 'any'
   List<String> _excludedCategories = []; // 排除的游戏类别
+  String _igdbLanguage = 'en'; // IGDB 数据语言
 
   SettingsViewModel({
     required OnboardingRepository onboardingRepository,
@@ -90,6 +92,7 @@ class SettingsViewModel extends ChangeNotifier {
   String get moodPreference => _moodPreference;
   List<String> get excludedCategories => List.unmodifiable(_excludedCategories);
   int get excludedCategoriesCount => _excludedCategories.length;
+  String get igdbLanguage => _igdbLanguage;
 
   void _initializeCommands() {
     refreshSteamConnectionCommand = Command.createAsyncNoParam(
@@ -152,6 +155,11 @@ class SettingsViewModel extends ChangeNotifier {
       _handleToggleExcludedCategory,
       initialValue: null,
     );
+
+    updateIgdbLanguageCommand = Command.createAsync<String, void>(
+      _handleUpdateIgdbLanguage,
+      initialValue: null,
+    );
   }
   
   void _loadSettings() {
@@ -167,6 +175,9 @@ class SettingsViewModel extends ChangeNotifier {
       // 加载排除类别列表
       final excludedCategoriesJson = _prefs.getStringList('excluded_categories');
       _excludedCategories = excludedCategoriesJson ?? [];
+
+      // 加载 IGDB 语言设置
+      _igdbLanguage = _prefs.getString('igdb_language') ?? 'en';
 
       // 初始化时获取版本信息
       getVersionCommand.execute();
@@ -443,6 +454,28 @@ class SettingsViewModel extends ChangeNotifier {
     } catch (e, stackTrace) {
       AppLogger.error('Failed to toggle excluded category', e, stackTrace);
       _setError('Failed to update category preference');
+    }
+  }
+
+  Future<void> _handleUpdateIgdbLanguage(String language) async {
+    try {
+      if (_igdbLanguage == language) return;
+
+      AppLogger.info('Updating IGDB language: $language');
+
+      _igdbLanguage = language;
+      await _prefs.setString('igdb_language', language);
+
+      AppLogger.info('IGDB language updated, triggering sync');
+      notifyListeners();
+
+      // 自动触发游戏库同步以获取新语言的数据
+      if (isSteamConnected) {
+        await _handleSyncGameLibrary();
+      }
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to update IGDB language', e, stackTrace);
+      _setError('更新语言设置失败');
     }
   }
 }

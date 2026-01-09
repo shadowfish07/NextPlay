@@ -22,6 +22,7 @@ class GameDetailsViewModel extends ChangeNotifier {
   bool _isLoading = true;
   String? _errorMessage;
   List<Game> _randomRecommendations = [];
+  bool _showLocalizedName = true; // 是否显示本地化名字
   
   // Commands
   late Command<GameStatus, void> updateGameStatusCommand;
@@ -30,6 +31,7 @@ class GameDetailsViewModel extends ChangeNotifier {
   late Command<void, void> launchSteamStoreCommand;
   late Command<void, void> refreshGameDataCommand;
   late Command<void, void> toggleNotesEditingCommand;
+  late Command<void, void> toggleNameDisplayCommand;
   
   // 流订阅
   StreamSubscription? _gameStatusSubscription;
@@ -63,10 +65,17 @@ class GameDetailsViewModel extends ChangeNotifier {
   String get steamStoreUrl => _game?.steamStoreUrl ?? '';
   String get steamGameUrl => 'steam://launch/$_gameAppId';
   bool get hasAchievements => _game?.hasAchievements ?? false;
-  double get achievementProgress => hasAchievements && (_game?.totalAchievements ?? 0) > 0 
+  double get achievementProgress => hasAchievements && (_game?.totalAchievements ?? 0) > 0
       ? (_game?.unlockedAchievements ?? 0) / (_game?.totalAchievements ?? 1)
       : 0.0;
   double get playtimeProgress => _game?.completionProgress ?? 0.0;
+
+  // 名字切换相关
+  bool get showLocalizedName => _showLocalizedName;
+  String get displayGameTitle => _showLocalizedName
+      ? (_game?.displayName ?? '未知游戏')
+      : (_game?.name ?? '未知游戏');
+  bool get hasLocalizedName => _game?.hasLocalizedName ?? false;
 
   /// 初始化Commands
   void _initializeCommands() {
@@ -176,6 +185,14 @@ class GameDetailsViewModel extends ChangeNotifier {
         _isEditingNotes = !_isEditingNotes;
         notifyListeners();
         AppLogger.info('Notes editing toggled: $_isEditingNotes');
+      },
+    );
+
+    toggleNameDisplayCommand = Command.createAsyncNoParamNoResult(
+      () async {
+        _showLocalizedName = !_showLocalizedName;
+        notifyListeners();
+        AppLogger.info('Name display toggled: showLocalized=$_showLocalizedName');
       },
     );
   }
@@ -326,7 +343,8 @@ class GameDetailsViewModel extends ChangeNotifier {
     launchSteamStoreCommand.dispose();
     refreshGameDataCommand.dispose();
     toggleNotesEditingCommand.dispose();
-    
+    toggleNameDisplayCommand.dispose();
+
     super.dispose();
   }
 }

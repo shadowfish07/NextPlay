@@ -83,7 +83,10 @@ class GameDetailsScreen extends StatelessWidget {
           GameDetailsSliverAppBar(
             game: game,
             gameStatus: viewModel.gameStatus!,
+            displayTitle: viewModel.displayGameTitle,
+            hasLocalizedName: viewModel.hasLocalizedName,
             onStorePressed: () => viewModel.launchSteamStoreCommand.execute(),
+            onTitleTap: () => viewModel.toggleNameDisplayCommand.execute(),
           ),
 
           // 主要内容区域

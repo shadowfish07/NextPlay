@@ -84,6 +84,10 @@ class ScoreBadge extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -92,10 +96,10 @@ class ScoreBadge extends StatelessWidget {
             height: badgeSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: color.withValues(alpha: 0.18),
+              color: color.withValues(alpha: 0.25),
               border: Border.all(
-                color: color.withValues(alpha: 0.6),
-                width: 1.2,
+                color: color,
+                width: 1.5,
               ),
             ),
             alignment: Alignment.center,

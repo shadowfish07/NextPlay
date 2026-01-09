@@ -9,6 +9,7 @@ class Game with _$Game {
   const factory Game({
     required int appId,
     required String name,
+    String? localizedName,
     // Steam 玩家数据
     @Default(0) int playtimeForever,
     @Default(0) int playtimeLastTwoWeeks,
@@ -29,6 +30,9 @@ class Game with _$Game {
     @Default([]) List<String> platforms,
     @Default([]) List<String> gameModes,
     @Default([]) List<IgdbAgeRating> ageRatings,
+    @Default([]) List<IgdbArtwork> artworks,
+    @Default([]) List<String> developers,
+    @Default([]) List<String> publishers,
     @Default(false) bool supportsChinese,
     // 推荐系统相关字段
     @Default(15.0) double estimatedCompletionHours,
@@ -97,4 +101,38 @@ extension GameExtension on Game {
 
   /// 获取Steam商店页面URL
   String get steamStoreUrl => 'https://store.steampowered.com/app/$appId/';
+
+  /// 获取显示名称（优先本地化名）
+  String get displayName {
+    if (localizedName != null && localizedName!.isNotEmpty) {
+      return localizedName!;
+    }
+    return name;
+  }
+
+  /// 是否有本地化名字（且与原名不同）
+  bool get hasLocalizedName {
+    return localizedName != null &&
+        localizedName!.isNotEmpty &&
+        localizedName != name;
+  }
+
+  /// 获取详情页背景图 URL
+  /// 优先级: artwork_type=3 > artwork_type=2 > cover
+  String get detailBackgroundUrl {
+    // 优先查找 artwork_type=3 (Key art with logo)
+    final keyArtWithLogo = artworks.where((a) => a.artworkType == 3).firstOrNull;
+    if (keyArtWithLogo != null) {
+      return keyArtWithLogo.url;
+    }
+
+    // 其次查找 artwork_type=2 (Key art without logo)
+    final keyArtNoLogo = artworks.where((a) => a.artworkType == 2).firstOrNull;
+    if (keyArtNoLogo != null) {
+      return keyArtNoLogo.url;
+    }
+
+    // 兜底使用 cover
+    return coverImageUrl;
+  }
 }

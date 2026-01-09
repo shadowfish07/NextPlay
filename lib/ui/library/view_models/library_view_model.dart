@@ -222,12 +222,14 @@ class LibraryViewModel extends ChangeNotifier {
     var filtered = List<Game>.from(_gameRepository.gameLibrary);
     final gameStatuses = _gameRepository.gameStatuses;
 
-    // 应用搜索筛选
+    // 应用搜索筛选（同时匹配原名和本地化名字）
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
       filtered = filtered.where((game) {
-        return game.name.toLowerCase().contains(query) ||
-               game.genres.any((genre) => genre.toLowerCase().contains(query));
+        final nameMatch = game.name.toLowerCase().contains(query);
+        final localizedNameMatch = game.localizedName?.toLowerCase().contains(query) ?? false;
+        final genreMatch = game.genres.any((genre) => genre.toLowerCase().contains(query));
+        return nameMatch || localizedNameMatch || genreMatch;
       }).toList();
     }
 

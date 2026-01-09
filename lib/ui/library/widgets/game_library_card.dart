@@ -149,7 +149,7 @@ class GameLibraryCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    game.name,
+                    game.displayName,
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -236,7 +236,7 @@ class GameLibraryCard extends StatelessWidget {
       children: [
         // 游戏名称
         Text(
-          game.name,
+          game.displayName,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.titleMedium?.copyWith(
@@ -455,7 +455,7 @@ class GameActionMenu extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            game.name,
+            game.displayName,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),

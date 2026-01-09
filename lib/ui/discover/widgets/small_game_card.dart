@@ -213,7 +213,7 @@ class SmallGameCard extends StatelessWidget {
     return Align(
       alignment: Alignment.topLeft,
       child: Text(
-        game.name,
+        game.displayName,
         style: theme.textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.w600,
           color: Colors.white,

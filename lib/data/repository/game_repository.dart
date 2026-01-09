@@ -138,27 +138,42 @@ class GameRepository {
     // 状态存储格式可能是 JSON 或简单字符串
     try {
       if (statusStr.startsWith('{')) {
+        // 处理旧格式 {runtimeType: statusName} (Dart toString() 输出，非有效 JSON)
+        final legacyMatch = RegExp(r'\{runtimeType:\s*(\w+)\}').firstMatch(statusStr);
+        if (legacyMatch != null) {
+          final statusName = legacyMatch.group(1)!;
+          return _statusFromName(statusName);
+        }
+        // 标准 JSON 格式
         final json = jsonDecode(statusStr) as Map<String, dynamic>;
         return GameStatus.fromJson(json);
       }
       // 简单字符串格式
-      switch (statusStr) {
-        case 'notStarted':
-          return const GameStatus.notStarted();
-        case 'playing':
-          return const GameStatus.playing();
-        case 'completed':
-          return const GameStatus.completed();
-        case 'abandoned':
-          return const GameStatus.abandoned();
-        case 'paused':
-          return const GameStatus.paused();
-        default:
-          return const GameStatus.notStarted();
-      }
+      return _statusFromName(statusStr);
     } catch (e) {
       AppLogger.error('Failed to parse game status: $statusStr', e);
       return const GameStatus.notStarted();
+    }
+  }
+
+  /// 从状态名称字符串转换为 GameStatus
+  GameStatus _statusFromName(String name) {
+    switch (name) {
+      case 'notStarted':
+        return const GameStatus.notStarted();
+      case 'playing':
+        return const GameStatus.playing();
+      case 'completed':
+        return const GameStatus.completed();
+      case 'abandoned':
+        return const GameStatus.abandoned();
+      case 'paused':
+        return const GameStatus.paused();
+      case 'multiplayer':
+        // 旧版状态，映射到 playing
+        return const GameStatus.playing();
+      default:
+        return const GameStatus.notStarted();
     }
   }
 
@@ -176,6 +191,9 @@ class GameRepository {
     List<String> platforms = [];
     List<String> gameModes = [];
     List<IgdbAgeRating> ageRatings = [];
+    List<IgdbArtwork> artworks = [];
+    List<String> developers = [];
+    List<String> publishers = [];
 
     if (igdb != null) {
       genres = _parseJsonList(igdb['genres'] as String?);
@@ -183,6 +201,9 @@ class GameRepository {
       platforms = _parseJsonList(igdb['platforms'] as String?);
       gameModes = _parseJsonList(igdb['game_modes'] as String?);
       ageRatings = _parseAgeRatings(igdb['age_ratings'] as String?);
+      artworks = _parseArtworks(igdb['artworks'] as String?);
+      developers = _parseJsonList(igdb['developers'] as String?);
+      publishers = _parseJsonList(igdb['publishers'] as String?);
     }
 
     // 判断多人/单人游戏
@@ -196,6 +217,7 @@ class GameRepository {
     return Game(
       appId: appId,
       name: igdb?['name'] as String? ?? steam['name'] as String? ?? '',
+      localizedName: igdb?['localized_name'] as String?,
       // Steam 数据
       playtimeForever: steam['playtime_forever'] as int? ?? 0,
       playtimeLastTwoWeeks: steam['playtime_last_two_weeks'] as int? ?? 0,
@@ -216,6 +238,9 @@ class GameRepository {
       platforms: platforms,
       gameModes: gameModes,
       ageRatings: ageRatings,
+      artworks: artworks,
+      developers: developers,
+      publishers: publishers,
       supportsChinese: (igdb?['supports_chinese'] as int? ?? 0) == 1,
       // 推荐系统
       estimatedCompletionHours: CompletionTimeService.estimateCompletionTimeFromGenres(genres),
@@ -246,6 +271,25 @@ class GameRepository {
           organization: map['organization'] as String? ?? '',
           rating: map['rating'] as String? ?? '',
           synopsis: map['synopsis'] as String?,
+        );
+      }).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  List<IgdbArtwork> _parseArtworks(String? jsonStr) {
+    if (jsonStr == null || jsonStr.isEmpty) return [];
+    try {
+      final list = json.decode(jsonStr) as List;
+      return list.map((e) {
+        final map = e as Map<String, dynamic>;
+        return IgdbArtwork(
+          imageId: map['image_id'] as String? ?? '',
+          url: map['url'] as String? ?? '',
+          width: map['width'] as int?,
+          height: map['height'] as int?,
+          artworkType: map['artwork_type'] as int?,
         );
       }).toList();
     } catch (e) {
@@ -346,6 +390,7 @@ class GameRepository {
 
       final igdbResult = await _igdbGameService.getBatchGameInfo(
         steamIds,
+        language: _prefs.getString('igdb_language') ?? 'en',
         onProgress: (completed, total) {
           final igdbProgress = 0.25 + (completed / total) * 0.45;
           _syncProgressController.add(SyncProgress(
@@ -382,6 +427,7 @@ class GameRepository {
           return {
             'steam_id': game.steamId,
             'name': game.name,
+            'localized_name': game.localizedName,
             'summary': game.summary,
             'cover_url': game.coverUrl,
             'cover_width': game.coverWidth,
@@ -398,6 +444,15 @@ class GameRepository {
               'rating': r.rating,
               'synopsis': r.synopsis,
             }).toList()),
+            'artworks': json.encode(game.artworks.map((a) => {
+              'image_id': a.imageId,
+              'url': a.url,
+              'width': a.width,
+              'height': a.height,
+              'artwork_type': a.artworkType,
+            }).toList()),
+            'developers': json.encode(game.developers),
+            'publishers': json.encode(game.publishers),
             'supports_chinese': game.supportsChinese ? 1 : 0,
           };
         }).toList();
@@ -467,7 +522,7 @@ class GameRepository {
   /// 更新游戏状态
   Future<Result<void, String>> updateGameStatus(int appId, GameStatus status) async {
     try {
-      await _databaseService.updateUserGameStatus(appId, status.toJson().toString());
+      await _databaseService.updateUserGameStatus(appId, jsonEncode(status.toJson()));
       // 更新内存缓存
       _gameStatusCache[appId] = status;
       _gameStatusController.add(gameStatuses);

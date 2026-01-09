@@ -6,7 +6,7 @@ import '../../utils/logger.dart';
 /// 游戏数据库服务 - 管理本地 SQLite 存储
 class GameDatabaseService {
   static const String _databaseName = 'nextplay.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
 
   Database? _database;
 
@@ -55,6 +55,7 @@ class GameDatabaseService {
       CREATE TABLE igdb_games (
         steam_id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
+        localized_name TEXT,
         summary TEXT,
         cover_url TEXT,
         cover_width INTEGER,
@@ -67,6 +68,9 @@ class GameDatabaseService {
         platforms TEXT,
         game_modes TEXT,
         age_ratings TEXT,
+        artworks TEXT,
+        developers TEXT,
+        publishers TEXT,
         supports_chinese INTEGER DEFAULT 0,
         updated_at INTEGER NOT NULL
       )
@@ -113,7 +117,18 @@ class GameDatabaseService {
   /// 数据库升级
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     AppLogger.info('Upgrading database from v$oldVersion to v$newVersion');
-    // 未来版本升级逻辑
+
+    // v1 -> v2: 添加本地化名字、artworks、开发商、发行商字段
+    if (oldVersion < 2) {
+      AppLogger.info('Applying migration v1 -> v2');
+      await db.execute(
+        'ALTER TABLE igdb_games ADD COLUMN localized_name TEXT',
+      );
+      await db.execute('ALTER TABLE igdb_games ADD COLUMN artworks TEXT');
+      await db.execute('ALTER TABLE igdb_games ADD COLUMN developers TEXT');
+      await db.execute('ALTER TABLE igdb_games ADD COLUMN publishers TEXT');
+      AppLogger.info('Migration v1 -> v2 completed');
+    }
   }
 
   /// 关闭数据库

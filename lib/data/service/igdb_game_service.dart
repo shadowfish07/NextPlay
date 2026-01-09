@@ -23,13 +23,14 @@ class IgdbGameService {
   Future<Result<IgdbBatchResponse, String>> getBatchGameInfo(
     List<int> steamIds, {
     bool forceRefresh = false,
+    String language = 'en',
     void Function(int completed, int total)? onProgress,
   }) async {
     if (steamIds.isEmpty) {
       return Success(IgdbBatchResponse(games: [], notFound: [], errors: []));
     }
 
-    AppLogger.info('Fetching IGDB data for ${steamIds.length} games');
+    AppLogger.info('Fetching IGDB data for ${steamIds.length} games (language: $language)');
 
     // 分批处理
     final allGames = <IgdbGameData>[];
@@ -43,7 +44,11 @@ class IgdbGameService {
       final batch = batches[i];
       AppLogger.info('Processing batch ${i + 1}/${batches.length} (${batch.length} games)');
 
-      final result = await _fetchBatch(batch, forceRefresh: forceRefresh);
+      final result = await _fetchBatch(
+        batch,
+        forceRefresh: forceRefresh,
+        language: language,
+      );
 
       if (result.isError()) {
         // 单批失败不影响整体，记录错误继续
@@ -89,6 +94,7 @@ class IgdbGameService {
   Future<Result<IgdbBatchResponse, String>> _fetchBatch(
     List<int> steamIds, {
     bool forceRefresh = false,
+    String language = 'en',
   }) async {
     try {
       final response = await _dio.post(
@@ -96,6 +102,7 @@ class IgdbGameService {
         data: {
           'steamIds': steamIds,
           'forceRefresh': forceRefresh,
+          'language': language,
         },
       );
 
@@ -193,6 +200,15 @@ class IgdbGameService {
     // 解析年龄分级
     final ageRatings = _parseAgeRatings(json['age_ratings'] as List?);
 
+    // 解析 artworks
+    final artworks = _parseArtworks(json['artworks'] as List?);
+
+    // 解析开发商
+    final developers = _parseNameList(json['developers'] as List?);
+
+    // 解析发行商
+    final publishers = _parseNameList(json['publishers'] as List?);
+
     // 解析语言支持，判断是否支持中文
     final supportsChinese = _checkChineseSupport(
       json['language_supports'] as List?,
@@ -201,6 +217,7 @@ class IgdbGameService {
     return IgdbGameData(
       steamId: json['steamId'] as int,
       name: json['name'] as String? ?? '',
+      localizedName: json['localizedName'] as String?,
       summary: json['summary'] as String?,
       coverUrl: coverUrl,
       coverWidth: coverWidth,
@@ -213,6 +230,9 @@ class IgdbGameService {
       platforms: platforms,
       gameModes: gameModes,
       ageRatings: ageRatings,
+      artworks: artworks,
+      developers: developers,
+      publishers: publishers,
       supportsChinese: supportsChinese,
     );
   }
@@ -235,6 +255,21 @@ class IgdbGameService {
         organization: json['organization'] as String? ?? '',
         rating: json['rating'] as String? ?? '',
         synopsis: json['synopsis'] as String?,
+      );
+    }).toList();
+  }
+
+  /// 解析 artworks
+  List<IgdbArtwork> _parseArtworks(List? list) {
+    if (list == null) return [];
+    return list.map((item) {
+      final json = item as Map<String, dynamic>;
+      return IgdbArtwork(
+        imageId: json['image_id'] as String? ?? '',
+        url: json['url'] as String? ?? '',
+        width: json['width'] as int?,
+        height: json['height'] as int?,
+        artworkType: json['artwork_type'] as int?,
       );
     }).toList();
   }

@@ -247,7 +247,7 @@ class _GameCard extends StatelessWidget {
                   children: [
                     // 游戏名称
                     Text(
-                      game.name,
+                      game.displayName,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),

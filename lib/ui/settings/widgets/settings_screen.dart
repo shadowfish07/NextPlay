@@ -5,6 +5,7 @@ import 'account_section/steam_connection_card.dart';
 import 'account_section/data_sync_card.dart';
 import 'preferences_section/recommendation_preferences_card.dart';
 import 'appearance_section/theme_display_card.dart';
+import 'appearance_section/language_settings_card.dart';
 import 'data_section/storage_cache_card.dart';
 import 'about_section/app_information_card.dart';
 
@@ -58,6 +59,10 @@ class SettingsScreen extends StatelessWidget {
 
                     // Appearance Section
                     const ThemeDisplayCard(),
+                    const SizedBox(height: 16),
+
+                    // Language Section
+                    const LanguageSettingsCard(),
                     const SizedBox(height: 24),
 
                     // Data Management Section

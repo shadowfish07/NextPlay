@@ -110,7 +110,7 @@ class LibraryListItem extends StatelessWidget {
   /// 构建标题部分(游戏名称)
   Widget _buildTitleSection(ThemeData theme) {
     return Text(
-      game.name,
+      game.displayName,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
       style: theme.textTheme.titleMedium?.copyWith(

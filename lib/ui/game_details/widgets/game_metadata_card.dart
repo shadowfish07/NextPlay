@@ -52,6 +52,28 @@ class GameMetadataCard extends StatelessWidget {
       );
     }
 
+    if (game.developers.isNotEmpty) {
+      rows.add(
+        _buildTagRow(
+          context,
+          icon: Icons.code,
+          label: '开发商',
+          tags: game.developers,
+        ),
+      );
+    }
+
+    if (game.publishers.isNotEmpty) {
+      rows.add(
+        _buildTagRow(
+          context,
+          icon: Icons.business,
+          label: '发行商',
+          tags: game.publishers,
+        ),
+      );
+    }
+
     return Card(
       elevation: 1,
       child: Padding(

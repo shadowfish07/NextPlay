@@ -210,7 +210,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               game: heroGame,
               gameStatus:
                   gameStatuses[heroGame.appId] ?? const GameStatus.notStarted(),
-              similarGames: const [],
               onAddToQueue: () => _handleAddToQueue(viewModel, heroGame),
               onSkip: () => viewModel.generateRecommendationsCommand.execute(),
               onTap: () => _onGameTap(heroGame),
@@ -265,7 +264,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     viewModel.addToPlayQueueCommand.execute(game.appId);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('${game.name} 已加入待玩队列')));
+    ).showSnackBar(SnackBar(content: Text('${game.displayName} 已加入待玩队列')));
   }
 
   /// 处理状态变更
@@ -277,6 +276,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     viewModel.updateGameStatusCommand.execute((game.appId, status));
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('${game.name} 状态已更新')));
+    ).showSnackBar(SnackBar(content: Text('${game.displayName} 状态已更新')));
   }
 }

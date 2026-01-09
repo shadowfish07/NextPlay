@@ -9,6 +9,7 @@ class IgdbGameData with _$IgdbGameData {
   const factory IgdbGameData({
     required int steamId,
     required String name,
+    String? localizedName,
     String? summary,
     String? coverUrl,
     int? coverWidth,
@@ -21,6 +22,9 @@ class IgdbGameData with _$IgdbGameData {
     @Default([]) List<String> platforms,
     @Default([]) List<String> gameModes,
     @Default([]) List<IgdbAgeRating> ageRatings,
+    @Default([]) List<IgdbArtwork> artworks,
+    @Default([]) List<String> developers,
+    @Default([]) List<String> publishers,
     @Default(false) bool supportsChinese,
   }) = _IgdbGameData;
 
@@ -39,4 +43,19 @@ class IgdbAgeRating with _$IgdbAgeRating {
 
   factory IgdbAgeRating.fromJson(Map<String, dynamic> json) =>
       _$IgdbAgeRatingFromJson(json);
+}
+
+/// IGDB Artwork 图片
+@freezed
+class IgdbArtwork with _$IgdbArtwork {
+  const factory IgdbArtwork({
+    required String imageId,
+    required String url,
+    int? width,
+    int? height,
+    int? artworkType,
+  }) = _IgdbArtwork;
+
+  factory IgdbArtwork.fromJson(Map<String, dynamic> json) =>
+      _$IgdbArtworkFromJson(json);
 }

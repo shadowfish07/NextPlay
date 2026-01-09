@@ -655,7 +655,7 @@ class _SuggestionPreviewSheetState extends State<_SuggestionPreviewSheet> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  game.name,
+                                  game.displayName,
                                   style: theme.textTheme.titleSmall?.copyWith(
                                     fontWeight: FontWeight.w600,
                                   ),
