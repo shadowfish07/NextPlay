@@ -113,14 +113,14 @@ class SmallGameCard extends StatelessWidget {
                 topRight: Radius.circular(16),
               ),
               child: Image.network(
-                game.libraryImageUrl,
+                game.coverImageUrl,
                 fit: BoxFit.cover,
                 width: double.infinity,
                 height: double.infinity,
                 errorBuilder: (context, error, stackTrace) {
-                  // 尝试使用header图片
+                  // 尝试使用library图片
                   return Image.network(
-                    game.coverImageUrl,
+                    game.libraryImageUrl,
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,

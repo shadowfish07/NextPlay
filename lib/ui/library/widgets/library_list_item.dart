@@ -70,18 +70,26 @@ class LibraryListItem extends StatelessWidget {
         width: 72,
         height: 108,
         child: CachedNetworkImage(
-          imageUrl: game.libraryImageUrl,
+          imageUrl: game.coverImageUrl,
           fit: BoxFit.cover,
           placeholder: (context, url) => Container(
             color: AppTheme.gamingElevated,
             child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
           ),
-          errorWidget: (context, url, error) => Container(
-            color: AppTheme.gamingElevated,
-            child: Icon(
-              Icons.videogame_asset,
-              color: AppTheme.gameHighlight,
-              size: 28,
+          errorWidget: (context, url, error) => CachedNetworkImage(
+            imageUrl: game.libraryImageUrl,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => Container(
+              color: AppTheme.gamingElevated,
+              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            ),
+            errorWidget: (context, url, error) => Container(
+              color: AppTheme.gamingElevated,
+              child: Icon(
+                Icons.videogame_asset,
+                color: AppTheme.gameHighlight,
+                size: 28,
+              ),
             ),
           ),
         ),

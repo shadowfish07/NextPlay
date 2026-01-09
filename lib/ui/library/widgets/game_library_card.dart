@@ -137,27 +137,35 @@ class GameLibraryCard extends StatelessWidget {
               color: AppTheme.gamingElevated,
               child: const Center(child: CircularProgressIndicator()),
             ),
-            errorWidget: (context, url, error) => Container(
-              color: AppTheme.gamingElevated,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.videogame_asset,
-                    size: 32,
-                    color: AppTheme.gameHighlight,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    game.displayName,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            errorWidget: (context, url, error) => CachedNetworkImage(
+              imageUrl: game.libraryImageUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                color: AppTheme.gamingElevated,
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+              errorWidget: (context, url, error) => Container(
+                color: AppTheme.gamingElevated,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.videogame_asset,
+                      size: 32,
                       color: AppTheme.gameHighlight,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      game.displayName,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppTheme.gameHighlight,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
