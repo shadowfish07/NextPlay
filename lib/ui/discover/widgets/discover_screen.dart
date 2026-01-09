@@ -224,7 +224,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         if (alternatives.isNotEmpty) ...[
           const SizedBox(height: 16),
           SizedBox(
-            height: 200,
+            height: 212,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,

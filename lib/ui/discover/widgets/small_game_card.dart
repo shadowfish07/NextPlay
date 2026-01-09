@@ -25,7 +25,7 @@ class SmallGameCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 130, // 固定宽度
-      height: 200, // 增加高度以容纳所有内容
+      height: 212, // 增加高度以容纳时长信息
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -65,29 +65,24 @@ class SmallGameCard extends StatelessWidget {
                   // 游戏封面 - 固定高度
                   _buildGameCover(),
                   
-                  // 游戏信息 - 使用flex布局适配剩余空间
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // 游戏名称 - 固定高度避免长标题影响布局
-                          SizedBox(
-                            height: 32, // 固定高度
-                            child: _buildGameTitle(context),
-                          ),
-                          
-                          const SizedBox(height: 4),
-                          
-                          // 状态信息
-                          _buildStatusInfo(context),
-                          
-                          // 底部弹性空间，确保卡片高度一致
-                          const Spacer(),
-                        ],
-                      ),
+                  // 游戏信息 - 固定高度区域
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 游戏名称 - 固定高度避免长标题影响布局
+                        SizedBox(
+                          height: 32, // 固定高度
+                          child: _buildGameTitle(context),
+                        ),
+
+                        const SizedBox(height: 4),
+
+                        // 状态信息
+                        _buildStatusInfo(context),
+                      ],
                     ),
                   ),
                 ],
@@ -231,43 +226,86 @@ class SmallGameCard extends StatelessWidget {
     );
   }
 
-  /// 构建状态信息
+  /// 构建状态信息（显示近两周时长和总时长）
   Widget _buildStatusInfo(BuildContext context) {
     final theme = Theme.of(context);
-    String infoText = '';
-    
+
     if (statusInfo != null) {
-      infoText = statusInfo!;
-    } else {
-      // 格式化游戏时间显示
-      final totalMinutes = game.playtimeForever;
-      if (totalMinutes == 0) {
-        infoText = '-';
-      } else if (totalMinutes < 60) {
-        infoText = '$totalMinutes分钟';
-      } else {
-        final hours = (totalMinutes / 60).toInt();
-        infoText = '$hours小时';
-      }
+      return _buildSingleLineInfo(theme, statusInfo!);
     }
-    
+
+    // 格式化近两周时长
+    final twoWeeksMinutes = game.playtimeLastTwoWeeks;
+    final twoWeeksText = _formatPlaytime(twoWeeksMinutes);
+
+    // 格式化总时长
+    final totalMinutes = game.playtimeForever;
+    final totalText = _formatPlaytime(totalMinutes);
+
     return SizedBox(
-      height: 16, // 固定高度确保布局一致
+      height: 32,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 近两周时长
+          Row(
+            children: [
+              Icon(Icons.trending_up, size: 10, color: AppTheme.gameHighlight),
+              const SizedBox(width: 3),
+              Text(
+                twoWeeksText,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: AppTheme.gameHighlight,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          // 总时长
+          Row(
+            children: [
+              Icon(Icons.schedule, size: 10, color: Colors.white54),
+              const SizedBox(width: 3),
+              Text(
+                totalText,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: Colors.white54,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 格式化游戏时长
+  String _formatPlaytime(int minutes) {
+    if (minutes == 0) return '-';
+    if (minutes < 60) return '$minutes分钟';
+    final hours = minutes / 60;
+    if (hours < 10) return '${hours.toStringAsFixed(1)}h';
+    return '${hours.toInt()}h';
+  }
+
+  /// 构建单行信息（用于自定义 statusInfo）
+  Widget _buildSingleLineInfo(ThemeData theme, String text) {
+    return SizedBox(
+      height: 16,
       child: Row(
         children: [
-          Icon(
-            Icons.schedule,
-            size: 12,
-            color: AppTheme.gameHighlight,
-          ),
+          Icon(Icons.schedule, size: 12, color: AppTheme.gameHighlight),
           const SizedBox(width: 4),
           Expanded(
             child: Text(
-              infoText,
+              text,
               style: theme.textTheme.labelSmall?.copyWith(
                 color: AppTheme.gameHighlight,
                 fontWeight: FontWeight.w500,
-                height: 1.0,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -343,7 +381,7 @@ class HorizontalGameList extends StatelessWidget {
         
         // 横向列表
         SizedBox(
-          height: 200, // 增加高度以匹配卡片高度
+          height: 212, // 匹配卡片高度
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
