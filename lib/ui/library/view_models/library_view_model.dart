@@ -21,8 +21,7 @@ class LibraryViewModel extends ChangeNotifier {
   Set<String> _genreFilters = {};
   LibrarySortOption _sortOption = LibrarySortOption.name;
   bool _sortAscending = true;
-  LibraryViewMode _viewMode = LibraryViewMode.list;
-  
+
   // 批量操作状态
   bool _isInSelectionMode = false;
   final Set<int> _selectedGameIds = {};
@@ -37,7 +36,6 @@ class LibraryViewModel extends ChangeNotifier {
   late final Command<Set<String>, void> applyGenreFiltersCommand;
   late final Command<LibrarySortOption, void> changeSortCommand;
   late final Command<bool, void> changeSortDirectionCommand;
-  late final Command<void, void> toggleViewModeCommand;
   late final Command<GameStatusUpdate, void> updateGameStatusCommand;
   late final Command<void, void> toggleSelectionModeCommand;
   late final Command<int, void> toggleGameSelectionCommand;
@@ -61,7 +59,6 @@ class LibraryViewModel extends ChangeNotifier {
   Set<String> get genreFilters => Set.unmodifiable(_genreFilters);
   LibrarySortOption get sortOption => _sortOption;
   bool get sortAscending => _sortAscending;
-  LibraryViewMode get viewMode => _viewMode;
   bool get isInSelectionMode => _isInSelectionMode;
   Set<int> get selectedGameIds => Set.unmodifiable(_selectedGameIds);
   bool get hasFilters => _searchQuery.isNotEmpty || 
@@ -147,14 +144,6 @@ class LibraryViewModel extends ChangeNotifier {
       _sortAscending = ascending;
       AppLogger.info('排序方向切换为: ${ascending ? "升序" : "降序"}');
       notifyListeners(); // 触发UI重新计算排序结果
-    });
-
-    // 视图模式切换
-    toggleViewModeCommand = Command.createAsyncNoParamNoResult(() async {
-      _viewMode = _viewMode == LibraryViewMode.grid 
-          ? LibraryViewMode.list 
-          : LibraryViewMode.grid;
-      notifyListeners();
     });
 
     // 更新游戏状态
@@ -426,14 +415,5 @@ enum LibrarySortOption {
   releaseDate('发布日期');
 
   const LibrarySortOption(this.displayName);
-  final String displayName;
-}
-
-/// 游戏库视图模式
-enum LibraryViewMode {
-  grid('网格'),
-  list('列表');
-
-  const LibraryViewMode(this.displayName);
   final String displayName;
 }

@@ -5,7 +5,6 @@ import '../view_models/library_view_model.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/ui/common_widgets.dart' as common_widgets;
 import '../../core/ui/game_status_display.dart';
-import 'gallery_game_card.dart';
 import 'game_library_filters.dart';
 import 'library_list_item.dart';
 
@@ -183,45 +182,8 @@ class _LibraryScreenState extends State<LibraryScreen>
       );
     }
 
-    // 根据视图模式显示列表
-    if (viewModel.viewMode == LibraryViewMode.grid) {
-      return _buildGridView(context, viewModel);
-    } else {
-      return _buildListView(context, viewModel);
-    }
-  }
-
-  /// 构建网格视图
-  Widget _buildGridView(BuildContext context, LibraryViewModel viewModel) {
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-      sliver: SliverGrid(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final game = viewModel.games[index];
-            final status = viewModel.getGameStatus(game.appId);
-            final isSelected = viewModel.isGameSelected(game.appId);
-            
-            return GalleryGameCard(
-              game: game,
-              status: status,
-              isSelected: isSelected,
-              isInSelectionMode: viewModel.isInSelectionMode,
-              onTap: () => _handleGameTap(viewModel, game.appId),
-              onLongPress: () => _handleGameLongPress(viewModel),
-              onStatusChanged: (newStatus) => _handleStatusChange(viewModel, game.appId, newStatus),
-            );
-          },
-          childCount: viewModel.games.length,
-        ),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.65, // 调整比例适配新卡片高度 (300px)
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 16,
-        ),
-      ),
-    );
+    // 始终使用列表视图
+    return _buildListView(context, viewModel);
   }
 
   /// 构建列表视图

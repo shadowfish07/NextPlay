@@ -4,7 +4,9 @@ import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/theme.dart';
 import '../../core/ui/game_status_display.dart';
-import '../../core/ui/game_status_selector.dart';
+import '../../core/ui/achievement_compact.dart';
+import '../../core/ui/metacritic_badge.dart';
+import '../../core/ui/last_played_text.dart';
 
 class LibraryListItem extends StatelessWidget {
   final Game game;
@@ -89,9 +91,24 @@ class LibraryListItem extends StatelessWidget {
 
   Widget _buildInfoColumn(BuildContext context) {
     final theme = Theme.of(context);
-    final playtimeHours = game.playtimeForever / 60.0;
-    final visibleGenres = game.genres.take(2).toList();
 
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 行1: 游戏名称 + 开发商
+        _buildTitleSection(theme),
+        const SizedBox(height: 8),
+        // 行2: 状态 • 时长 • 最后游玩
+        _buildStatusPlaytimeRow(theme),
+        const SizedBox(height: 8),
+        // 行3: 成就 | MC | 标签
+        _buildMetadataRow(theme),
+      ],
+    );
+  }
+
+  /// 构建标题部分(游戏名称 + 开发商)
+  Widget _buildTitleSection(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -114,55 +131,133 @@ class LibraryListItem extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            GameStatusDisplay.buildStatusChip(
-              context,
-              status,
-              onTap: isInSelectionMode || onStatusChanged == null
-                  ? null
-                  : () => _showStatusSelector(context),
-            ),
-            if (playtimeHours > 0) ...[
-              const SizedBox(width: 8),
-              Icon(
-                Icons.schedule,
-                size: 14,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 2),
-              Text(
-                '${playtimeHours.toStringAsFixed(1)}h',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ],
-        ),
-        if (visibleGenres.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: visibleGenres.map((genre) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  genre,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              );
-            }).toList(),
+      ],
+    );
+  }
+
+  /// 构建状态、时长、最后游玩行
+  Widget _buildStatusPlaytimeRow(ThemeData theme) {
+    final playtimeHours = game.playtimeForever / 60.0;
+
+    return Row(
+      children: [
+        // 状态标签(只读,无交互)
+        Builder(
+          builder: (context) => GameStatusDisplay.buildStatusChip(
+            context,
+            status,
+            showIcon: true,
+            // 不传onTap - 状态只读
           ),
-        ],
+        ),
+        // 分隔符
+        const SizedBox(width: 6),
+        Text(
+          '•',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(width: 6),
+        // 游玩时长
+        Icon(
+          Icons.schedule,
+          size: 14,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          playtimeHours >= 1
+              ? '${playtimeHours.toStringAsFixed(1)}h'
+              : '${game.playtimeForever}m',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        // 分隔符
+        const SizedBox(width: 6),
+        Text(
+          '•',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(width: 6),
+        // 最后游玩时间
+        Flexible(
+          child: LastPlayedText(
+            lastPlayed: game.lastPlayed,
+            showLabel: true,
+            showIcon: false,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 构建元数据行(成就 | MC | 标签)
+  Widget _buildMetadataRow(ThemeData theme) {
+    final visibleGenres = game.genres.take(2).toList();
+    final hasMetadata = (game.hasAchievements && game.totalAchievements > 0) ||
+        (game.metacriticScore != null && game.metacriticScore!.isNotEmpty) ||
+        visibleGenres.isNotEmpty;
+
+    if (!hasMetadata) {
+      return const SizedBox.shrink();
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      children: [
+        // 成就进度
+        if (game.hasAchievements && game.totalAchievements > 0)
+          AchievementCompact(
+            unlocked: game.unlockedAchievements,
+            total: game.totalAchievements,
+          ),
+        // 分隔符
+        if ((game.hasAchievements && game.totalAchievements > 0) &&
+            (game.metacriticScore != null && game.metacriticScore!.isNotEmpty))
+          Text(
+            '|',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        // MetaCritic评分
+        if (game.metacriticScore != null && game.metacriticScore!.isNotEmpty)
+          MetacriticBadge(
+            score: game.metacriticScore,
+            compact: true,
+          ),
+        // 分隔符
+        if ((game.hasAchievements && game.totalAchievements > 0 ||
+                (game.metacriticScore != null &&
+                    game.metacriticScore!.isNotEmpty)) &&
+            visibleGenres.isNotEmpty)
+          Text(
+            '|',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        // 游戏类型标签
+        ...visibleGenres.map((genre) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              genre,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            ),
+          );
+        }),
       ],
     );
   }
@@ -189,22 +284,6 @@ class LibraryListItem extends StatelessWidget {
           size: 18,
           color: isSelected ? Colors.white : Colors.white70,
         ),
-      ),
-    );
-  }
-
-  void _showStatusSelector(BuildContext context) {
-    if (onStatusChanged == null) return;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => GameStatusSelector(
-        currentStatus: status,
-        onStatusSelected: (newStatus) {
-          Navigator.of(context).pop();
-          onStatusChanged?.call(newStatus);
-        },
       ),
     );
   }
