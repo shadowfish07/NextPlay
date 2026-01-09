@@ -139,18 +139,15 @@ class BatchStatusViewModel extends ChangeNotifier {
           // 根据游戏时长智能推荐状态
           GameStatus suggestedStatus;
           String reason;
-          
+
           if (hoursPlayed >= game.estimatedCompletionHours) {
             suggestedStatus = const GameStatus.completed();
             reason = '游戏时长已达到预估完成时间，建议标记为已通关';
-          } else if (game.isMultiplayer) {
-            suggestedStatus = const GameStatus.multiplayer();
-            reason = '多人游戏，建议标记为多人游戏状态';
           } else {
             suggestedStatus = const GameStatus.playing();
             reason = '已投入较多时间($completionRate%完成度)，建议标记为游玩中';
           }
-          
+
           return GameSelectionItem(
             game: game,
             currentStatus: currentStatus,

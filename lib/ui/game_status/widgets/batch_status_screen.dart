@@ -5,7 +5,7 @@ import '../../../domain/models/game_status/batch_operation_state.dart';
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../../utils/logger.dart';
-import '../../core/ui/game_status_selector.dart';
+import 'inline_status_selector.dart';
 import '../../core/ui/game_status_display.dart';
 
 /// 智能状态建议主屏幕 - 全新单页面设计
@@ -696,24 +696,20 @@ class _SuggestionPreviewSheetState extends State<_SuggestionPreviewSheet> {
   }
 
   /// 显示状态选择器
-  void _showStatusSelector(BuildContext context, GameSelectionItem gameItem) {
+  void _showStatusSelector(BuildContext context, GameSelectionItem gameItem) async {
     AppLogger.info('BatchStatusScreen: _showStatusSelector called for ${gameItem.game.name}, current status: ${gameItem.currentStatus.displayName}');
-    
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => GameStatusSelector(
-        currentStatus: gameItem.currentStatus,
-        onStatusSelected: (status) {
-          AppLogger.info('BatchStatusScreen: Status selected: ${status.displayName} for game ${gameItem.game.name}');
-          Navigator.of(context).pop();
-          // 使用传入的 ViewModel 更新游戏状态
-          widget.viewModel.updateGameStatusCommand.execute((
-            gameItem.game.appId,
-            status,
-          ));
-        },
-      ),
+
+    final newStatus = await InlineStatusSelector.show(
+      context,
+      currentStatus: gameItem.currentStatus,
     );
+
+    if (newStatus != null) {
+      AppLogger.info('BatchStatusScreen: Status selected: ${newStatus.displayName} for game ${gameItem.game.name}');
+      widget.viewModel.updateGameStatusCommand.execute((
+        gameItem.game.appId,
+        newStatus,
+      ));
+    }
   }
 }

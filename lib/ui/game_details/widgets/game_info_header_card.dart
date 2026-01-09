@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
+import '../../core/ui/game_status_display.dart';
+import '../../core/ui/status_badge.dart';
+import '../../game_status/widgets/inline_status_selector.dart';
 
 /// 游戏基础信息头部卡片
 class GameInfoHeaderCard extends StatelessWidget {
@@ -129,9 +132,10 @@ class GameInfoHeaderCard extends StatelessWidget {
     );
   }
 
-  /// 状态单独成卡片，视觉上更像控制面板
+  /// 状态单独成卡片，使用状态色渐变背景
   Widget _buildStatusCard(BuildContext context) {
     final theme = Theme.of(context);
+    final statusColor = GameStatusDisplay.getStatusColor(gameStatus);
 
     return Card(
       elevation: 2,
@@ -140,8 +144,8 @@ class GameInfoHeaderCard extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              theme.colorScheme.primaryContainer.withValues(alpha: 0.9),
-              theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+              statusColor.withValues(alpha: 0.9),
+              statusColor.withValues(alpha: 0.7),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -157,13 +161,13 @@ class GameInfoHeaderCard extends StatelessWidget {
                   Icon(
                     Icons.flag_outlined,
                     size: 18,
-                    color: theme.colorScheme.onPrimaryContainer,
+                    color: Colors.white,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     '当前状态',
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer,
+                      color: Colors.white,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -177,41 +181,19 @@ class GameInfoHeaderCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          gameStatus.displayName,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            color: theme.colorScheme.onPrimaryContainer,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        StatusBadge(
+                          status: gameStatus,
+                          size: StatusBadgeSize.large,
+                          editable: true,
+                          onTap: () => _showStatusChangeDialog(context),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 8),
                         Text(
                           gameStatus.description,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onPrimaryContainer
-                                .withValues(alpha: 0.8),
+                            color: Colors.white.withValues(alpha: 0.9),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  FilledButton(
-                    onPressed: () => _showStatusChangeDialog(context),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: theme.colorScheme.onPrimaryContainer,
-                      foregroundColor: theme.colorScheme.primary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.edit, size: 16),
-                        SizedBox(width: 6),
-                        Text('更改'),
                       ],
                     ),
                   ),
@@ -264,45 +246,14 @@ class GameInfoHeaderCard extends StatelessWidget {
   }
 
   /// 显示状态更改对话框
-  void _showStatusChangeDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('更改游戏状态'),
-        content: RadioGroup<GameStatus>(
-          groupValue: gameStatus,
-          onChanged: (value) {
-            if (value != null) {
-              onStatusChanged(value);
-              Navigator.of(context).pop();
-            }
-          },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: GameStatusExtension.values.map((status) {
-              final isSelected = status == gameStatus;
-
-              return ListTile(
-                leading: Radio<GameStatus>(value: status),
-                title: Text(status.displayName),
-                subtitle: Text(status.description),
-                selected: isSelected,
-                onTap: () {
-                  onStatusChanged(status);
-                  Navigator.of(context).pop();
-                },
-              );
-            }).toList(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-        ],
-      ),
+  void _showStatusChangeDialog(BuildContext context) async {
+    final newStatus = await InlineStatusSelector.show(
+      context,
+      currentStatus: gameStatus,
     );
+    if (newStatus != null) {
+      onStatusChanged(newStatus);
+    }
   }
 
   /// 添加到收藏

@@ -16,6 +16,9 @@ class DiscoverViewModel extends ChangeNotifier {
   // UI状态
   DiscoverState _state = const DiscoverState.loading();
 
+  // 缓存的推荐列表（避免状态更新时重新随机）
+  List<Game> _cachedRecommendations = [];
+
   // Commands
   late Command<void, void> refreshCommand;
   late Command<void, void> generateRecommendationsCommand;
@@ -53,19 +56,19 @@ class DiscoverViewModel extends ChangeNotifier {
   /// 获取最近在玩的游戏
   List<Game> get recentlyPlayedGames => _gameRepository.getRecentlyPlayedGames(limit: 10);
 
-  /// 获取未玩游戏（用于推荐）
-  List<Game> get unplayedGames => _gameRepository.getUnplayedGames(limit: 10);
+  /// 获取未玩游戏（用于推荐）- 使用缓存避免重复随机
+  List<Game> get unplayedGames => _cachedRecommendations;
 
   /// 主推荐游戏
   Game? get heroRecommendation {
-    final games = unplayedGames;
-    return games.isNotEmpty ? games.first : null;
+    return _cachedRecommendations.isNotEmpty ? _cachedRecommendations.first : null;
   }
 
   /// 备选推荐游戏
   List<Game> get alternativeRecommendations {
-    final games = unplayedGames;
-    return games.length > 1 ? games.skip(1).take(3).toList() : [];
+    return _cachedRecommendations.length > 1
+        ? _cachedRecommendations.skip(1).take(3).toList()
+        : [];
   }
 
   /// 是否有推荐
@@ -82,11 +85,11 @@ class DiscoverViewModel extends ChangeNotifier {
       },
     );
 
-    // 生成推荐Command（刷新未玩游戏列表）
+    // 生成推荐Command（重新随机未玩游戏列表）
     generateRecommendationsCommand = Command.createAsyncNoParamNoResult(
       () async {
         AppLogger.info('Generating new recommendations');
-        // 数据直接从Repository获取，只需通知UI刷新
+        _cachedRecommendations = _gameRepository.getUnplayedGames(limit: 10);
         notifyListeners();
       },
     );
@@ -188,6 +191,10 @@ class DiscoverViewModel extends ChangeNotifier {
     if (_gameRepository.gameLibrary.isEmpty) {
       _setState(const DiscoverState.empty('游戏库为空，请先同步'));
     } else {
+      // 初始化时生成推荐缓存
+      if (_cachedRecommendations.isEmpty) {
+        _cachedRecommendations = _gameRepository.getUnplayedGames(limit: 10);
+      }
       _setState(const DiscoverState.loaded());
     }
   }

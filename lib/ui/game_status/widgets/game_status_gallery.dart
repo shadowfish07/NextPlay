@@ -353,16 +353,13 @@ class _GameCard extends StatelessWidget {
       playing: () => isText 
           ? colorScheme.primary
           : colorScheme.primaryContainer,
-      completed: () => isText 
+      completed: () => isText
           ? colorScheme.tertiary
           : colorScheme.tertiaryContainer,
-      abandoned: () => isText 
+      abandoned: () => isText
           ? colorScheme.error
           : colorScheme.errorContainer,
-      multiplayer: () => isText 
-          ? colorScheme.secondary
-          : colorScheme.secondaryContainer,
-      paused: () => isText 
+      paused: () => isText
           ? colorScheme.outline
           : colorScheme.outlineVariant,
     );

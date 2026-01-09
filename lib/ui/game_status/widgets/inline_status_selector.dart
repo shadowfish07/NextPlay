@@ -15,6 +15,23 @@ class InlineStatusSelector extends StatelessWidget {
     this.isCompact = false,
   });
 
+  /// 显示状态选择底部弹窗（静态方法，供外部调用）
+  static Future<GameStatus?> show(
+    BuildContext context, {
+    required GameStatus currentStatus,
+  }) async {
+    return showModalBottomSheet<GameStatus>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _StatusSelectorSheet(
+        currentStatus: currentStatus,
+        onStatusSelected: (status) {
+          Navigator.of(context).pop(status);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);

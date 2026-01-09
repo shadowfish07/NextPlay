@@ -8,7 +8,7 @@ class GameStatusDisplay {
   static ({IconData icon, Color color}) getStatusIconAndColor(GameStatus status) {
     return status.when(
       notStarted: () => (
-        icon: Icons.fiber_new,
+        icon: Icons.hourglass_empty,
         color: AppTheme.statusNotStarted,
       ),
       playing: () => (
@@ -20,16 +20,12 @@ class GameStatusDisplay {
         color: AppTheme.statusCompleted,
       ),
       abandoned: () => (
-        icon: Icons.pause_circle_filled,
+        icon: Icons.cancel,
         color: AppTheme.statusAbandoned,
       ),
       paused: () => (
         icon: Icons.pause_circle_outline,
         color: AppTheme.statusPaused,
-      ),
-      multiplayer: () => (
-        icon: Icons.people,
-        color: AppTheme.statusMultiplayer,
       ),
     );
   }

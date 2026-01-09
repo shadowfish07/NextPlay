@@ -198,7 +198,6 @@ extension GameRecommendationExtension on GameRecommendation {
       playing: () => baseTags.add('继续冒险'),
       completed: () => baseTags.add('值得重玩'),
       abandoned: () => {},
-      multiplayer: () => baseTags.add('在线游戏'),
       paused: () => baseTags.add('重新开始'),
     );
 

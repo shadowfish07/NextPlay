@@ -11,7 +11,6 @@ class GameStatus with _$GameStatus {
   const factory GameStatus.completed() = _Completed;
   const factory GameStatus.abandoned() = _Abandoned;
   const factory GameStatus.paused() = _Paused;
-  const factory GameStatus.multiplayer() = _Multiplayer;
 
   factory GameStatus.fromJson(Map<String, dynamic> json) => _$GameStatusFromJson(json);
 }
@@ -25,7 +24,6 @@ extension GameStatusExtension on GameStatus {
       completed: () => '已通关',
       abandoned: () => '已放弃',
       paused: () => '暂时搁置',
-      multiplayer: () => '多人游戏',
     );
   }
 
@@ -36,7 +34,6 @@ extension GameStatusExtension on GameStatus {
       completed: () => '值得重新体验',
       abandoned: () => '可能不适合',
       paused: () => '暂停但可能回归',
-      multiplayer: () => '在线社交体验',
     );
   }
 
@@ -47,7 +44,6 @@ extension GameStatusExtension on GameStatus {
       completed: () => 20.0,
       abandoned: () => 0.0,
       paused: () => 50.0,
-      multiplayer: () => 70.0,
     );
   }
 
@@ -58,7 +54,6 @@ extension GameStatusExtension on GameStatus {
       completed: () => true,
       abandoned: () => false,
       paused: () => true,
-      multiplayer: () => true,
     );
   }
 
@@ -69,6 +64,5 @@ extension GameStatusExtension on GameStatus {
     const GameStatus.completed(),
     const GameStatus.abandoned(),
     const GameStatus.paused(),
-    const GameStatus.multiplayer(),
   ];
 }

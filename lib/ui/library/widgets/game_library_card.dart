@@ -5,8 +5,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/theme.dart';
-import '../../core/ui/game_status_selector.dart';
+import '../../game_status/widgets/inline_status_selector.dart';
 import '../../core/ui/game_status_display.dart';
+import '../../core/ui/status_badge.dart';
 
 /// 游戏库卡片组件 - 展示单个游戏信息
 class GameLibraryCard extends StatelessWidget {
@@ -188,48 +189,12 @@ class GameLibraryCard extends StatelessWidget {
     );
   }
 
-  /// 构建状态标签
+  /// 构建状态标签 - 使用统一的 StatusBadge 组件
   Widget _buildStatusChip(BuildContext context) {
-    final theme = Theme.of(context);
-
-    final colors = status.when(
-      notStarted: () =>
-          (backgroundColor: AppTheme.statusNotStarted, textColor: Colors.white),
-      playing: () =>
-          (backgroundColor: AppTheme.statusPlaying, textColor: Colors.white),
-      completed: () =>
-          (backgroundColor: AppTheme.statusCompleted, textColor: Colors.white),
-      abandoned: () =>
-          (backgroundColor: AppTheme.statusAbandoned, textColor: Colors.white),
-      multiplayer: () => (
-        backgroundColor: AppTheme.statusMultiplayer,
-        textColor: Colors.white,
-      ),
-      paused: () =>
-          (backgroundColor: AppTheme.statusPaused, textColor: Colors.white),
-    );
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: colors.backgroundColor,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: colors.backgroundColor.withValues(alpha: 0.3),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Text(
-        status.displayName,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: colors.textColor,
-          fontWeight: FontWeight.w700,
-          fontSize: 11,
-        ),
-      ),
+    return StatusBadge(
+      status: status,
+      size: StatusBadgeSize.compact,
+      editable: false,
     );
   }
 
@@ -443,18 +408,14 @@ class GameLibraryCard extends StatelessWidget {
   }
 
   /// 显示状态选择器
-  void _showStatusSelector(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => GameStatusSelector(
-        currentStatus: status,
-        onStatusSelected: (newStatus) {
-          Navigator.of(context).pop();
-          onStatusChanged?.call(newStatus);
-        },
-      ),
+  void _showStatusSelector(BuildContext context) async {
+    final newStatus = await InlineStatusSelector.show(
+      context,
+      currentStatus: status,
     );
+    if (newStatus != null) {
+      onStatusChanged?.call(newStatus);
+    }
   }
 
   /// 显示游戏菜单
@@ -543,14 +504,13 @@ class GameActionMenu extends StatelessWidget {
     );
   }
 
-  void _showStatusSelector(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => GameStatusSelector(
-        currentStatus: status,
-        onStatusSelected: onStatusChanged!,
-      ),
+  void _showStatusSelector(BuildContext context) async {
+    final newStatus = await InlineStatusSelector.show(
+      context,
+      currentStatus: status,
     );
+    if (newStatus != null) {
+      onStatusChanged?.call(newStatus);
+    }
   }
 }

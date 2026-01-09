@@ -31,6 +31,7 @@ class GameRepository {
 
   // 内存缓存
   final Map<int, Game> _gameCache = {};
+  final Map<int, GameStatus> _gameStatusCache = {};
   final RecommendationStats _stats = const RecommendationStats();
   RecommendationResult? _currentRecommendations;
 
@@ -99,8 +100,9 @@ class GameRepository {
         userMap[user['app_id'] as int] = user;
       }
 
-      // 组合 Game 对象
+      // 组合 Game 对象并加载状态缓存
       _gameCache.clear();
+      _gameStatusCache.clear();
       for (final steam in steamGames) {
         final appId = steam['app_id'] as int;
         final igdb = igdbMap[appId];
@@ -108,6 +110,12 @@ class GameRepository {
 
         final game = _buildGame(steam, igdb, user);
         _gameCache[appId] = game;
+
+        // 加载状态到缓存
+        if (user != null && user['status'] != null) {
+          final statusStr = user['status'] as String;
+          _gameStatusCache[appId] = _parseGameStatus(statusStr);
+        }
       }
 
       AppLogger.info('Loaded ${_gameCache.length} games from database');
@@ -122,14 +130,36 @@ class GameRepository {
 
   /// 获取游戏状态
   GameStatus _getGameStatus(int appId) {
-    // 从数据库获取用户数据中的状态
-    // 这里使用同步方式，因为数据已经在内存中
-    final game = _gameCache[appId];
-    if (game == null) return const GameStatus.notStarted();
+    return _gameStatusCache[appId] ?? const GameStatus.notStarted();
+  }
 
-    // 状态存储在用户数据中，需要从数据库读取
-    // 为了性能，我们在内存中维护一个状态缓存
-    return const GameStatus.notStarted(); // 临时返回，实际从数据库读取
+  /// 解析状态字符串为 GameStatus
+  GameStatus _parseGameStatus(String statusStr) {
+    // 状态存储格式可能是 JSON 或简单字符串
+    try {
+      if (statusStr.startsWith('{')) {
+        final json = jsonDecode(statusStr) as Map<String, dynamic>;
+        return GameStatus.fromJson(json);
+      }
+      // 简单字符串格式
+      switch (statusStr) {
+        case 'notStarted':
+          return const GameStatus.notStarted();
+        case 'playing':
+          return const GameStatus.playing();
+        case 'completed':
+          return const GameStatus.completed();
+        case 'abandoned':
+          return const GameStatus.abandoned();
+        case 'paused':
+          return const GameStatus.paused();
+        default:
+          return const GameStatus.notStarted();
+      }
+    } catch (e) {
+      AppLogger.error('Failed to parse game status: $statusStr', e);
+      return const GameStatus.notStarted();
+    }
   }
 
   /// 构建 Game 对象
@@ -438,6 +468,8 @@ class GameRepository {
   Future<Result<void, String>> updateGameStatus(int appId, GameStatus status) async {
     try {
       await _databaseService.updateUserGameStatus(appId, status.toJson().toString());
+      // 更新内存缓存
+      _gameStatusCache[appId] = status;
       _gameStatusController.add(gameStatuses);
       AppLogger.info('Updated game status for $appId to ${status.displayName}');
       return const Success(());

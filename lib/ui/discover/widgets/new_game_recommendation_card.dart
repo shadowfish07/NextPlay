@@ -3,6 +3,8 @@ import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/theme.dart';
 import '../../core/ui/score_badge.dart';
+import '../../core/ui/status_badge.dart';
+import '../../game_status/widgets/inline_status_selector.dart';
 
 /// 重新设计的游戏推荐卡片
 /// 包含：名称/封面、发行年份、类型标签、评分、相似游戏、交互按钮
@@ -539,64 +541,24 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard>
     );
   }
 
-  /// 构建状态更新按钮
+  /// 构建状态更新按钮 - 使用统一的 StatusBadge 组件
   Widget _buildStatusUpdateButton(ThemeData theme) {
-    return Container(
-      width: double.infinity,
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.gamingElevated,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: AppTheme.accentColor.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<GameStatus>(
-          value: _currentStatus,
-          dropdownColor: AppTheme.gamingCard,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: Colors.white70,
-          ),
-          icon: Icon(
-            Icons.arrow_drop_down,
-            color: Colors.white70,
-          ),
-          items: [
-            const GameStatus.notStarted(),
-            const GameStatus.playing(),
-            const GameStatus.completed(),
-            const GameStatus.abandoned(),
-            const GameStatus.multiplayer(),
-            const GameStatus.paused(),
-          ].map((status) {
-            String statusText = '';
-            status.when(
-              notStarted: () => statusText = '未开始',
-              playing: () => statusText = '游玩中',
-              completed: () => statusText = '已完成',
-              abandoned: () => statusText = '已放弃',
-              multiplayer: () => statusText = '多人游戏',
-              paused: () => statusText = '暂时搁置',
-            );
-
-            return DropdownMenuItem<GameStatus>(
-              value: status,
-              child: Text('状态更新: $statusText'),
-            );
-          }).toList(),
-          onChanged: (GameStatus? newStatus) {
-            if (newStatus != null) {
-              setState(() {
-                _currentStatus = newStatus;
-              });
-              widget.onStatusChange?.call(newStatus);
-            }
-          },
-        ),
-      ),
+    return StatusBadge(
+      status: _currentStatus,
+      size: StatusBadgeSize.medium,
+      editable: true,
+      onTap: () async {
+        final newStatus = await InlineStatusSelector.show(
+          context,
+          currentStatus: _currentStatus,
+        );
+        if (newStatus != null && newStatus != _currentStatus) {
+          setState(() {
+            _currentStatus = newStatus;
+          });
+          widget.onStatusChange?.call(newStatus);
+        }
+      },
     );
   }
 }

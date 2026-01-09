@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../../../domain/models/game/game.dart';
@@ -16,44 +18,60 @@ class GameDetailsSliverAppBar extends StatelessWidget {
     this.onStorePressed,
   });
 
+  static const double _expandedHeight = 300.0;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return SliverAppBar(
-      expandedHeight: 300,
+      expandedHeight: _expandedHeight,
       pinned: true,
       stretch: true,
       centerTitle: false,
       leading: IconButton(
-        icon: Icon(
-          Icons.arrow_back,
-          color: Colors.white,
-        ),
+        icon: Icon(Icons.arrow_back, color: Colors.white),
         onPressed: () => Navigator.of(context).pop(),
       ),
       backgroundColor: colorScheme.primary,
-      flexibleSpace: FlexibleSpaceBar(
-        title: Text(
-          game.name,
-          style: theme.textTheme.titleLarge?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        titlePadding: const EdgeInsetsDirectional.only(
-          start: 72, // 给返回键留出空间，折叠后不重叠
-          bottom: 16,
-          end: 16,
-        ),
-        background: _buildHeroImage(context),
-        stretchModes: const [
-          StretchMode.blurBackground,
-          StretchMode.zoomBackground,
-        ],
+      flexibleSpace: LayoutBuilder(
+        builder: (context, constraints) {
+          // 计算折叠比例 (0.0 = 完全展开, 1.0 = 完全折叠)
+          final collapsedHeight = kToolbarHeight + topPadding;
+          final currentHeight = constraints.maxHeight;
+          final collapseRatio =
+              ((_expandedHeight - currentHeight) /
+                      (_expandedHeight - collapsedHeight))
+                  .clamp(0.0, 1.0);
+
+          // 动态计算左间距：展开时 0，收起时 48（避开返回按钮）
+          final startPadding = max(20.0, 48.0 * collapseRatio);
+
+          return FlexibleSpaceBar(
+            title: Text(
+              game.name,
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            centerTitle: false,
+            titlePadding: EdgeInsetsDirectional.only(
+              start: startPadding,
+              bottom: 14,
+              end: 16,
+            ),
+            background: _buildHeroImage(context),
+            stretchModes: const [
+              StretchMode.blurBackground,
+              StretchMode.zoomBackground,
+            ],
+          );
+        },
       ),
     );
   }
@@ -61,7 +79,7 @@ class GameDetailsSliverAppBar extends StatelessWidget {
   /// 构建hero背景图片
   Widget _buildHeroImage(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -74,11 +92,12 @@ class GameDetailsSliverAppBar extends StatelessWidget {
                   fit: BoxFit.cover,
                   gaplessPlayback: true,
                   filterQuality: FilterQuality.medium,
-                  errorBuilder: (context, error, stackTrace) => _buildFallbackImage(context),
+                  errorBuilder: (context, error, stackTrace) =>
+                      _buildFallbackImage(context),
                 )
               : _buildFallbackImage(context),
         ),
-        
+
         // 渐变遮罩
         Container(
           decoration: const BoxDecoration(
@@ -95,14 +114,6 @@ class GameDetailsSliverAppBar extends StatelessWidget {
             ),
           ),
         ),
-        
-        // 游戏评分（如果有）
-        if (game.aggregatedRating > 0)
-          Positioned(
-            top: 60,
-            right: 16,
-            child: _buildRatingBadge(context),
-          ),
       ],
     );
   }
@@ -110,7 +121,7 @@ class GameDetailsSliverAppBar extends StatelessWidget {
   /// 构建占位符图片
   Widget _buildFallbackImage(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       color: theme.colorScheme.surfaceContainerHighest,
       child: Center(
@@ -122,36 +133,4 @@ class GameDetailsSliverAppBar extends StatelessWidget {
       ),
     );
   }
-
-  /// 构建评分徽章
-  Widget _buildRatingBadge(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.amber,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.star,
-            size: 16,
-            color: Colors.white,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            game.aggregatedRating.toStringAsFixed(1),
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
 }
