@@ -5,6 +5,7 @@ import '../view_models/library_view_model.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/ui/common_widgets.dart' as common_widgets;
 import '../../core/ui/game_status_display.dart';
+import '../../core/ui/sync_status_indicator.dart';
 import 'game_library_filters.dart';
 import 'library_list_item.dart';
 
@@ -151,7 +152,9 @@ class _LibraryScreenState extends State<LibraryScreen>
 
   /// 构建应用栏操作按钮
   List<Widget> _buildAppBarActions(BuildContext context, LibraryViewModel viewModel) {
-    return const [];
+    return const [
+      SyncStatusIndicator(),
+    ];
   }
 
   /// 构建游戏列表

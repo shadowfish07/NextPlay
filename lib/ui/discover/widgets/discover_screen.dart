@@ -6,6 +6,7 @@ import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../../domain/models/discover/play_queue_item.dart';
 import '../../core/ui/common_widgets.dart' as common_widgets;
+import '../../core/ui/sync_status_indicator.dart';
 import '../../core/theme.dart';
 import 'activity_stats_section.dart';
 import 'small_game_card.dart';
@@ -72,6 +73,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ),
         ),
       ),
+      actions: const [
+        SyncStatusIndicator(),
+      ],
     );
   }
 
