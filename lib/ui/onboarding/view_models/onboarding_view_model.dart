@@ -147,13 +147,13 @@ class OnboardingViewModel extends ChangeNotifier {
 
   Future<void> _handleCompleteOnboarding() async {
     AppLogger.info('Completing onboarding');
-    await _repository.updateCurrentStep(OnboardingStep.gameTagging);
+    await _repository.completeOnboarding();
   }
 
   /// 完成引导流程（供UI直接调用的公共方法）
   Future<void> completeOnboarding() async {
     AppLogger.info('Completing onboarding (public method)');
-    await _repository.updateCurrentStep(OnboardingStep.gameTagging);
+    await _repository.completeOnboarding();
   }
 
   bool get canGoNext {
@@ -167,8 +167,6 @@ class OnboardingViewModel extends ChangeNotifier {
       case OnboardingStep.steamIdInput:
         return _state.steamId.isNotEmpty;
       case OnboardingStep.dataSync:
-        return !_state.isLoading;
-      case OnboardingStep.gameTagging:
         return false;
     }
   }

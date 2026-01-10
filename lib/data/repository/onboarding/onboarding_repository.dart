@@ -39,7 +39,7 @@ class OnboardingRepository {
         isCompleted: isCompleted,
         apiKey: apiKey,
         steamId: steamId,
-        currentStep: isCompleted ? OnboardingStep.gameTagging : OnboardingStep.welcome,
+        currentStep: isCompleted ? OnboardingStep.dataSync : OnboardingStep.welcome,
       );
       
       AppLogger.info('Onboarding state loaded: completed=$isCompleted');
@@ -53,19 +53,28 @@ class OnboardingRepository {
   Future<void> updateCurrentStep(OnboardingStep step) async {
     try {
       AppLogger.info('Updating current step to: $step');
-      
+
       _currentState = _currentState.copyWith(currentStep: step);
       _stateController.add(_currentState);
-      
-      if (step == OnboardingStep.gameTagging) {
-        await _prefs.setBool('onboarding_completed', true);
-        _currentState = _currentState.copyWith(isCompleted: true);
-        _stateController.add(_currentState);
-      }
     } catch (e, stackTrace) {
       AppLogger.error('Failed to update current step', e, stackTrace);
       _stateController.add(_currentState.copyWith(
         errorMessage: 'Failed to update step',
+        isLoading: false,
+      ));
+    }
+  }
+
+  Future<void> completeOnboarding() async {
+    try {
+      AppLogger.info('Completing onboarding');
+      await _prefs.setBool('onboarding_completed', true);
+      _currentState = _currentState.copyWith(isCompleted: true);
+      _stateController.add(_currentState);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to complete onboarding', e, stackTrace);
+      _stateController.add(_currentState.copyWith(
+        errorMessage: 'Failed to complete onboarding',
         isLoading: false,
       ));
     }

@@ -4,9 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../domain/models/onboarding/onboarding_step.dart';
 import '../view_models/onboarding_view_model.dart';
 import '../../../routing/routes.dart';
-import '../../../data/repository/game_repository.dart';
-import '../../game_status/view_models/batch_status_view_model.dart';
-import '../../game_status/widgets/batch_status_screen.dart';
+import '../../core/ui/webview_page.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -60,7 +58,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _buildStepContent(BuildContext context, OnboardingViewModel viewModel) {
     final state = viewModel.state;
-    
+
     switch (state.currentStep) {
       case OnboardingStep.welcome:
         return _buildWelcomeStep(context, viewModel);
@@ -72,8 +70,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         return _buildSteamIdInputStep(context, viewModel);
       case OnboardingStep.dataSync:
         return _buildDataSyncStep(context, viewModel);
-      case OnboardingStep.gameTagging:
-        return _buildGameTaggingStep(context, viewModel);
     }
   }
 
@@ -81,10 +77,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          Icons.videogame_asset,
-          size: 100,
-          color: Theme.of(context).colorScheme.primary,
+        ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Image.asset(
+            'assets/images/app_icon.png',
+            width: 100,
+            height: 100,
+          ),
         ),
         const SizedBox(height: 24),
         Text(
@@ -129,92 +128,140 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _buildApiKeyGuideStep(BuildContext context, OnboardingViewModel viewModel) {
     final apiKeyController = TextEditingController(text: viewModel.state.apiKey);
-    
-    return Column(
-      children: [
-        Text(
-          '获取 Steam API Key',
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 24),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '步骤：',
-                  style: Theme.of(context).textTheme.titleMedium,
+    final theme = Theme.of(context);
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Text(
+            '获取 Steam API Key',
+            style: theme.textTheme.headlineSmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '步骤：',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('1. 点击下方按钮打开 Steam API Key 页面'),
+                  const Text('2. 使用您的 Steam 账户登录'),
+                  const Text('3. 填写域名（可以随意填写）'),
+                  const Text('4. 复制生成的 API Key'),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.tonal(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const WebViewPage(
+                    url: 'https://steamcommunity.com/dev/apikey',
+                    title: 'Steam API Key',
+                  ),
                 ),
-                const SizedBox(height: 8),
-                const Text('1. 访问 steamcommunity.com/dev/apikey'),
-                const Text('2. 使用您的 Steam 账户登录'),
-                const Text('3. 填写域名（可以随意填写）'),
-                const Text('4. 复制生成的 API Key'),
+              );
+            },
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.open_in_new),
+                SizedBox(width: 8),
+                Text('打开 Steam API Key 页面'),
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 24),
-        TextField(
-          controller: apiKeyController,
-          decoration: const InputDecoration(
-            labelText: 'Steam API Key',
-            border: OutlineInputBorder(),
+          const SizedBox(height: 24),
+          TextField(
+            controller: apiKeyController,
+            decoration: const InputDecoration(
+              labelText: 'Steam API Key',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) {
+              viewModel.saveApiKeyCommand.execute(value);
+            },
           ),
-          onChanged: (value) {
-            viewModel.saveApiKeyCommand.execute(value);
-          },
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildSteamIdInputStep(BuildContext context, OnboardingViewModel viewModel) {
     final steamIdController = TextEditingController(text: viewModel.state.steamId);
-    
-    return Column(
-      children: [
-        Text(
-          '输入 Steam ID',
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 24),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '如何获取 steamID64：',
-                  style: Theme.of(context).textTheme.titleMedium,
+    final theme = Theme.of(context);
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Text(
+            '输入 Steam ID',
+            style: theme.textTheme.headlineSmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '如何获取 Steam ID：',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('1. 点击下方按钮打开 Steam 账户页面'),
+                  const Text('2. 登录您的 Steam 账户'),
+                  const Text('3. 复制页面左上角显示的 Steam ID'),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.tonal(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const WebViewPage(
+                    url: 'https://store.steampowered.com/account/',
+                    title: 'Steam 账户',
+                  ),
                 ),
-                const SizedBox(height: 8),
-                const Text('1. 访问 steamid.io'),
-                const Text('2. 输入您的 Steam 个人资料链接或用户名'),
-                const Text('3. 复制 steamID64 (17位数字)'),
+              );
+            },
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.open_in_new),
+                SizedBox(width: 8),
+                Text('打开 Steam 账户页面'),
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 24),
-        TextField(
-          controller: steamIdController,
-          decoration: const InputDecoration(
-            labelText: 'steamID64',
-            border: OutlineInputBorder(),
-            helperText: '请输入17位数字的 steamID64',
+          const SizedBox(height: 24),
+          TextField(
+            controller: steamIdController,
+            decoration: const InputDecoration(
+              labelText: 'Steam ID',
+              border: OutlineInputBorder(),
+              helperText: '请输入17位数字的 Steam ID',
+            ),
+            keyboardType: TextInputType.number,
+            onChanged: (value) {
+              viewModel.saveSteamIdCommand.execute(value);
+            },
           ),
-          keyboardType: TextInputType.number,
-          onChanged: (value) {
-            viewModel.saveSteamIdCommand.execute(value);
-          },
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -306,8 +353,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         // 操作按钮
         if (!state.isLoading && state.gameLibrary.isNotEmpty)
           FilledButton(
-            onPressed: () => viewModel.nextStepCommand.execute(),
-            child: const Text('继续'),
+            onPressed: () async {
+              await viewModel.completeOnboarding();
+              if (context.mounted) {
+                context.go(Routes.main);
+              }
+            },
+            child: const Text('完成'),
           ),
         // 重试按钮
         if (!state.isLoading && hasError && state.gameLibrary.isEmpty)
@@ -319,90 +371,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildGameTaggingStep(BuildContext context, OnboardingViewModel viewModel) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          Icons.auto_awesome,
-          size: 100,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        const SizedBox(height: 24),
-        Text(
-          '游戏状态智能标记',
-          style: Theme.of(context).textTheme.headlineMedium,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          '让我们为您的游戏库设置合适的状态标记\n这将帮助推荐系统为您提供更精准的建议',
-          style: Theme.of(context).textTheme.bodyLarge,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 32),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () async {
-                  // 跳过批量标记，直接完成引导
-                  await viewModel.completeOnboarding();
-                  if (context.mounted) {
-                    context.go(Routes.main);
-                  }
-                },
-                child: const Text('跳过此步骤'),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 2,
-              child: FilledButton(
-                onPressed: () {
-                  // 进入批量状态管理
-                  _startBatchStatusManagement(context, viewModel);
-                },
-                child: const Text('开始智能标记'),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  /// 启动批量状态管理
-  void _startBatchStatusManagement(BuildContext context, OnboardingViewModel viewModel) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => ChangeNotifierProvider(
-          create: (context) => BatchStatusViewModel(
-            gameRepository: context.read<GameRepository>(),
-          ),
-          child: BatchStatusScreen(
-            isFromOnboarding: true,
-            onCompleted: () async {
-              // 批量状态管理完成后,完成引导流程
-              Navigator.of(context).pop(); // 关闭批量状态管理页面
-              await viewModel.completeOnboarding();
-              if (context.mounted) {
-                context.go(Routes.main);
-              }
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildNavigationButtons(BuildContext context, OnboardingViewModel viewModel) {
     final state = viewModel.state;
-    
-    if (state.currentStep == OnboardingStep.gameTagging) {
-      return const SizedBox.shrink(); // No navigation buttons on final step
-    }
-    
+
     if (state.currentStep == OnboardingStep.dataSync) {
       // Auto-start sync when entering this step
       if (!state.isLoading && state.syncProgress == 0.0) {
@@ -412,7 +383,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
       return const SizedBox.shrink(); // No manual navigation during sync
     }
-    
+
     return Row(
       children: [
         if (viewModel.canGoPrevious)
@@ -429,8 +400,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: FilledButton(
               onPressed: () => viewModel.nextStepCommand.execute(),
               child: Text(
-                state.currentStep == OnboardingStep.steamConnection 
-                    ? '开始设置' 
+                state.currentStep == OnboardingStep.steamConnection
+                    ? '开始设置'
                     : '下一步'
               ),
             ),

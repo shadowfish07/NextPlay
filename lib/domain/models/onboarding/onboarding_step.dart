@@ -4,7 +4,6 @@ enum OnboardingStep {
   apiKeyGuide,
   steamIdInput,
   dataSync,
-  gameTagging,
 }
 
 extension OnboardingStepExtension on OnboardingStep {
@@ -20,8 +19,6 @@ extension OnboardingStepExtension on OnboardingStep {
         return '输入 Steam ID';
       case OnboardingStep.dataSync:
         return '同步游戏库';
-      case OnboardingStep.gameTagging:
-        return '快速标记';
     }
   }
 
@@ -37,8 +34,6 @@ extension OnboardingStepExtension on OnboardingStep {
         return '输入您的 Steam ID（steamID64）';
       case OnboardingStep.dataSync:
         return '正在同步您的游戏库数据，请稍候...';
-      case OnboardingStep.gameTagging:
-        return '让我们为您的游戏添加状态标记';
     }
   }
 
