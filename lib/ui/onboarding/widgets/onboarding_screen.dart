@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../../domain/models/onboarding/onboarding_step.dart';
 import '../view_models/onboarding_view_model.dart';
 import '../../../routing/routes.dart';
-import '../../core/ui/webview_page.dart';
+import '../../core/ui/steam_account_webview_page.dart';
+import '../../core/ui/steam_api_key_webview_page.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -152,23 +153,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   const SizedBox(height: 8),
                   const Text('1. 点击下方按钮打开 Steam API Key 页面'),
                   const Text('2. 使用您的 Steam 账户登录'),
-                  const Text('3. 填写域名（可以随意填写）'),
-                  const Text('4. 复制生成的 API Key'),
+                  const Text('3. 填写域名（可以随意填写）并注册'),
+                  const Text('4. 系统会自动获取您的 API Key'),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
           FilledButton.tonal(
-            onPressed: () {
-              Navigator.of(context).push(
+            onPressed: () async {
+              final result = await Navigator.of(context).push<String>(
                 MaterialPageRoute(
-                  builder: (context) => const WebViewPage(
-                    url: 'https://steamcommunity.com/dev/apikey',
-                    title: 'Steam API Key',
+                  builder: (context) => SteamApiKeyWebViewPage(
+                    initialApiKey: viewModel.state.apiKey,
+                    onApiKeyFound: (apiKey) {
+                      viewModel.saveApiKeyCommand.execute(apiKey);
+                    },
                   ),
                 ),
               );
+              if (result != null && result.isNotEmpty) {
+                apiKeyController.text = result;
+                viewModel.saveApiKeyCommand.execute(result);
+              }
             },
             child: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -221,22 +228,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   const SizedBox(height: 8),
                   const Text('1. 点击下方按钮打开 Steam 账户页面'),
                   const Text('2. 登录您的 Steam 账户'),
-                  const Text('3. 复制页面左上角显示的 Steam ID'),
+                  const Text('3. 系统会自动获取您的 Steam ID'),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
           FilledButton.tonal(
-            onPressed: () {
-              Navigator.of(context).push(
+            onPressed: () async {
+              final result = await Navigator.of(context).push<String>(
                 MaterialPageRoute(
-                  builder: (context) => const WebViewPage(
-                    url: 'https://store.steampowered.com/account/',
-                    title: 'Steam 账户',
+                  builder: (context) => SteamAccountWebViewPage(
+                    initialSteamId: viewModel.state.steamId,
+                    onSteamIdFound: (steamId) {
+                      viewModel.saveSteamIdCommand.execute(steamId);
+                    },
                   ),
                 ),
               );
+              if (result != null && result.isNotEmpty) {
+                steamIdController.text = result;
+                viewModel.saveSteamIdCommand.execute(result);
+              }
             },
             child: const Row(
               mainAxisSize: MainAxisSize.min,
