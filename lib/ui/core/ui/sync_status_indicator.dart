@@ -10,7 +10,7 @@ class SyncStatusIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<SettingsViewModel>(
       builder: (context, viewModel, child) {
-        if (!viewModel.isLoading) {
+        if (!viewModel.isSyncing) {
           return const SizedBox.shrink();
         }
 

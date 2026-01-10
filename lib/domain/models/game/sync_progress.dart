@@ -28,6 +28,9 @@ class SyncProgress {
 
   /// 是否失败
   bool get isFailed => stage == SyncStage.error;
+
+  /// 是否被取消
+  bool get isCancelled => stage == SyncStage.cancelled;
 }
 
 /// 同步阶段
@@ -37,6 +40,7 @@ enum SyncStage {
   initializingUserData,
   completed,
   error,
+  cancelled,
 }
 
 /// SyncStage 扩展方法
@@ -53,6 +57,8 @@ extension SyncStageExtension on SyncStage {
         return '同步完成';
       case SyncStage.error:
         return '同步失败';
+      case SyncStage.cancelled:
+        return '同步已取消';
     }
   }
 }

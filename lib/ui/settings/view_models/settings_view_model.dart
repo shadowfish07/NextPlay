@@ -32,7 +32,8 @@ class SettingsViewModel extends ChangeNotifier {
   late final Command<String, void> updateIgdbLanguageCommand;
 
   // UI状态 - 仅保留UI专用的状态，减少重复缓存
-  bool _isLoading = false;
+  bool _isCheckingConnection = false; // 检查连接的loading状态
+  bool _isSyncing = false; // 同步游戏库的loading状态
   String _errorMessage = '';
   bool _isDarkTheme = false; // UI状态，可以缓存
   String _appVersion = ''; // 缓存版本信息用于显示
@@ -43,6 +44,7 @@ class SettingsViewModel extends ChangeNotifier {
   int? _syncTotalGames;
   int? _syncCurrentBatch;
   int? _syncTotalBatches;
+  bool _wasSyncCancelled = false; // 跟踪当前任务是否被取消
   StreamSubscription? _syncProgressSubscription;
   StreamSubscription? _gameLibrarySubscription;
 
@@ -67,7 +69,8 @@ class SettingsViewModel extends ChangeNotifier {
   }
 
   // Getters - 从Repository或SharedPreferences动态获取数据
-  bool get isLoading => _isLoading;
+  bool get isCheckingConnection => _isCheckingConnection;
+  bool get isSyncing => _isSyncing;
   String get errorMessage => _errorMessage;
   String get apiKey => _prefs.getString('api_key') ?? '';
   String get steamId => _prefs.getString('steam_id') ?? '';
@@ -200,12 +203,15 @@ class SettingsViewModel extends ChangeNotifier {
   
   Future<void> _handleRefreshSteamConnection() async {
     try {
-      _setLoading(true);
+      _isCheckingConnection = true;
+      _errorMessage = '';
+      notifyListeners();
       AppLogger.info('Checking Steam connection status');
 
       if (!isSteamConnected) {
-        _setLoading(false);
-        _setError('请先配置 Steam 凭据');
+        _isCheckingConnection = false;
+        _errorMessage = '请先配置 Steam 凭据';
+        notifyListeners();
         return;
       }
 
@@ -217,31 +223,34 @@ class SettingsViewModel extends ChangeNotifier {
 
       result.fold(
         (success) {
-          _setLoading(false);
+          _isCheckingConnection = false;
+          notifyListeners();
           AppLogger.info('Steam connection verified: valid');
         },
         (failure) {
-          _setLoading(false);
-          _setError(failure.message);
+          _isCheckingConnection = false;
+          _errorMessage = failure.message;
+          notifyListeners();
           AppLogger.warning('Steam connection check failed: ${failure.message}');
         },
       );
     } catch (e, stackTrace) {
       AppLogger.error('Failed to check Steam connection', e, stackTrace);
-      _setError('连接检查失败');
+      _isCheckingConnection = false;
+      _errorMessage = '连接检查失败';
+      notifyListeners();
     }
   }
   
   Future<void> _handleUpdateApiKey(String newApiKey) async {
     try {
-      _setLoading(true);
       AppLogger.info('Updating API key');
-      
+
       await _onboardingRepository.saveApiKey(newApiKey);
       await _prefs.setString('api_key', newApiKey);
-      
-      _setLoading(false);
+
       AppLogger.info('API key updated successfully');
+      notifyListeners();
     } catch (e, stackTrace) {
       AppLogger.error('Failed to update API key', e, stackTrace);
       _setError('Failed to update API key');
@@ -250,14 +259,13 @@ class SettingsViewModel extends ChangeNotifier {
   
   Future<void> _handleUpdateSteamId(String newSteamId) async {
     try {
-      _setLoading(true);
       AppLogger.info('Updating Steam ID');
-      
+
       await _onboardingRepository.saveSteamId(newSteamId);
       await _prefs.setString('steam_id', newSteamId);
-      
-      _setLoading(false);
+
       AppLogger.info('Steam ID updated successfully');
+      notifyListeners();
     } catch (e, stackTrace) {
       AppLogger.error('Failed to update Steam ID', e, stackTrace);
       _setError('Failed to update Steam ID');
@@ -266,14 +274,25 @@ class SettingsViewModel extends ChangeNotifier {
   
   Future<void> _handleSyncGameLibrary() async {
     try {
-      _setLoading(true);
+      _isSyncing = true;
+      _errorMessage = '';
       _syncProgress = 0.0;
       _syncMessage = '正在准备同步...';
+      _wasSyncCancelled = false;
+      notifyListeners();
       AppLogger.info('Syncing game library');
 
       // 监听同步进度
       _syncProgressSubscription?.cancel();
       _syncProgressSubscription = _gameRepository.syncProgressStream.listen((progress) {
+        // 如果收到取消状态，说明有新任务启动，当前任务被取消
+        // 标记取消状态，不更新UI，让新任务的进度来更新
+        if (progress.isCancelled) {
+          _wasSyncCancelled = true;
+          AppLogger.info('Sync cancelled, waiting for new sync task');
+          return;
+        }
+
         _syncProgress = progress.progress;
         _syncMessage = progress.message;
         _syncTotalGames = progress.totalGames;
@@ -290,14 +309,30 @@ class SettingsViewModel extends ChangeNotifier {
       await _syncProgressSubscription?.cancel();
       _syncProgressSubscription = null;
 
-      _setLoading(false);
+      // 如果任务被取消，不更新状态，让新任务来更新
+      if (_wasSyncCancelled) {
+        AppLogger.info('Sync was cancelled, not updating final state');
+        return;
+      }
+
+      _isSyncing = false;
       _syncMessage = '';
+      notifyListeners();
       AppLogger.info('Game library sync completed');
     } catch (e, stackTrace) {
       AppLogger.error('Failed to sync game library', e, stackTrace);
       await _syncProgressSubscription?.cancel();
       _syncProgressSubscription = null;
-      _setError('同步失败: $e');
+
+      // 如果任务被取消，不更新错误状态
+      if (_wasSyncCancelled) {
+        AppLogger.info('Sync was cancelled, not updating error state');
+        return;
+      }
+
+      _isSyncing = false;
+      _errorMessage = '同步失败: $e';
+      notifyListeners();
     }
   }
   
@@ -316,14 +351,12 @@ class SettingsViewModel extends ChangeNotifier {
   
   Future<void> _handleClearCache() async {
     try {
-      _setLoading(true);
       AppLogger.info('Clearing cache');
-      
+
       // Clear cache-related preferences (you might want to add more specific cache keys)
       await _prefs.remove('game_cache');
       await _prefs.remove('image_cache');
-      
-      _setLoading(false);
+
       AppLogger.info('Cache cleared successfully');
     } catch (e, stackTrace) {
       AppLogger.error('Failed to clear cache', e, stackTrace);
@@ -333,16 +366,15 @@ class SettingsViewModel extends ChangeNotifier {
   
   Future<void> _handleClearAllData() async {
     try {
-      _setLoading(true);
       AppLogger.info('Clearing all application data');
-      
+
       await _prefs.clear();
-      
+
       // 重置本地UI状态
       _isDarkTheme = false;
-      
-      _setLoading(false);
+
       AppLogger.info('All application data cleared');
+      notifyListeners();
     } catch (e, stackTrace) {
       AppLogger.error('Failed to clear all data', e, stackTrace);
       _setError('Failed to clear all data');
@@ -376,16 +408,7 @@ class SettingsViewModel extends ChangeNotifier {
     }
   }
   
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    if (loading) {
-      _errorMessage = '';
-    }
-    notifyListeners();
-  }
-  
   void _setError(String error) {
-    _isLoading = false;
     _errorMessage = error;
     notifyListeners();
   }
@@ -477,8 +500,11 @@ class SettingsViewModel extends ChangeNotifier {
       notifyListeners();
 
       // 自动触发游戏库同步以获取新语言的数据
+      // 直接调用 _handleSyncGameLibrary 而不是通过 Command
+      // 因为 Command 在执行中时会忽略新的 execute() 调用
       if (isSteamConnected) {
-        await _handleSyncGameLibrary();
+        // 使用 unawaited 让同步异步执行，不阻塞语言切换
+        unawaited(_handleSyncGameLibrary());
       }
     } catch (e, stackTrace) {
       AppLogger.error('Failed to update IGDB language', e, stackTrace);

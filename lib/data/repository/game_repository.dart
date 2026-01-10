@@ -36,6 +36,9 @@ class GameRepository {
   final RecommendationStats _stats = const RecommendationStats();
   RecommendationResult? _currentRecommendations;
 
+  // 同步任务控制
+  int _currentSyncId = 0;
+
   // 数据变更流
   final _gameLibraryController = StreamController<List<Game>>.broadcast();
   final _gameStatusController = StreamController<Map<int, GameStatus>>.broadcast();
@@ -395,6 +398,13 @@ class GameRepository {
     required String apiKey,
     required String steamId,
   }) async {
+    // 生成新的同步任务 ID，自动使之前的任务失效
+    final syncId = ++_currentSyncId;
+    AppLogger.info('Starting sync task #$syncId (previous tasks will be cancelled)');
+
+    // 检查任务是否被取消的辅助函数
+    bool isCancelled() => _currentSyncId != syncId;
+
     try {
       AppLogger.info('Starting full game library sync...');
       _syncProgressController.add(SyncProgress(
@@ -408,6 +418,17 @@ class GameRepository {
         apiKey: apiKey,
         steamId: steamId,
       );
+
+      // 检查任务是否被取消
+      if (isCancelled()) {
+        AppLogger.info('Sync task #$syncId cancelled after fetching Steam library');
+        _syncProgressController.add(SyncProgress(
+          stage: SyncStage.cancelled,
+          progress: 0.0,
+          message: '同步已被新任务取消',
+        ));
+        return const Failure('同步已被新任务取消');
+      }
 
       if (steamResult.isError()) {
         final errorMsg = steamResult.exceptionOrNull() ?? 'Failed to fetch Steam library';
@@ -449,6 +470,17 @@ class GameRepository {
       await _databaseService.clearSteamGames();
       await _databaseService.upsertSteamGames(steamDataList);
 
+      // 检查任务是否被取消
+      if (isCancelled()) {
+        AppLogger.info('Sync task #$syncId cancelled after saving Steam data');
+        _syncProgressController.add(SyncProgress(
+          stage: SyncStage.cancelled,
+          progress: 0.0,
+          message: '同步已被新任务取消',
+        ));
+        return const Failure('同步已被新任务取消');
+      }
+
       _syncProgressController.add(SyncProgress(
         stage: SyncStage.fetchingSteamLibrary,
         progress: 0.2,
@@ -470,6 +502,8 @@ class GameRepository {
         steamIds,
         language: _prefs.getString('igdb_language') ?? 'en',
         onProgress: (completed, total) {
+          // 在进度回调中也检查取消状态，避免继续发送进度更新
+          if (isCancelled()) return;
           final igdbProgress = 0.25 + (completed / total) * 0.45;
           _syncProgressController.add(SyncProgress(
             stage: SyncStage.fetchingIgdbData,
@@ -480,6 +514,17 @@ class GameRepository {
           ));
         },
       );
+
+      // 检查任务是否被取消
+      if (isCancelled()) {
+        AppLogger.info('Sync task #$syncId cancelled after fetching IGDB data');
+        _syncProgressController.add(SyncProgress(
+          stage: SyncStage.cancelled,
+          progress: 0.0,
+          message: '同步已被新任务取消',
+        ));
+        return const Failure('同步已被新任务取消');
+      }
 
       if (igdbResult.isSuccess()) {
         final igdbResponse = igdbResult.getOrNull()!;
@@ -564,6 +609,17 @@ class GameRepository {
         ));
       }
 
+      // 检查任务是否被取消
+      if (isCancelled()) {
+        AppLogger.info('Sync task #$syncId cancelled before initializing user data');
+        _syncProgressController.add(SyncProgress(
+          stage: SyncStage.cancelled,
+          progress: 0.0,
+          message: '同步已被新任务取消',
+        ));
+        return const Failure('同步已被新任务取消');
+      }
+
       _syncProgressController.add(SyncProgress(
         stage: SyncStage.initializingUserData,
         progress: 0.85,
@@ -578,6 +634,17 @@ class GameRepository {
 
       // 第四步半：自动状态联动处理
       await _processAutoStatusUpdates(steamGames);
+
+      // 检查任务是否被取消
+      if (isCancelled()) {
+        AppLogger.info('Sync task #$syncId cancelled before final completion');
+        _syncProgressController.add(SyncProgress(
+          stage: SyncStage.cancelled,
+          progress: 0.0,
+          message: '同步已被新任务取消',
+        ));
+        return const Failure('同步已被新任务取消');
+      }
 
       // 第五步：重新加载内存缓存
       await _loadFromDatabase();

@@ -272,6 +272,11 @@ class OnboardingRepository {
 
       if (!syncResult.isSuccess()) {
         final error = syncResult.exceptionOrNull()!;
+        // 如果是被取消的任务，不更新状态，让新任务来更新
+        if (error.contains('取消')) {
+          AppLogger.info('Sync task was cancelled, not updating state');
+          return;
+        }
         _currentState = _currentState.copyWith(
           isLoading: false,
           errorMessage: '获取游戏库失败: $error',

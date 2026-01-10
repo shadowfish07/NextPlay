@@ -34,9 +34,7 @@ class StorageCacheCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: viewModel.isLoading
-                  ? null
-                  : () => _showClearCacheConfirmation(context, viewModel),
+              onPressed: () => _showClearCacheConfirmation(context, viewModel),
               icon: const Icon(Icons.cached),
               label: const Text('清除缓存'),
             ),
@@ -47,9 +45,7 @@ class StorageCacheCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: viewModel.isLoading
-                  ? null
-                  : () => _showClearAllDataDialog(context, viewModel),
+              onPressed: () => _showClearAllDataDialog(context, viewModel),
               icon: const Icon(Icons.delete_sweep),
               label: const Text('清除所有数据'),
               style: FilledButton.styleFrom(

@@ -67,7 +67,7 @@ class DataSyncCard extends StatelessWidget {
           ),
 
           // 同步进度（如果正在同步）
-          if (viewModel.isLoading) ...[
+          if (viewModel.isSyncing) ...[
             const SizedBox(height: 16),
             LinearProgressIndicator(
               value: viewModel.syncProgress > 0 ? viewModel.syncProgress : null,
@@ -109,7 +109,7 @@ class DataSyncCard extends StatelessWidget {
           ],
 
           // 错误信息
-          if (viewModel.errorMessage.isNotEmpty && !viewModel.isLoading) ...[
+          if (viewModel.errorMessage.isNotEmpty && !viewModel.isSyncing) ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(8),
@@ -144,11 +144,11 @@ class DataSyncCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: viewModel.isSteamConnected && !viewModel.isLoading
+              onPressed: viewModel.isSteamConnected && !viewModel.isSyncing
                   ? () => viewModel.syncGameLibraryCommand.execute()
                   : null,
               icon: const Icon(Icons.sync),
-              label: Text(viewModel.isLoading ? '同步中...' : '立即同步'),
+              label: Text(viewModel.isSyncing ? '同步中...' : '立即同步'),
             ),
           ),
 

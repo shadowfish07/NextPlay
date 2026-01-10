@@ -179,10 +179,10 @@ class _SteamConnectionCardState extends State<SteamConnectionCard> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: viewModel.isLoading
+                    onPressed: viewModel.isCheckingConnection
                         ? null
                         : () => _checkConnection(context, viewModel),
-                    icon: viewModel.isLoading
+                    icon: viewModel.isCheckingConnection
                         ? const SizedBox(
                             width: 16,
                             height: 16,
@@ -243,7 +243,7 @@ class _SteamConnectionCardState extends State<SteamConnectionCard> {
     await Future.delayed(const Duration(milliseconds: 100));
 
     // 等待 loading 结束
-    while (viewModel.isLoading) {
+    while (viewModel.isCheckingConnection) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
 
