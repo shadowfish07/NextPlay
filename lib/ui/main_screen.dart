@@ -5,6 +5,7 @@ import 'discover/widgets/discover_screen.dart';
 import 'library/widgets/library_screen.dart';
 import 'settings/widgets/settings_screen.dart';
 import 'settings/view_models/settings_view_model.dart';
+import '../data/repository/game_repository.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -33,7 +34,18 @@ class _MainScreenState extends State<MainScreen> {
 
   void _triggerAutoSync() {
     final settingsViewModel = context.read<SettingsViewModel>();
+    final gameRepository = context.read<GameRepository>();
+
     if (settingsViewModel.isSteamConnected) {
+      // 如果刚同步过（1分钟内），跳过自动同步
+      // 这避免了从引导流程完成后立即重复同步
+      final lastSync = gameRepository.lastSyncTime;
+      if (lastSync != null) {
+        final elapsed = DateTime.now().difference(lastSync);
+        if (elapsed.inMinutes < 1) {
+          return;
+        }
+      }
       settingsViewModel.syncGameLibraryCommand.execute();
     }
   }

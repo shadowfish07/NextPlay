@@ -78,6 +78,13 @@ class GameRepository {
   }
 
   RecommendationStats get stats => _stats;
+
+  /// 获取上次同步时间
+  DateTime? get lastSyncTime {
+    final timeStr = _prefs.getString('last_sync_time');
+    if (timeStr == null) return null;
+    return DateTime.tryParse(timeStr);
+  }
   RecommendationResult? get currentRecommendations => _currentRecommendations;
 
   /// 从数据库加载数据到内存缓存
