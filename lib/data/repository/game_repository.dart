@@ -39,6 +39,9 @@ class GameRepository {
   // 同步任务控制
   int _currentSyncId = 0;
 
+  /// 同步取消错误的标识常量
+  static const String syncCancelledError = 'SYNC_CANCELLED';
+
   // 数据变更流
   final _gameLibraryController = StreamController<List<Game>>.broadcast();
   final _gameStatusController = StreamController<Map<int, GameStatus>>.broadcast();
@@ -427,7 +430,7 @@ class GameRepository {
           progress: 0.0,
           message: '同步已被新任务取消',
         ));
-        return const Failure('同步已被新任务取消');
+        return const Failure(syncCancelledError);
       }
 
       if (steamResult.isError()) {
@@ -478,7 +481,7 @@ class GameRepository {
           progress: 0.0,
           message: '同步已被新任务取消',
         ));
-        return const Failure('同步已被新任务取消');
+        return const Failure(syncCancelledError);
       }
 
       _syncProgressController.add(SyncProgress(
@@ -523,7 +526,7 @@ class GameRepository {
           progress: 0.0,
           message: '同步已被新任务取消',
         ));
-        return const Failure('同步已被新任务取消');
+        return const Failure(syncCancelledError);
       }
 
       if (igdbResult.isSuccess()) {
@@ -617,7 +620,7 @@ class GameRepository {
           progress: 0.0,
           message: '同步已被新任务取消',
         ));
-        return const Failure('同步已被新任务取消');
+        return const Failure(syncCancelledError);
       }
 
       _syncProgressController.add(SyncProgress(
@@ -643,7 +646,7 @@ class GameRepository {
           progress: 0.0,
           message: '同步已被新任务取消',
         ));
-        return const Failure('同步已被新任务取消');
+        return const Failure(syncCancelledError);
       }
 
       // 第五步：重新加载内存缓存
