@@ -436,4 +436,53 @@ class GameDatabaseService {
     final db = await database;
     await db.delete('play_queue');
   }
+
+  /// 获取待玩队列详情（包含加入时间）
+  Future<List<Map<String, dynamic>>> getPlayQueueWithDetails() async {
+    final db = await database;
+    return await db.query(
+      'play_queue',
+      orderBy: 'position ASC',
+    );
+  }
+
+  /// 检查游戏是否在待玩队列中
+  Future<bool> isInPlayQueue(int appId) async {
+    final db = await database;
+    final results = await db.query(
+      'play_queue',
+      where: 'app_id = ?',
+      whereArgs: [appId],
+      limit: 1,
+    );
+    return results.isNotEmpty;
+  }
+
+  /// 获取单个待玩项详情
+  Future<Map<String, dynamic>?> getPlayQueueItem(int appId) async {
+    final db = await database;
+    final results = await db.query(
+      'play_queue',
+      where: 'app_id = ?',
+      whereArgs: [appId],
+      limit: 1,
+    );
+    return results.isNotEmpty ? results.first : null;
+  }
+
+  /// 批量从待玩队列移除
+  Future<void> batchRemoveFromPlayQueue(List<int> appIds) async {
+    if (appIds.isEmpty) return;
+    final db = await database;
+    final batch = db.batch();
+    for (final appId in appIds) {
+      batch.delete(
+        'play_queue',
+        where: 'app_id = ?',
+        whereArgs: [appId],
+      );
+    }
+    await batch.commit(noResult: true);
+    AppLogger.info('Batch removed ${appIds.length} games from play queue');
+  }
 }

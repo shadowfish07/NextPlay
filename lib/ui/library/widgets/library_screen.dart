@@ -196,7 +196,8 @@ class _LibraryScreenState extends State<LibraryScreen>
             final game = viewModel.games[index];
             final status = viewModel.getGameStatus(game.appId);
             final isSelected = viewModel.isGameSelected(game.appId);
-            
+            final isInWishlist = viewModel.isInPlayQueue(game.appId);
+
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: LibraryListItem(
@@ -204,6 +205,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                 status: status,
                 isSelected: isSelected,
                 isInSelectionMode: viewModel.isInSelectionMode,
+                isInWishlist: isInWishlist,
                 onTap: () => _handleGameTap(viewModel, game.appId),
                 onLongPress: () => _handleGameLongPress(viewModel),
                 onStatusChanged: (newStatus) =>

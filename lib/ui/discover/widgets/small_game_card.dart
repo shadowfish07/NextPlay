@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/theme.dart';
+import '../../core/ui/wishlist_badge.dart';
 
 /// 小尺寸游戏卡片 - 用于横向滑动列表
 /// 适用于"正在游玩"和"待玩队列"区域
@@ -11,6 +12,8 @@ class SmallGameCard extends StatelessWidget {
   final String? statusInfo; // 额外状态信息，如"15小时"、"队列第2位"
   final VoidCallback? onTap;
   final int? queuePosition; // 队列位置（仅队列卡片需要）
+  final bool isInWishlist; // 是否在待玩列表中
+  final String? addedTimeText; // 加入待玩的时间文本，如"3天前加入"
 
   const SmallGameCard({
     super.key,
@@ -19,6 +22,8 @@ class SmallGameCard extends StatelessWidget {
     this.statusInfo,
     this.onTap,
     this.queuePosition,
+    this.isInWishlist = false,
+    this.addedTimeText,
   });
 
   @override
@@ -159,6 +164,14 @@ class SmallGameCard extends StatelessWidget {
               child: _buildQueuePositionBadge(),
             ),
 
+          // 待玩角标 (右上角)
+          if (isInWishlist && queuePosition == null)
+            const Positioned(
+              top: 6,
+              right: 6,
+              child: WishlistBadge(size: WishlistBadgeSize.small),
+            ),
+
           // 渐变遮罩
           Positioned(
             bottom: 0,
@@ -230,8 +243,14 @@ class SmallGameCard extends StatelessWidget {
   Widget _buildStatusInfo(BuildContext context) {
     final theme = Theme.of(context);
 
+    // 优先显示自定义状态信息
     if (statusInfo != null) {
       return _buildSingleLineInfo(theme, statusInfo!);
+    }
+
+    // 如果有加入待玩时间，显示待玩信息
+    if (addedTimeText != null) {
+      return _buildWishlistInfo(theme);
     }
 
     // 格式化近两周时长
@@ -303,6 +322,30 @@ class SmallGameCard extends StatelessWidget {
           Expanded(
             child: Text(
               text,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: AppTheme.gameHighlight,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 构建待玩信息（显示加入时间）
+  Widget _buildWishlistInfo(ThemeData theme) {
+    return SizedBox(
+      height: 16,
+      child: Row(
+        children: [
+          Icon(Icons.bookmark, size: 12, color: AppTheme.gameHighlight),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              addedTimeText!,
               style: theme.textTheme.labelSmall?.copyWith(
                 color: AppTheme.gameHighlight,
                 fontWeight: FontWeight.w500,

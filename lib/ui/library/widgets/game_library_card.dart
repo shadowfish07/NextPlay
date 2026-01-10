@@ -8,6 +8,7 @@ import '../../core/theme.dart';
 import '../../game_status/widgets/inline_status_selector.dart';
 import '../../core/ui/game_status_display.dart';
 import '../../core/ui/status_badge.dart';
+import '../../core/ui/wishlist_badge.dart';
 
 /// 游戏库卡片组件 - 展示单个游戏信息
 class GameLibraryCard extends StatelessWidget {
@@ -18,6 +19,8 @@ class GameLibraryCard extends StatelessWidget {
   final Function(GameStatus)? onStatusChanged;
   final bool isSelected;
   final bool isInSelectionMode;
+  final bool isInWishlist;
+  final VoidCallback? onToggleWishlist;
 
   const GameLibraryCard({
     super.key,
@@ -28,6 +31,8 @@ class GameLibraryCard extends StatelessWidget {
     this.onStatusChanged,
     this.isSelected = false,
     this.isInSelectionMode = false,
+    this.isInWishlist = false,
+    this.onToggleWishlist,
   });
 
   @override
@@ -188,6 +193,14 @@ class GameLibraryCard extends StatelessWidget {
 
           // 状态标签
           Positioned(top: 8, left: 8, child: _buildStatusChip(context)),
+
+          // 待玩角标 (右上角)
+          if (isInWishlist)
+            const Positioned(
+              top: 8,
+              right: 8,
+              child: WishlistBadge(size: WishlistBadgeSize.small),
+            ),
 
           // 游戏时长
           if (game.playtimeForever > 0)
@@ -434,6 +447,8 @@ class GameLibraryCard extends StatelessWidget {
         game: game,
         status: status,
         onStatusChanged: onStatusChanged,
+        isInWishlist: isInWishlist,
+        onToggleWishlist: onToggleWishlist,
       ),
     );
   }
@@ -444,12 +459,16 @@ class GameActionMenu extends StatelessWidget {
   final Game game;
   final GameStatus status;
   final Function(GameStatus)? onStatusChanged;
+  final bool isInWishlist;
+  final VoidCallback? onToggleWishlist;
 
   const GameActionMenu({
     super.key,
     required this.game,
     required this.status,
     this.onStatusChanged,
+    this.isInWishlist = false,
+    this.onToggleWishlist,
   });
 
   @override
@@ -503,6 +522,18 @@ class GameActionMenu extends StatelessWidget {
               onTap: () {
                 Navigator.of(context).pop();
                 _showStatusSelector(context);
+              },
+            ),
+
+          if (onToggleWishlist != null)
+            ListTile(
+              leading: Icon(
+                isInWishlist ? Icons.bookmark : Icons.bookmark_border,
+              ),
+              title: Text(isInWishlist ? '移出待玩' : '加入待玩'),
+              onTap: () {
+                Navigator.of(context).pop();
+                onToggleWishlist?.call();
               },
             ),
 

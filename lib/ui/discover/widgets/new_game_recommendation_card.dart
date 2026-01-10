@@ -4,6 +4,7 @@ import '../../../domain/models/game/game_status.dart';
 import '../../core/theme.dart';
 import '../../core/ui/score_badge.dart';
 import '../../core/ui/status_badge.dart';
+import '../../core/ui/wishlist_badge.dart';
 import '../../game_status/widgets/inline_status_selector.dart';
 
 /// 游戏推荐卡片 - 封面沉浸式设计
@@ -20,6 +21,7 @@ class NewGameRecommendationCard extends StatefulWidget {
   final VoidCallback? onSkip;
   final VoidCallback? onTap;
   final Function(GameStatus)? onStatusChange;
+  final bool isInWishlist;
 
   const NewGameRecommendationCard({
     super.key,
@@ -29,6 +31,7 @@ class NewGameRecommendationCard extends StatefulWidget {
     this.onSkip,
     this.onTap,
     this.onStatusChange,
+    this.isInWishlist = false,
   });
 
   @override
@@ -82,6 +85,8 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard> {
                 _buildStatusBadge(),
                 // 右上角：评分
                 _buildScoreBadge(),
+                // 待玩角标（评分下方）
+                if (widget.isInWishlist) _buildWishlistBadge(),
                 // 底部信息区
                 _buildBottomInfo(),
               ],
@@ -153,6 +158,15 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard> {
         score: widget.game.aggregatedRating,
         compact: false,
       ),
+    );
+  }
+
+  /// 构建待玩角标 - 评分下方
+  Widget _buildWishlistBadge() {
+    return const Positioned(
+      top: 56,
+      right: 16,
+      child: WishlistBadge(size: WishlistBadgeSize.medium),
     );
   }
 

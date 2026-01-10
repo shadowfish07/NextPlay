@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../../core/ui/game_status_display.dart';
 import '../../core/ui/achievement_compact.dart';
 import '../../core/ui/score_badge.dart';
+import '../../core/ui/wishlist_badge.dart';
 
 class LibraryListItem extends StatelessWidget {
   final Game game;
@@ -15,6 +16,7 @@ class LibraryListItem extends StatelessWidget {
   final Function(GameStatus)? onStatusChanged;
   final bool isSelected;
   final bool isInSelectionMode;
+  final bool isInWishlist;
 
   const LibraryListItem({
     super.key,
@@ -25,6 +27,7 @@ class LibraryListItem extends StatelessWidget {
     this.onStatusChanged,
     this.isSelected = false,
     this.isInSelectionMode = false,
+    this.isInWishlist = false,
   });
 
   @override
@@ -63,36 +66,47 @@ class LibraryListItem extends StatelessWidget {
   }
 
   Widget _buildCoverImage(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: SizedBox(
-        width: 72,
-        height: 108,
-        child: CachedNetworkImage(
-          imageUrl: game.coverImageUrl,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(
-            color: AppTheme.gamingElevated,
-            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          ),
-          errorWidget: (context, url, error) => CachedNetworkImage(
-            imageUrl: game.libraryImageUrl,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => Container(
-              color: AppTheme.gamingElevated,
-              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            ),
-            errorWidget: (context, url, error) => Container(
-              color: AppTheme.gamingElevated,
-              child: Icon(
-                Icons.videogame_asset,
-                color: AppTheme.gameHighlight,
-                size: 28,
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: 72,
+            height: 108,
+            child: CachedNetworkImage(
+              imageUrl: game.coverImageUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                color: AppTheme.gamingElevated,
+                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
+              errorWidget: (context, url, error) => CachedNetworkImage(
+                imageUrl: game.libraryImageUrl,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  color: AppTheme.gamingElevated,
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  color: AppTheme.gamingElevated,
+                  child: Icon(
+                    Icons.videogame_asset,
+                    color: AppTheme.gameHighlight,
+                    size: 28,
+                  ),
+                ),
               ),
             ),
           ),
         ),
-      ),
+        // 待玩角标
+        if (isInWishlist)
+          const Positioned(
+            top: 4,
+            right: 4,
+            child: WishlistBadge(size: WishlistBadgeSize.small),
+          ),
+      ],
     );
   }
 

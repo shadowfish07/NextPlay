@@ -11,6 +11,7 @@ import '../../domain/models/game/sync_progress.dart';
 import '../../domain/models/discover/filter_criteria.dart';
 import '../../domain/models/discover/game_recommendation.dart';
 import '../../domain/models/discover/game_activity_stats.dart';
+import '../../domain/models/discover/play_queue_item.dart';
 import '../service/completion_time_service.dart';
 import '../service/steam_api_service.dart';
 import '../service/igdb_game_service.dart';
@@ -333,6 +334,55 @@ class GameRepository {
     _playQueueController.add(games);
   }
 
+  /// 自动状态联动处理
+  /// 1. 有游玩时间但状态为未开始 -> 自动改为游玩中
+  /// 2. 近两周有游玩时间 -> 自动从待玩移除
+  Future<void> _processAutoStatusUpdates(List<Game> steamGames) async {
+    final statusUpdates = <int, String>{};
+    final removeFromQueue = <int>[];
+
+    // 获取当前待玩列表
+    final playQueue = await _databaseService.getPlayQueue();
+    final playQueueSet = playQueue.toSet();
+
+    // 获取当前用户数据
+    final userData = await _databaseService.getAllUserGameData();
+    final userDataMap = <int, Map<String, dynamic>>{};
+    for (final data in userData) {
+      userDataMap[data['app_id'] as int] = data;
+    }
+
+    for (final game in steamGames) {
+      final appId = game.appId;
+      final currentData = userDataMap[appId];
+      final currentStatus = currentData?['status'] as String? ?? 'notStarted';
+
+      // 规则1: 有游玩时间但状态为未开始 -> 改为游玩中
+      if (game.playtimeForever > 0 && currentStatus == 'notStarted') {
+        statusUpdates[appId] = 'playing';
+        AppLogger.info('Auto-updating game $appId status: notStarted -> playing');
+      }
+
+      // 规则2: 近两周有游玩时间 -> 从待玩移除
+      if (game.playtimeLastTwoWeeks > 0 && playQueueSet.contains(appId)) {
+        removeFromQueue.add(appId);
+        AppLogger.info('Auto-removing game $appId from play queue (played recently)');
+      }
+    }
+
+    // 批量更新状态
+    if (statusUpdates.isNotEmpty) {
+      await _databaseService.batchUpdateUserGameStatus(statusUpdates);
+      AppLogger.info('Auto-updated ${statusUpdates.length} game statuses');
+    }
+
+    // 批量从待玩移除
+    if (removeFromQueue.isNotEmpty) {
+      await _databaseService.batchRemoveFromPlayQueue(removeFromQueue);
+      AppLogger.info('Auto-removed ${removeFromQueue.length} games from play queue');
+    }
+  }
+
   /// 从 Steam API 同步游戏库（一次性同步所有数据）
   Future<Result<List<Game>, String>> syncGameLibrary({
     required String apiKey,
@@ -519,6 +569,9 @@ class GameRepository {
         await _databaseService.getOrCreateUserGameData(game.appId);
       }
 
+      // 第四步半：自动状态联动处理
+      await _processAutoStatusUpdates(steamGames);
+
       // 第五步：重新加载内存缓存
       await _loadFromDatabase();
 
@@ -649,6 +702,63 @@ class GameRepository {
       return const Success(());
     } catch (e, stackTrace) {
       final error = 'Failed to clear play queue: $e';
+      AppLogger.error(error, e, stackTrace);
+      return Failure(error);
+    }
+  }
+
+  /// 检查游戏是否在待玩队列中
+  Future<bool> isInPlayQueue(int appId) async {
+    return await _databaseService.isInPlayQueue(appId);
+  }
+
+  /// 获取待玩队列详情（包含加入时间）
+  Future<List<PlayQueueItem>> getPlayQueueWithDetails() async {
+    final details = await _databaseService.getPlayQueueWithDetails();
+    return details.map((item) {
+      final appId = item['app_id'] as int;
+      final game = _gameCache[appId];
+      final addedAt = DateTime.fromMillisecondsSinceEpoch(
+        item['added_at'] as int,
+      );
+      final position = item['position'] as int;
+      return PlayQueueItem(
+        game: game,
+        appId: appId,
+        addedAt: addedAt,
+        position: position,
+      );
+    }).where((item) => item.game != null).toList();
+  }
+
+  /// 重新排序待玩队列
+  Future<Result<void, String>> reorderPlayQueue(List<int> appIds) async {
+    try {
+      await _databaseService.reorderPlayQueue(appIds);
+      await _notifyPlayQueueChanged();
+
+      AppLogger.info('Reordered play queue');
+      return const Success(());
+    } catch (e, stackTrace) {
+      final error = 'Failed to reorder play queue: $e';
+      AppLogger.error(error, e, stackTrace);
+      return Failure(error);
+    }
+  }
+
+  /// 切换待玩状态（已在则移除，不在则添加）
+  Future<Result<bool, String>> togglePlayQueue(int appId) async {
+    try {
+      final isIn = await isInPlayQueue(appId);
+      if (isIn) {
+        await removeFromPlayQueue(appId);
+        return const Success(false); // 返回 false 表示已移除
+      } else {
+        await addToPlayQueue(appId);
+        return const Success(true); // 返回 true 表示已添加
+      }
+    } catch (e, stackTrace) {
+      final error = 'Failed to toggle play queue: $e';
       AppLogger.error(error, e, stackTrace);
       return Failure(error);
     }

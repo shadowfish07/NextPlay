@@ -104,6 +104,9 @@ class GameDetailsScreen extends StatelessWidget {
                     gameStatus: viewModel.gameStatus!,
                     onStatusChanged: (status) =>
                         viewModel.updateGameStatusCommand.execute(status),
+                    isInWishlist: viewModel.isInWishlist,
+                    onToggleWishlist: () =>
+                        viewModel.toggleWishlistCommand.execute(),
                   ),
 
                   // 游玩记录卡片（仅在有游玩时间时展示）

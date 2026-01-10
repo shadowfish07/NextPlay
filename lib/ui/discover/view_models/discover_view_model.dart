@@ -4,6 +4,7 @@ import 'package:flutter_command/flutter_command.dart';
 
 import '../../../domain/models/discover/discover_state.dart';
 import '../../../domain/models/discover/game_activity_stats.dart';
+import '../../../domain/models/discover/play_queue_item.dart';
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../../data/repository/game_repository.dart';
@@ -19,16 +20,23 @@ class DiscoverViewModel extends ChangeNotifier {
   // 缓存的推荐列表（避免状态更新时重新随机）
   List<Game> _cachedRecommendations = [];
 
+  // 待玩列表缓存
+  List<PlayQueueItem> _playQueueItems = [];
+
   // Commands
   late Command<void, void> refreshCommand;
   late Command<void, void> generateRecommendationsCommand;
   late Command<(int, GameStatus), void> updateGameStatusCommand;
   late Command<int, void> addToPlayQueueCommand;
+  late Command<int, void> removeFromPlayQueueCommand;
+  late Command<int, bool> togglePlayQueueCommand;
+  late Command<List<int>, void> reorderPlayQueueCommand;
   late Command<GameRecommendationAction, void> handleRecommendationActionCommand;
 
   // 流订阅
   StreamSubscription? _gameLibrarySubscription;
   StreamSubscription? _gameStatusSubscription;
+  StreamSubscription? _playQueueSubscription;
 
   DiscoverViewModel({required GameRepository gameRepository})
       : _gameRepository = gameRepository {
@@ -73,6 +81,17 @@ class DiscoverViewModel extends ChangeNotifier {
 
   /// 是否有推荐
   bool get hasRecommendations => unplayedGames.isNotEmpty;
+
+  /// 获取待玩列表
+  List<PlayQueueItem> get playQueueItems => _playQueueItems;
+
+  /// 待玩列表是否为空
+  bool get hasPlayQueue => _playQueueItems.isNotEmpty;
+
+  /// 检查游戏是否在待玩列表中
+  bool isInPlayQueue(int appId) {
+    return _playQueueItems.any((item) => item.appId == appId);
+  }
 
   // ==================== Commands ====================
 
@@ -124,10 +143,70 @@ class DiscoverViewModel extends ChangeNotifier {
         result.fold(
           (_) {
             AppLogger.info('Game $appId added to play queue successfully');
-            notifyListeners();
+            _loadPlayQueue();
           },
           (error) {
             AppLogger.error('Failed to add game to play queue: $error');
+          },
+        );
+      },
+    );
+
+    // 从待玩队列移除Command
+    removeFromPlayQueueCommand = Command.createAsyncNoResult<int>(
+      (appId) async {
+        AppLogger.info('Removing game $appId from play queue');
+
+        final result = await _gameRepository.removeFromPlayQueue(appId);
+
+        result.fold(
+          (_) {
+            AppLogger.info('Game $appId removed from play queue');
+            _loadPlayQueue();
+          },
+          (error) {
+            AppLogger.error('Failed to remove game from play queue: $error');
+          },
+        );
+      },
+    );
+
+    // 切换待玩状态Command
+    togglePlayQueueCommand = Command.createAsync<int, bool>(
+      (appId) async {
+        AppLogger.info('Toggling play queue for game $appId');
+
+        final result = await _gameRepository.togglePlayQueue(appId);
+
+        return result.fold(
+          (isAdded) {
+            AppLogger.info('Game $appId ${isAdded ? "added to" : "removed from"} play queue');
+            _loadPlayQueue();
+            return isAdded;
+          },
+          (error) {
+            AppLogger.error('Failed to toggle play queue: $error');
+            return false;
+          },
+        );
+      },
+      initialValue: false,
+    );
+
+    // 重新排序待玩队列Command
+    reorderPlayQueueCommand = Command.createAsyncNoResult<List<int>>(
+      (appIds) async {
+        AppLogger.info('Reordering play queue');
+
+        final result = await _gameRepository.reorderPlayQueue(appIds);
+
+        result.fold(
+          (_) {
+            AppLogger.info('Play queue reordered successfully');
+            _loadPlayQueue();
+          },
+          (error) {
+            AppLogger.error('Failed to reorder play queue: $error');
           },
         );
       },
@@ -179,12 +258,29 @@ class DiscoverViewModel extends ChangeNotifier {
         AppLogger.error('Game status stream error: $error');
       },
     );
+
+    _playQueueSubscription = _gameRepository.playQueueStream.listen(
+      (_) {
+        AppLogger.info('Play queue updated');
+        _loadPlayQueue();
+      },
+      onError: (error) {
+        AppLogger.error('Play queue stream error: $error');
+      },
+    );
   }
 
   // ==================== State Management ====================
 
   void _initializeState() {
     _updateState();
+    _loadPlayQueue();
+  }
+
+  /// 加载待玩队列
+  Future<void> _loadPlayQueue() async {
+    _playQueueItems = await _gameRepository.getPlayQueueWithDetails();
+    notifyListeners();
   }
 
   void _updateState() {
@@ -213,11 +309,15 @@ class DiscoverViewModel extends ChangeNotifier {
 
     _gameLibrarySubscription?.cancel();
     _gameStatusSubscription?.cancel();
+    _playQueueSubscription?.cancel();
 
     refreshCommand.dispose();
     generateRecommendationsCommand.dispose();
     updateGameStatusCommand.dispose();
     addToPlayQueueCommand.dispose();
+    removeFromPlayQueueCommand.dispose();
+    togglePlayQueueCommand.dispose();
+    reorderPlayQueueCommand.dispose();
     handleRecommendationActionCommand.dispose();
 
     super.dispose();

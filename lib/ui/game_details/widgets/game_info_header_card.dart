@@ -11,12 +11,16 @@ class GameInfoHeaderCard extends StatelessWidget {
   final Game game;
   final GameStatus gameStatus;
   final Function(GameStatus) onStatusChanged;
+  final bool isInWishlist;
+  final VoidCallback? onToggleWishlist;
 
   const GameInfoHeaderCard({
     super.key,
     required this.game,
     required this.gameStatus,
     required this.onStatusChanged,
+    this.isInWishlist = false,
+    this.onToggleWishlist,
   });
 
   @override
@@ -106,8 +110,6 @@ class GameInfoHeaderCard extends StatelessWidget {
 
   /// 构建快速操作按钮，封装成底部按钮栏
   Widget _buildQuickActions(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Card(
       elevation: 1,
       child: Padding(
@@ -115,15 +117,23 @@ class GameInfoHeaderCard extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: FilledButton.tonalIcon(
-                onPressed: () => _addToWishlist(context),
-                icon: const Icon(Icons.bookmark_border, size: 18),
-                label: const Text('添加收藏'),
-                style: FilledButton.styleFrom(
-                  foregroundColor: theme.colorScheme.onSurface,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
+              child: isInWishlist
+                  ? FilledButton.icon(
+                      onPressed: onToggleWishlist,
+                      icon: const Icon(Icons.bookmark, size: 18),
+                      label: const Text('已加入待玩'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    )
+                  : FilledButton.tonalIcon(
+                      onPressed: onToggleWishlist,
+                      icon: const Icon(Icons.bookmark_border, size: 18),
+                      label: const Text('加入待玩'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -132,7 +142,6 @@ class GameInfoHeaderCard extends StatelessWidget {
                 icon: const Icon(Icons.open_in_new, size: 18),
                 label: const Text('Steam页面'),
                 style: FilledButton.styleFrom(
-                  foregroundColor: theme.colorScheme.onSurface,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
               ),
@@ -152,16 +161,6 @@ class GameInfoHeaderCard extends StatelessWidget {
     if (newStatus != null) {
       onStatusChanged(newStatus);
     }
-  }
-
-  /// 添加到收藏
-  void _addToWishlist(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('收藏功能开发中...'),
-        duration: Duration(seconds: 2),
-      ),
-    );
   }
 
   /// 查看Steam页面

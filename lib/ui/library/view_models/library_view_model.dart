@@ -28,6 +28,10 @@ class LibraryViewModel extends ChangeNotifier {
 
   StreamSubscription<List<Game>>? _gameLibrarySubscription;
   StreamSubscription<Map<int, GameStatus>>? _gameStatusSubscription;
+  StreamSubscription<List<Game>>? _playQueueSubscription;
+
+  // 待玩队列缓存（用于快速查询）
+  Set<int> _playQueueAppIds = {};
 
   // Commands
   late final Command<void, void> refreshCommand;
@@ -194,11 +198,24 @@ class LibraryViewModel extends ChangeNotifier {
     _gameStatusSubscription = _gameRepository.gameStatusStream.listen((statuses) {
       notifyListeners(); // 触发UI重新获取数据
     });
+
+    // 监听待玩队列变化
+    _playQueueSubscription = _gameRepository.playQueueStream.listen((games) {
+      _playQueueAppIds = games.map((g) => g.appId).toSet();
+      notifyListeners();
+    });
   }
 
   void _loadInitialData() {
     // 不再缓存数据，只触发UI更新以从Repository获取数据
+    _loadPlayQueue();
     notifyListeners();
+  }
+
+  /// 加载待玩队列
+  Future<void> _loadPlayQueue() async {
+    final queue = await _gameRepository.playQueue;
+    _playQueueAppIds = queue.map((g) => g.appId).toSet();
   }
 
   /// 刷新游戏库
@@ -344,6 +361,11 @@ class LibraryViewModel extends ChangeNotifier {
     return _selectedGameIds.contains(appId);
   }
 
+  /// 检查游戏是否在待玩队列中
+  bool isInPlayQueue(int appId) {
+    return _playQueueAppIds.contains(appId);
+  }
+
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
@@ -367,6 +389,7 @@ class LibraryViewModel extends ChangeNotifier {
   void dispose() {
     _gameLibrarySubscription?.cancel();
     _gameStatusSubscription?.cancel();
+    _playQueueSubscription?.cancel();
     // Commands会自动释放
     super.dispose();
   }

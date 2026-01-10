@@ -23,6 +23,7 @@ class GameDetailsViewModel extends ChangeNotifier {
   String? _errorMessage;
   List<Game> _randomRecommendations = [];
   bool _showLocalizedName = true; // 是否显示本地化名字
+  bool _isInWishlist = false; // 是否在待玩列表中
   
   // Commands
   late Command<GameStatus, void> updateGameStatusCommand;
@@ -32,6 +33,7 @@ class GameDetailsViewModel extends ChangeNotifier {
   late Command<void, void> refreshGameDataCommand;
   late Command<void, void> toggleNotesEditingCommand;
   late Command<void, void> toggleNameDisplayCommand;
+  late Command<void, void> toggleWishlistCommand;
   
   // 流订阅
   StreamSubscription? _gameStatusSubscription;
@@ -76,6 +78,9 @@ class GameDetailsViewModel extends ChangeNotifier {
       ? (_game?.displayName ?? '未知游戏')
       : (_game?.name ?? '未知游戏');
   bool get hasLocalizedName => _game?.hasLocalizedName ?? false;
+
+  // 待玩相关
+  bool get isInWishlist => _isInWishlist;
 
   /// 初始化Commands
   void _initializeCommands() {
@@ -195,6 +200,22 @@ class GameDetailsViewModel extends ChangeNotifier {
         AppLogger.info('Name display toggled: showLocalized=$_showLocalizedName');
       },
     );
+
+    toggleWishlistCommand = Command.createAsyncNoParamNoResult(
+      () async {
+        final result = await _gameRepository.togglePlayQueue(_gameAppId);
+        result.fold(
+          (isAdded) {
+            _isInWishlist = isAdded;
+            notifyListeners();
+            AppLogger.info('Wishlist toggled: isInWishlist=$_isInWishlist');
+          },
+          (error) {
+            AppLogger.error('Failed to toggle wishlist: $error');
+          },
+        );
+      },
+    );
   }
 
   /// 订阅数据流
@@ -254,6 +275,7 @@ class GameDetailsViewModel extends ChangeNotifier {
       _gameStatus = _gameRepository.gameStatuses[_gameAppId] ?? const GameStatus.notStarted();
       _userNotes = game.userNotes;
       _randomRecommendations = _generateRandomRecommendations(count: 5);
+      _isInWishlist = await _gameRepository.isInPlayQueue(_gameAppId);
 
       _setLoading(false);
       AppLogger.info('Game data loaded successfully for ${game.name}');
@@ -344,6 +366,7 @@ class GameDetailsViewModel extends ChangeNotifier {
     refreshGameDataCommand.dispose();
     toggleNotesEditingCommand.dispose();
     toggleNameDisplayCommand.dispose();
+    toggleWishlistCommand.dispose();
 
     super.dispose();
   }
