@@ -3,9 +3,8 @@ import 'package:provider/provider.dart';
 import '../view_models/settings_view_model.dart';
 import 'account_section/steam_connection_card.dart';
 import 'account_section/data_sync_card.dart';
-import 'preferences_section/recommendation_preferences_card.dart';
-import 'appearance_section/theme_display_card.dart';
-import 'appearance_section/language_settings_card.dart';
+// import 'appearance_section/theme_display_card.dart';
+// import 'appearance_section/language_settings_card.dart';
 import 'data_section/storage_cache_card.dart';
 import 'about_section/app_information_card.dart';
 
@@ -53,17 +52,11 @@ class SettingsScreen extends StatelessWidget {
                     const DataSyncCard(),
                     const SizedBox(height: 24), // Larger spacing between sections
 
-                    // Preferences Section (包含排除类别)
-                    const RecommendationPreferencesCard(),
-                    const SizedBox(height: 24),
-
-                    // Appearance Section
-                    const ThemeDisplayCard(),
-                    const SizedBox(height: 16),
-
-                    // Language Section
-                    const LanguageSettingsCard(),
-                    const SizedBox(height: 24),
+                    // TODO: Appearance Section (hidden for now)
+                    // const ThemeDisplayCard(),
+                    // const SizedBox(height: 16),
+                    // const LanguageSettingsCard(),
+                    // const SizedBox(height: 24),
 
                     // Data Management Section
                     const StorageCacheCard(),

@@ -29,21 +29,15 @@ class _SteamConnectionCardState extends State<SteamConnectionCard> {
     return SettingsCard(
       title: 'Steam 连接',
       titleIcon: Icons.videogame_asset,
+      trailing: StatusBadge(
+        status: viewModel.isSteamConnected
+            ? ConnectionStatus.connected
+            : ConnectionStatus.disconnected,
+        customLabel: viewModel.isSteamConnected ? '已连接' : '未连接',
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 状态徽章
-          Align(
-            alignment: Alignment.centerRight,
-            child: StatusBadge(
-              status: viewModel.isSteamConnected
-                  ? ConnectionStatus.connected
-                  : ConnectionStatus.disconnected,
-              customLabel: viewModel.isSteamConnected ? '已连接' : '未连接',
-            ),
-          ),
-          const SizedBox(height: 16),
-
           // API Key 显示
           if (viewModel.isSteamConnected) ...[
             Row(

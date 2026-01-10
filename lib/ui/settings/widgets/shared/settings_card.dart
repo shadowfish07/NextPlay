@@ -11,6 +11,9 @@ class SettingsCard extends StatelessWidget {
   /// 标题前的图标（可选）
   final IconData? titleIcon;
 
+  /// 标题行右侧的组件（可选，如状态徽章）
+  final Widget? trailing;
+
   /// 卡片内容
   final Widget child;
 
@@ -21,6 +24,7 @@ class SettingsCard extends StatelessWidget {
     super.key,
     this.title,
     this.titleIcon,
+    this.trailing,
     required this.child,
     this.padding,
   });
@@ -58,13 +62,16 @@ class SettingsCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                   ],
-                  Text(
-                    title!,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Text(
+                      title!,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
+                  if (trailing != null) trailing!,
                 ],
               ),
               const SizedBox(height: 16),
