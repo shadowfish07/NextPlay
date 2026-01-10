@@ -81,6 +81,18 @@ jobs:
           echo "=== Semantic Release Dry Run Output ==="
           cat semantic-output.txt
 
+      - name: Update pubspec.yaml version
+        if: steps.check-release.outputs.has-release == 'true'
+        run: |
+          VERSION=${{ steps.check-release.outputs.version }}
+          BUILD_NUMBER=${{ steps.check-release.outputs.build-number }}
+
+          # Update version in pubspec.yaml
+          sed -i "s/^version: .*/version: ${VERSION}+${BUILD_NUMBER}/" pubspec.yaml
+
+          echo "✅ Updated pubspec.yaml to version: ${VERSION}+${BUILD_NUMBER}"
+          grep "^version:" pubspec.yaml
+
       - name: Setup Android signing
         if: steps.check-release.outputs.has-release == 'true'
         env:

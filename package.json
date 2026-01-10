@@ -14,7 +14,6 @@
     "url": "https://github.com/shadowfish07/NextPlay"
   },
   "devDependencies": {
-    "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^9.2.4",
     "semantic-release": "^22.0.8"
@@ -31,6 +30,15 @@
       "@semantic-release/commit-analyzer",
       "@semantic-release/release-notes-generator",
       [
+        "@semantic-release/git",
+        {
+          "assets": [
+            "pubspec.yaml"
+          ],
+          "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+        }
+      ],
+      [
         "@semantic-release/github",
         {
           "assets": [
@@ -40,7 +48,7 @@
               "name": "nextplay-${nextRelease.version}.apk"
             },
             {
-              "path": "release-files/app-release.aab", 
+              "path": "release-files/app-release.aab",
               "label": "Android App Bundle",
               "name": "nextplay-${nextRelease.version}.aab"
             },
@@ -49,16 +57,6 @@
               "label": "Checksums"
             }
           ]
-        }
-      ],
-      [
-        "@semantic-release/git",
-        {
-          "assets": [
-            "CHANGELOG.md",
-            "pubspec.yaml"
-          ],
-          "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
         }
       ]
     ]
