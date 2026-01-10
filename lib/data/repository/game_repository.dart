@@ -392,7 +392,7 @@ class GameRepository {
       AppLogger.info('Starting full game library sync...');
       _syncProgressController.add(SyncProgress(
         stage: SyncStage.fetchingSteamLibrary,
-        progress: 0.0,
+        progress: 0.1,
         message: '正在连接 Steam...',
       ));
 

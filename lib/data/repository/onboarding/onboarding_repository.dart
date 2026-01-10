@@ -247,7 +247,8 @@ class OnboardingRepository {
         return;
       }
 
-      // 监听 GameRepository 的同步进度
+      // 先订阅 GameRepository 的同步进度（必须在调用 syncGameLibrary 之前订阅，
+      // 否则会错过初始的进度事件，导致进度条跳变）
       progressSubscription = _gameRepository.syncProgressStream.listen((progress) {
         _currentState = _currentState.copyWith(
           syncProgress: progress.progress,
@@ -260,7 +261,7 @@ class OnboardingRepository {
         _stateController.add(_currentState);
       });
 
-      // 使用GameRepository同步游戏库数据
+      // 使用GameRepository同步游戏库数据（订阅后再调用，确保不会错过进度事件）
       final syncResult = await _gameRepository.syncGameLibrary(
         apiKey: apiKey,
         steamId: steamId,
