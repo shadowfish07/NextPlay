@@ -139,7 +139,7 @@ void main() {
 
     await _tapAndWait(tester, AppKeys.onboardingFinish);
     await _waitFor(tester, find.byKey(AppKeys.discoverScreen));
-    expect(find.byKey(AppKeys.discoverRecommendation), findsOneWidget);
+    await _waitFor(tester, find.byKey(AppKeys.discoverRecommendation));
     final verifiedRecommendations = <int>{};
     for (var attempt = 0; attempt < 30; attempt++) {
       final recommendation = tester.widget<NewGameRecommendationCard>(
