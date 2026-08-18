@@ -32,7 +32,7 @@ export class GameService {
     // Step 1: Check cache (unless forceRefresh)
     const uncachedIds: number[] = [];
     if (!forceRefresh) {
-      const cached = this.cache.getMultiple(uniqueSteamIds);
+      const cached = this.cache.getMultiple(uniqueSteamIds, language);
       for (const steamId of uniqueSteamIds) {
         const cachedGame = cached.get(steamId);
         if (cachedGame) {
@@ -93,7 +93,7 @@ export class GameService {
         if (igdbGame) {
           const gameData = transformIGDBGame(igdbGame, steamId, language);
           response.games.push(gameData);
-          this.cache.set(steamId, igdbId, gameData);
+          this.cache.set(steamId, igdbId, language, gameData);
         } else {
           response.errors.push({
             steamId,

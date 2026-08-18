@@ -8,7 +8,7 @@ curl -s "$BASE_URL/health" | jq
 echo -e "\n=== Test 2: Valid Steam IDs ==="
 curl -s -X POST "$BASE_URL/api/games" \
   -H "Content-Type: application/json" \
-  -d '{"steamIds": [730, 570, 440], "forceRefresh": true,"language": "zh-CN"}' | jq
+  -d '{"steamIds": [2807960, 570, 440], "forceRefresh": true,"language": "zh-CN"}' | jq
 
 # echo -e "\n=== Test 3: Cache Hit (run twice) ==="
 # curl -s -X POST "$BASE_URL/api/games" \
