@@ -4,11 +4,7 @@ class LoadingWidget extends StatelessWidget {
   final String? message;
   final double? size;
 
-  const LoadingWidget({
-    super.key,
-    this.message,
-    this.size = 24.0,
-  });
+  const LoadingWidget({super.key, this.message, this.size = 24.0});
 
   @override
   Widget build(BuildContext context) {
@@ -42,30 +38,28 @@ class LoadingWidget extends StatelessWidget {
 class ErrorWidget extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
+  final Key? retryKey;
   final IconData? icon;
 
   const ErrorWidget({
     super.key,
     required this.message,
     this.onRetry,
+    this.retryKey,
     this.icon = Icons.error_outline,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 48,
-              color: theme.colorScheme.error,
-            ),
+            Icon(icon, size: 48, color: theme.colorScheme.error),
             const SizedBox(height: 16),
             Text(
               message,
@@ -77,6 +71,7 @@ class ErrorWidget extends StatelessWidget {
             if (onRetry != null) ...[
               const SizedBox(height: 24),
               FilledButton(
+                key: retryKey,
                 onPressed: onRetry,
                 child: const Text('重试'),
               ),
@@ -103,18 +98,14 @@ class EmptyWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 48,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            Icon(icon, size: 48, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(height: 16),
             Text(
               message,
@@ -123,10 +114,7 @@ class EmptyWidget extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            if (action != null) ...[
-              const SizedBox(height: 24),
-              action!,
-            ],
+            if (action != null) ...[const SizedBox(height: 24), action!],
           ],
         ),
       ),

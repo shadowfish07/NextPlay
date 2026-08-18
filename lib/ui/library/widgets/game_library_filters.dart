@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../view_models/library_view_model.dart';
 import '../../core/ui/game_status_display.dart';
+import '../../core/app_keys.dart';
 
 /// 游戏库筛选组件
 class GameLibraryFilters extends StatefulWidget {
@@ -115,11 +116,12 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
   /// 构建搜索栏
   Widget _buildSearchBar(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Row(
       children: [
         Expanded(
           child: TextField(
+            key: AppKeys.librarySearch,
             controller: _searchController,
             decoration: InputDecoration(
               hintText: '搜索游戏、开发商或类型...',
@@ -147,9 +149,9 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
             onChanged: widget.onSearchChanged,
           ),
         ),
-        
+
         const SizedBox(width: 8),
-        
+
         // 筛选展开按钮
         IconButton(
           onPressed: _toggleExpanded,
@@ -159,7 +161,7 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
             foregroundColor: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        
+
         // 清除筛选按钮
         if (widget.hasFilters)
           IconButton(
@@ -177,16 +179,16 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
   /// 构建快速筛选chips
   Widget _buildQuickFilters(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
           // 排序chip
           _buildSortChip(context),
-          
+
           const SizedBox(width: 8),
-          
+
           // 状态筛选chips
           ...GameStatusExtension.values.map((status) {
             final isSelected = widget.statusFilters.contains(status);
@@ -205,10 +207,9 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
                   }
                   widget.onStatusFiltersChanged(newFilters);
                 },
-                avatar: isSelected ? null : Icon(
-                  GameStatusDisplay.getStatusIcon(status),
-                  size: 16,
-                ),
+                avatar: isSelected
+                    ? null
+                    : Icon(GameStatusDisplay.getStatusIcon(status), size: 16),
                 selectedColor: theme.colorScheme.primaryContainer,
                 checkmarkColor: theme.colorScheme.onPrimaryContainer,
               ),
@@ -240,16 +241,14 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
         widget.onSortDirectionChanged(!widget.sortAscending);
       },
       backgroundColor: theme.colorScheme.secondaryContainer,
-      labelStyle: TextStyle(
-        color: theme.colorScheme.onSecondaryContainer,
-      ),
+      labelStyle: TextStyle(color: theme.colorScheme.onSecondaryContainer),
     );
   }
 
   /// 构建详细筛选选项
   Widget _buildDetailedFilters(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -262,14 +261,14 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
                 fontWeight: FontWeight.w600,
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 游戏类型筛选
             _buildGenreFilter(context),
-            
+
             const SizedBox(height: 16),
-            
+
             // 排序选项
             _buildSortOptions(context),
           ],
@@ -281,7 +280,7 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
   /// 构建游戏类型筛选
   Widget _buildGenreFilter(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -291,9 +290,9 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
             fontWeight: FontWeight.w600,
           ),
         ),
-        
+
         const SizedBox(height: 8),
-        
+
         if (widget.availableGenres.isEmpty)
           Text(
             '暂无可筛选的类型',
@@ -399,7 +398,6 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
     );
   }
 
-
   /// 切换展开状态
   void _toggleExpanded() {
     setState(() {
@@ -424,4 +422,3 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
     );
   }
 }
-

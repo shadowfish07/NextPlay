@@ -46,7 +46,9 @@ class ExcludedCategoriesCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: _commonCategories.map((category) {
-              final isExcluded = viewModel.excludedCategories.contains(category);
+              final isExcluded = viewModel.excludedCategories.contains(
+                category,
+              );
 
               return FilterChip(
                 label: Text(category),

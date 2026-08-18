@@ -8,7 +8,7 @@ import '../../../utils/logger.dart';
 
 class OnboardingViewModel extends ChangeNotifier {
   final OnboardingRepository _repository;
-  
+
   late final Command<void, void> nextStepCommand;
   late final Command<void, void> previousStepCommand;
   late final Command<String, void> saveApiKeyCommand;
@@ -17,12 +17,12 @@ class OnboardingViewModel extends ChangeNotifier {
   late final Command<String, void> validateSteamIdCommand;
   late final Command<void, void> syncGameLibraryCommand;
   late final Command<void, void> completeOnboardingCommand;
-  
+
   OnboardingState _state = OnboardingState.initial();
   StreamSubscription<OnboardingState>? _stateSubscription;
 
-  OnboardingViewModel({required OnboardingRepository repository}) 
-      : _repository = repository {
+  OnboardingViewModel({required OnboardingRepository repository})
+    : _repository = repository {
     _initializeCommands();
     _subscribeToRepository();
   }
@@ -34,37 +34,37 @@ class OnboardingViewModel extends ChangeNotifier {
       _handleNextStep,
       initialValue: null,
     );
-    
+
     previousStepCommand = Command.createAsyncNoParam(
       _handlePreviousStep,
       initialValue: null,
     );
-    
+
     saveApiKeyCommand = Command.createAsync<String, void>(
       _handleSaveApiKey,
       initialValue: null,
     );
-    
+
     saveSteamIdCommand = Command.createAsync<String, void>(
       _handleSaveSteamId,
       initialValue: null,
     );
-    
+
     validateApiKeyCommand = Command.createAsync<String, void>(
       _handleValidateApiKey,
       initialValue: null,
     );
-    
+
     validateSteamIdCommand = Command.createAsync<String, void>(
       _handleValidateSteamId,
       initialValue: null,
     );
-    
+
     syncGameLibraryCommand = Command.createAsyncNoParam(
       _handleSyncGameLibrary,
       initialValue: null,
     );
-    
+
     completeOnboardingCommand = Command.createAsyncNoParam(
       _handleCompleteOnboarding,
       initialValue: null,
@@ -74,19 +74,19 @@ class OnboardingViewModel extends ChangeNotifier {
     nextStepCommand.errors.listen((error, subscription) {
       AppLogger.error('Next step command error: $error');
     });
-    
+
     saveApiKeyCommand.errors.listen((error, subscription) {
       AppLogger.error('Save API key command error: $error');
     });
-    
+
     saveSteamIdCommand.errors.listen((error, subscription) {
       AppLogger.error('Save Steam ID command error: $error');
     });
-    
+
     validateApiKeyCommand.errors.listen((error, subscription) {
       AppLogger.error('Validate API key command error: $error');
     });
-    
+
     validateSteamIdCommand.errors.listen((error, subscription) {
       AppLogger.error('Validate Steam ID command error: $error');
     });
@@ -103,7 +103,7 @@ class OnboardingViewModel extends ChangeNotifier {
   Future<void> _handleNextStep() async {
     final currentStep = _state.currentStep;
     final nextStep = currentStep.next;
-    
+
     if (nextStep != null) {
       AppLogger.info('Moving to next step: $nextStep');
       await _repository.updateCurrentStep(nextStep);
@@ -113,7 +113,7 @@ class OnboardingViewModel extends ChangeNotifier {
   Future<void> _handlePreviousStep() async {
     final currentStep = _state.currentStep;
     final previousStep = currentStep.previous;
-    
+
     if (previousStep != null) {
       AppLogger.info('Moving to previous step: $previousStep');
       await _repository.updateCurrentStep(previousStep);

@@ -24,7 +24,10 @@ class SteamValidationResult {
     message: 'Valid',
   );
 
-  static SteamValidationResult invalid(SteamValidationError error, String message) {
+  static SteamValidationResult invalid(
+    SteamValidationError error,
+    String message,
+  ) {
     return SteamValidationResult(
       isValid: false,
       message: message,
@@ -37,10 +40,11 @@ class SteamValidationService {
   final SteamApiService _steamApiService;
 
   SteamValidationService({SteamApiService? steamApiService})
-      : _steamApiService = steamApiService ?? SteamApiService();
+    : _steamApiService = steamApiService ?? SteamApiService();
 
   Future<Result<SteamValidationResult, SteamValidationResult>> validateApiKey(
-      String apiKey) async {
+    String apiKey,
+  ) async {
     // 基础格式验证
     if (apiKey.isEmpty) {
       final result = SteamValidationResult.invalid(
@@ -79,7 +83,8 @@ class SteamValidationService {
   }
 
   Future<Result<SteamValidationResult, SteamValidationResult>> validateSteamId(
-      String steamId) async {
+    String steamId,
+  ) async {
     // 基础格式验证
     if (steamId.isEmpty) {
       final result = SteamValidationResult.invalid(
@@ -90,7 +95,7 @@ class SteamValidationService {
     }
 
     // 检查是否为64位Steam ID或自定义URL
-    if (!RegExp(r'^\d{17}$').hasMatch(steamId) && 
+    if (!RegExp(r'^\d{17}$').hasMatch(steamId) &&
         !RegExp(r'^[a-zA-Z0-9_-]{3,32}$').hasMatch(steamId)) {
       final result = SteamValidationResult.invalid(
         SteamValidationError.invalidSteamId,
@@ -103,10 +108,8 @@ class SteamValidationService {
   }
 
   /// 验证API Key和Steam ID的组合有效性
-  Future<Result<SteamValidationResult, SteamValidationResult>> validateCredentials({
-    required String apiKey,
-    required String steamId,
-  }) async {
+  Future<Result<SteamValidationResult, SteamValidationResult>>
+  validateCredentials({required String apiKey, required String steamId}) async {
     final validationResult = await _steamApiService.validateCredentials(
       apiKey: apiKey,
       steamId: steamId,

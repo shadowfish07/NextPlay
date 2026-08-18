@@ -6,18 +6,15 @@ import '../../../domain/models/game/game.dart';
 class GameAchievementCard extends StatelessWidget {
   final Game game;
 
-  const GameAchievementCard({
-    super.key,
-    required this.game,
-  });
+  const GameAchievementCard({super.key, required this.game});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final achievementProgress = game.totalAchievements > 0 
-        ? game.unlockedAchievements / game.totalAchievements 
+    final achievementProgress = game.totalAchievements > 0
+        ? game.unlockedAchievements / game.totalAchievements
         : 0.0;
-    
+
     return Card(
       elevation: 1,
       child: Padding(
@@ -42,9 +39,9 @@ class GameAchievementCard extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             Row(
               children: [
                 // 圆形进度指示器
@@ -56,7 +53,8 @@ class GameAchievementCard extends StatelessWidget {
                       height: 60,
                       child: CircularProgressIndicator(
                         value: achievementProgress,
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
                         valueColor: AlwaysStoppedAnimation<Color>(
                           theme.colorScheme.secondary,
                         ),
@@ -71,9 +69,9 @@ class GameAchievementCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(width: 16),
-                
+
                 // 成就统计信息
                 Expanded(
                   child: Column(
@@ -91,9 +89,9 @@ class GameAchievementCard extends StatelessWidget {
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      
+
                       const SizedBox(height: 12),
-                      
+
                       FilledButton.icon(
                         onPressed: () => _viewAllAchievements(context),
                         icon: const Icon(Icons.list, size: 16),

@@ -52,11 +52,13 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
               Expanded(
                 child:
                     viewModel.state.isLoading &&
-                        viewModel.zeroPlaytimeGames.isEmpty // 使用动态getter
+                        viewModel
+                            .zeroPlaytimeGames
+                            .isEmpty // 使用动态getter
                     ? _buildLoadingState(context)
-                    : (viewModel.zeroPlaytimeGames.isEmpty && 
-                       viewModel.highPlaytimeGames.isEmpty && 
-                       viewModel.abandonedGames.isEmpty) // 使用动态getter检查是否为空
+                    : (viewModel.zeroPlaytimeGames.isEmpty &&
+                          viewModel.highPlaytimeGames.isEmpty &&
+                          viewModel.abandonedGames.isEmpty) // 使用动态getter检查是否为空
                     ? _buildEmptyState(context)
                     : _buildSmartSuggestions(context, viewModel),
               ),
@@ -321,7 +323,6 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
     }
   }
 
-
   /// 获取手动修改过状态的游戏
   List<GameSelectionItem> _getManuallyModifiedGames(
     BatchStatusViewModel viewModel,
@@ -334,9 +335,7 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
 
     // 筛选出当前状态与建议状态不同的游戏（表示用户手动修改过）
     return allGames
-        .where(
-          (game) => game.currentStatus != game.suggestedStatus,
-        )
+        .where((game) => game.currentStatus != game.suggestedStatus)
         .toList();
   }
 
@@ -348,18 +347,17 @@ class _BatchStatusScreenState extends State<BatchStatusScreen> {
   ) {
     // 在显示底部表单之前获取 ViewModel
     final viewModel = context.read<BatchStatusViewModel>();
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) => _SuggestionPreviewSheet(
-        type: type, 
+        type: type,
         games: games,
         viewModel: viewModel,
       ),
     );
   }
-
 }
 
 /// 建议类型枚举
@@ -484,7 +482,7 @@ class _SuggestionPreviewSheet extends StatefulWidget {
   final BatchStatusViewModel viewModel;
 
   const _SuggestionPreviewSheet({
-    required this.type, 
+    required this.type,
     required this.games,
     required this.viewModel,
   });
@@ -662,8 +660,10 @@ class _SuggestionPreviewSheetState extends State<_SuggestionPreviewSheet> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                if (widget.type == SuggestionType.highPlaytime ||
-                                    widget.type == SuggestionType.abandoned) ...[
+                                if (widget.type ==
+                                        SuggestionType.highPlaytime ||
+                                    widget.type ==
+                                        SuggestionType.abandoned) ...[
                                   const SizedBox(height: 4),
                                   Text(
                                     '${(game.playtimeForever / 60.0).toStringAsFixed(1)}小时',
@@ -696,8 +696,13 @@ class _SuggestionPreviewSheetState extends State<_SuggestionPreviewSheet> {
   }
 
   /// 显示状态选择器
-  void _showStatusSelector(BuildContext context, GameSelectionItem gameItem) async {
-    AppLogger.info('BatchStatusScreen: _showStatusSelector called for ${gameItem.game.name}, current status: ${gameItem.currentStatus.displayName}');
+  void _showStatusSelector(
+    BuildContext context,
+    GameSelectionItem gameItem,
+  ) async {
+    AppLogger.info(
+      'BatchStatusScreen: _showStatusSelector called for ${gameItem.game.name}, current status: ${gameItem.currentStatus.displayName}',
+    );
 
     final newStatus = await InlineStatusSelector.show(
       context,
@@ -705,7 +710,9 @@ class _SuggestionPreviewSheetState extends State<_SuggestionPreviewSheet> {
     );
 
     if (newStatus != null) {
-      AppLogger.info('BatchStatusScreen: Status selected: ${newStatus.displayName} for game ${gameItem.game.name}');
+      AppLogger.info(
+        'BatchStatusScreen: Status selected: ${newStatus.displayName} for game ${gameItem.game.name}',
+      );
       widget.viewModel.updateGameStatusCommand.execute((
         gameItem.game.appId,
         newStatus,

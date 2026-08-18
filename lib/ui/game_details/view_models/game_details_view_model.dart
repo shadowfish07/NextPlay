@@ -13,7 +13,7 @@ import '../../../utils/logger.dart';
 class GameDetailsViewModel extends ChangeNotifier {
   final GameRepository _gameRepository;
   final int _gameAppId;
-  
+
   // 状态
   Game? _game;
   GameStatus? _gameStatus;
@@ -24,7 +24,7 @@ class GameDetailsViewModel extends ChangeNotifier {
   List<Game> _randomRecommendations = [];
   bool _showLocalizedName = true; // 是否显示本地化名字
   bool _isInWishlist = false; // 是否在待玩列表中
-  
+
   // Commands
   late Command<GameStatus, void> updateGameStatusCommand;
   late Command<String, void> updateNotesCommand;
@@ -34,11 +34,11 @@ class GameDetailsViewModel extends ChangeNotifier {
   late Command<void, void> toggleNotesEditingCommand;
   late Command<void, void> toggleNameDisplayCommand;
   late Command<void, void> toggleWishlistCommand;
-  
+
   // 流订阅
   StreamSubscription? _gameStatusSubscription;
   StreamSubscription? _gameLibrarySubscription;
-  
+
   GameDetailsViewModel({
     required GameRepository gameRepository,
     required int gameAppId,
@@ -58,16 +58,18 @@ class GameDetailsViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get hasError => _errorMessage != null;
-  List<Game> get randomRecommendations => List.unmodifiable(_randomRecommendations);
+  List<Game> get randomRecommendations =>
+      List.unmodifiable(_randomRecommendations);
   Map<int, GameStatus> get gameStatuses => _gameRepository.gameStatuses;
-  
+
   // 便捷getters
   String get gameTitle => _game?.name ?? '未知游戏';
   List<String> get genres => _game?.genres ?? [];
   String get steamStoreUrl => _game?.steamStoreUrl ?? '';
   String get steamGameUrl => 'steam://launch/$_gameAppId';
   bool get hasAchievements => _game?.hasAchievements ?? false;
-  double get achievementProgress => hasAchievements && (_game?.totalAchievements ?? 0) > 0
+  double get achievementProgress =>
+      hasAchievements && (_game?.totalAchievements ?? 0) > 0
       ? (_game?.unlockedAchievements ?? 0) / (_game?.totalAchievements ?? 1)
       : 0.0;
   double get playtimeProgress => _game?.completionProgress ?? 0.0;
@@ -85,137 +87,128 @@ class GameDetailsViewModel extends ChangeNotifier {
   /// 初始化Commands
   void _initializeCommands() {
     // 更新游戏状态Command
-    updateGameStatusCommand = Command.createAsyncNoResult<GameStatus>(
-      (status) async {
-        if (_game == null) return;
-        
-        AppLogger.info('Updating game status for ${_game!.appId} to ${status.displayName}');
-        
-        final result = await _gameRepository.updateGameStatus(_game!.appId, status);
-        
-        result.fold(
-          (_) {
-            _gameStatus = status;
-            notifyListeners();
-            AppLogger.info('Game status updated successfully');
-          },
-          (error) {
-            _setError('更新游戏状态失败: $error');
-            AppLogger.error('Failed to update game status: $error');
-          },
-        );
-      },
-    );
+    updateGameStatusCommand = Command.createAsyncNoResult<GameStatus>((
+      status,
+    ) async {
+      if (_game == null) return;
+
+      AppLogger.info(
+        'Updating game status for ${_game!.appId} to ${status.displayName}',
+      );
+
+      final result = await _gameRepository.updateGameStatus(
+        _game!.appId,
+        status,
+      );
+
+      result.fold(
+        (_) {
+          _gameStatus = status;
+          notifyListeners();
+          AppLogger.info('Game status updated successfully');
+        },
+        (error) {
+          _setError('更新游戏状态失败: $error');
+          AppLogger.error('Failed to update game status: $error');
+        },
+      );
+    });
 
     // 更新笔记Command
-    updateNotesCommand = Command.createAsyncNoResult<String>(
-      (notes) async {
-        if (_game == null) return;
-        
-        AppLogger.info('Updating notes for game ${_game!.appId}');
-        
-        final result = await _gameRepository.updateGameNotes(_game!.appId, notes);
-        
-        result.fold(
-          (_) {
-            _userNotes = notes;
-            _isEditingNotes = false;
-            notifyListeners();
-            AppLogger.info('Game notes updated successfully');
-          },
-          (error) {
-            _setError('更新游戏笔记失败: $error');
-            AppLogger.error('Failed to update game notes: $error');
-          },
-        );
-      },
-    );
+    updateNotesCommand = Command.createAsyncNoResult<String>((notes) async {
+      if (_game == null) return;
+
+      AppLogger.info('Updating notes for game ${_game!.appId}');
+
+      final result = await _gameRepository.updateGameNotes(_game!.appId, notes);
+
+      result.fold(
+        (_) {
+          _userNotes = notes;
+          _isEditingNotes = false;
+          notifyListeners();
+          AppLogger.info('Game notes updated successfully');
+        },
+        (error) {
+          _setError('更新游戏笔记失败: $error');
+          AppLogger.error('Failed to update game notes: $error');
+        },
+      );
+    });
 
     // 启动Steam游戏Command
-    launchSteamGameCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        if (_game == null) return;
-        
-        AppLogger.info('Launching Steam game ${_game!.appId}');
-        
-        try {
-          final uri = Uri.parse(steamGameUrl);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri);
-            AppLogger.info('Steam game launched successfully');
-          } else {
-            _setError('无法启动Steam游戏，请确保已安装Steam客户端');
-          }
-        } catch (e) {
-          _setError('启动游戏失败: $e');
-          AppLogger.error('Failed to launch Steam game: $e');
+    launchSteamGameCommand = Command.createAsyncNoParamNoResult(() async {
+      if (_game == null) return;
+
+      AppLogger.info('Launching Steam game ${_game!.appId}');
+
+      try {
+        final uri = Uri.parse(steamGameUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+          AppLogger.info('Steam game launched successfully');
+        } else {
+          _setError('无法启动Steam游戏，请确保已安装Steam客户端');
         }
-      },
-    );
+      } catch (e) {
+        _setError('启动游戏失败: $e');
+        AppLogger.error('Failed to launch Steam game: $e');
+      }
+    });
 
     // 打开Steam商店页Command
-    launchSteamStoreCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        if (_game == null || steamStoreUrl.isEmpty) return;
-        
-        AppLogger.info('Opening Steam store page for ${_game!.appId}');
-        
-        try {
-          final uri = Uri.parse(steamStoreUrl);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-            AppLogger.info('Steam store page opened successfully');
-          } else {
-            _setError('无法打开Steam商店页面');
-          }
-        } catch (e) {
-          _setError('打开商店页面失败: $e');
-          AppLogger.error('Failed to open Steam store page: $e');
+    launchSteamStoreCommand = Command.createAsyncNoParamNoResult(() async {
+      if (_game == null || steamStoreUrl.isEmpty) return;
+
+      AppLogger.info('Opening Steam store page for ${_game!.appId}');
+
+      try {
+        final uri = Uri.parse(steamStoreUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          AppLogger.info('Steam store page opened successfully');
+        } else {
+          _setError('无法打开Steam商店页面');
         }
-      },
-    );
+      } catch (e) {
+        _setError('打开商店页面失败: $e');
+        AppLogger.error('Failed to open Steam store page: $e');
+      }
+    });
 
     // 刷新游戏数据Command
-    refreshGameDataCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        AppLogger.info('Refreshing game data for $_gameAppId');
-        _setLoading(true);
-        await _loadGameData();
-      },
-    );
+    refreshGameDataCommand = Command.createAsyncNoParamNoResult(() async {
+      AppLogger.info('Refreshing game data for $_gameAppId');
+      _setLoading(true);
+      await _loadGameData();
+    });
 
     // 切换笔记编辑状态Command
-    toggleNotesEditingCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        _isEditingNotes = !_isEditingNotes;
-        notifyListeners();
-        AppLogger.info('Notes editing toggled: $_isEditingNotes');
-      },
-    );
+    toggleNotesEditingCommand = Command.createAsyncNoParamNoResult(() async {
+      _isEditingNotes = !_isEditingNotes;
+      notifyListeners();
+      AppLogger.info('Notes editing toggled: $_isEditingNotes');
+    });
 
-    toggleNameDisplayCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        _showLocalizedName = !_showLocalizedName;
-        notifyListeners();
-        AppLogger.info('Name display toggled: showLocalized=$_showLocalizedName');
-      },
-    );
+    toggleNameDisplayCommand = Command.createAsyncNoParamNoResult(() async {
+      _showLocalizedName = !_showLocalizedName;
+      notifyListeners();
+      AppLogger.info('Name display toggled: showLocalized=$_showLocalizedName');
+    });
 
-    toggleWishlistCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        final result = await _gameRepository.togglePlayQueue(_gameAppId);
-        result.fold(
-          (isAdded) {
-            _isInWishlist = isAdded;
-            notifyListeners();
-            AppLogger.info('Wishlist toggled: isInWishlist=$_isInWishlist');
-          },
-          (error) {
-            AppLogger.error('Failed to toggle wishlist: $error');
-          },
-        );
-      },
-    );
+    toggleWishlistCommand = Command.createAsyncNoParamNoResult(() async {
+      final result = await _gameRepository.togglePlayQueue(_gameAppId);
+      result.fold(
+        (isAdded) {
+          _isInWishlist = isAdded;
+          notifyListeners();
+          AppLogger.info('Wishlist toggled: isInWishlist=$_isInWishlist');
+        },
+        (error) {
+          AppLogger.error('Failed to toggle wishlist: $error');
+        },
+      );
+    });
   }
 
   /// 订阅数据流
@@ -227,7 +220,9 @@ class GameDetailsViewModel extends ChangeNotifier {
         if (newStatus != null && newStatus != _gameStatus) {
           _gameStatus = newStatus;
           notifyListeners();
-          AppLogger.info('Game status updated from stream: ${newStatus.displayName}');
+          AppLogger.info(
+            'Game status updated from stream: ${newStatus.displayName}',
+          );
         }
       },
       onError: (error) {
@@ -243,7 +238,7 @@ class GameDetailsViewModel extends ChangeNotifier {
           (game) => game.appId == _gameAppId,
           orElse: () => _game!,
         );
-        
+
         if (updatedGame != _game) {
           _game = updatedGame;
           _userNotes = updatedGame.userNotes;
@@ -272,7 +267,9 @@ class GameDetailsViewModel extends ChangeNotifier {
       }
 
       _game = game;
-      _gameStatus = _gameRepository.gameStatuses[_gameAppId] ?? const GameStatus.notStarted();
+      _gameStatus =
+          _gameRepository.gameStatuses[_gameAppId] ??
+          const GameStatus.notStarted();
       _userNotes = game.userNotes;
       _randomRecommendations = _generateRandomRecommendations(count: 5);
       _isInWishlist = await _gameRepository.isInPlayQueue(_gameAppId);
@@ -340,7 +337,7 @@ class GameDetailsViewModel extends ChangeNotifier {
   /// 获取推荐的下一个动作
   String getRecommendedAction() {
     if (_gameStatus == null) return '开始游戏';
-    
+
     return _gameStatus!.when(
       notStarted: () => '开始游戏',
       playing: () => '继续游戏',
@@ -353,11 +350,11 @@ class GameDetailsViewModel extends ChangeNotifier {
   @override
   void dispose() {
     AppLogger.info('Disposing GameDetailsViewModel for game $_gameAppId');
-    
+
     // 取消流订阅
     _gameStatusSubscription?.cancel();
     _gameLibrarySubscription?.cancel();
-    
+
     // 释放Commands
     updateGameStatusCommand.dispose();
     updateNotesCommand.dispose();

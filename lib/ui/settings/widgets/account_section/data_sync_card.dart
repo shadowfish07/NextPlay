@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../shared/settings_card.dart';
 import '../../view_models/settings_view_model.dart';
+import '../../../core/app_keys.dart';
 
 /// 数据同步管理卡片
 ///
@@ -144,6 +145,7 @@ class DataSyncCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
+              key: AppKeys.settingsSync,
               onPressed: viewModel.isSteamConnected && !viewModel.isSyncing
                   ? () => viewModel.syncGameLibraryCommand.execute()
                   : null,

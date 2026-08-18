@@ -35,7 +35,8 @@ class NewGameRecommendationCard extends StatefulWidget {
   });
 
   @override
-  State<NewGameRecommendationCard> createState() => _NewGameRecommendationCardState();
+  State<NewGameRecommendationCard> createState() =>
+      _NewGameRecommendationCardState();
 }
 
 class _NewGameRecommendationCardState extends State<NewGameRecommendationCard> {
@@ -154,10 +155,7 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard> {
     return Positioned(
       top: 16,
       right: 16,
-      child: ScoreBadge(
-        score: widget.game.aggregatedRating,
-        compact: false,
-      ),
+      child: ScoreBadge(score: widget.game.aggregatedRating, compact: false),
     );
   }
 

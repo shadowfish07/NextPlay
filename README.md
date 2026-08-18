@@ -1,5 +1,7 @@
 # NextPlay
 
+Agent/Codex development, verification, Android E2E, and live-service instructions are documented in [docs/agentic-development.md](docs/agentic-development.md).
+
 基于 Steam 游戏库的智能游戏推荐应用，帮助玩家从庞大的游戏库中找到下一款值得游玩的游戏。
 
 ## 功能特性

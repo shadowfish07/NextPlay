@@ -5,10 +5,7 @@ class WishlistBadge extends StatelessWidget {
   /// 角标大小
   final WishlistBadgeSize size;
 
-  const WishlistBadge({
-    super.key,
-    this.size = WishlistBadgeSize.medium,
-  });
+  const WishlistBadge({super.key, this.size = WishlistBadgeSize.medium});
 
   @override
   Widget build(BuildContext context) {
@@ -61,11 +58,7 @@ class WishlistBadge extends StatelessWidget {
 }
 
 /// 角标大小枚举
-enum WishlistBadgeSize {
-  small,
-  medium,
-  large,
-}
+enum WishlistBadgeSize { small, medium, large }
 
 /// 角标尺寸配置
 class _BadgeSizeConfig {

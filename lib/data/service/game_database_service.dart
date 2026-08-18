@@ -5,7 +5,10 @@ import '../../utils/logger.dart';
 
 /// 游戏数据库服务 - 管理本地 SQLite 存储
 class GameDatabaseService {
-  static const String _databaseName = 'nextplay.db';
+  GameDatabaseService({String databaseName = 'nextplay.db'})
+    : _databaseName = databaseName;
+
+  final String _databaseName;
   static const int _databaseVersion = 3;
 
   Database? _database;
@@ -102,9 +105,7 @@ class GameDatabaseService {
     ''');
 
     // 创建索引
-    await db.execute(
-      'CREATE INDEX idx_steam_games_name ON steam_games(name)',
-    );
+    await db.execute('CREATE INDEX idx_steam_games_name ON steam_games(name)');
     await db.execute(
       'CREATE INDEX idx_user_game_data_status ON user_game_data(status)',
     );
@@ -122,9 +123,7 @@ class GameDatabaseService {
     // v1 -> v2: 添加本地化名字、artworks、开发商、发行商字段
     if (oldVersion < 2) {
       AppLogger.info('Applying migration v1 -> v2');
-      await db.execute(
-        'ALTER TABLE igdb_games ADD COLUMN localized_name TEXT',
-      );
+      await db.execute('ALTER TABLE igdb_games ADD COLUMN localized_name TEXT');
       await db.execute('ALTER TABLE igdb_games ADD COLUMN artworks TEXT');
       await db.execute('ALTER TABLE igdb_games ADD COLUMN developers TEXT');
       await db.execute('ALTER TABLE igdb_games ADD COLUMN publishers TEXT');
@@ -157,14 +156,10 @@ class GameDatabaseService {
     final now = DateTime.now().millisecondsSinceEpoch;
 
     for (final game in games) {
-      batch.insert(
-        'steam_games',
-        {
-          ...game,
-          'updated_at': now,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert('steam_games', {
+        ...game,
+        'updated_at': now,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
 
     await batch.commit(noResult: true);
@@ -204,14 +199,10 @@ class GameDatabaseService {
     final now = DateTime.now().millisecondsSinceEpoch;
 
     for (final game in games) {
-      batch.insert(
-        'igdb_games',
-        {
-          ...game,
-          'updated_at': now,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert('igdb_games', {
+        ...game,
+        'updated_at': now,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
 
     await batch.commit(noResult: true);
@@ -277,25 +268,17 @@ class GameDatabaseService {
     final db = await database;
     final now = DateTime.now().millisecondsSinceEpoch;
 
-    await db.insert(
-      'user_game_data',
-      {
-        'app_id': appId,
-        'status': status,
-        'last_status_changed_at': now,
-        'created_at': now,
-        'updated_at': now,
-      },
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
+    await db.insert('user_game_data', {
+      'app_id': appId,
+      'status': status,
+      'last_status_changed_at': now,
+      'created_at': now,
+      'updated_at': now,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
 
     await db.update(
       'user_game_data',
-      {
-        'status': status,
-        'last_status_changed_at': now,
-        'updated_at': now,
-      },
+      {'status': status, 'last_status_changed_at': now, 'updated_at': now},
       where: 'app_id = ?',
       whereArgs: [appId],
     );
@@ -306,24 +289,17 @@ class GameDatabaseService {
     final db = await database;
     final now = DateTime.now().millisecondsSinceEpoch;
 
-    await db.insert(
-      'user_game_data',
-      {
-        'app_id': appId,
-        'status': 'notStarted',
-        'user_notes': notes,
-        'created_at': now,
-        'updated_at': now,
-      },
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
+    await db.insert('user_game_data', {
+      'app_id': appId,
+      'status': 'notStarted',
+      'user_notes': notes,
+      'created_at': now,
+      'updated_at': now,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
 
     await db.update(
       'user_game_data',
-      {
-        'user_notes': notes,
-        'updated_at': now,
-      },
+      {'user_notes': notes, 'updated_at': now},
       where: 'app_id = ?',
       whereArgs: [appId],
     );
@@ -342,17 +318,13 @@ class GameDatabaseService {
     final now = DateTime.now().millisecondsSinceEpoch;
 
     for (final entry in updates.entries) {
-      batch.insert(
-        'user_game_data',
-        {
-          'app_id': entry.key,
-          'status': entry.value,
-          'last_status_changed_at': now,
-          'created_at': now,
-          'updated_at': now,
-        },
-        conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
+      batch.insert('user_game_data', {
+        'app_id': entry.key,
+        'status': entry.value,
+        'last_status_changed_at': now,
+        'created_at': now,
+        'updated_at': now,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
 
       batch.update(
         'user_game_data',
@@ -375,10 +347,7 @@ class GameDatabaseService {
   /// 获取待玩队列
   Future<List<int>> getPlayQueue() async {
     final db = await database;
-    final results = await db.query(
-      'play_queue',
-      orderBy: 'position ASC',
-    );
+    final results = await db.query('play_queue', orderBy: 'position ASC');
     return results.map((r) => r['app_id'] as int).toList();
   }
 
@@ -393,25 +362,17 @@ class GameDatabaseService {
     );
     final maxPos = (maxResult.first['max_pos'] as int?) ?? -1;
 
-    await db.insert(
-      'play_queue',
-      {
-        'app_id': appId,
-        'position': maxPos + 1,
-        'added_at': now,
-      },
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
+    await db.insert('play_queue', {
+      'app_id': appId,
+      'position': maxPos + 1,
+      'added_at': now,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
   /// 从待玩队列移除
   Future<void> removeFromPlayQueue(int appId) async {
     final db = await database;
-    await db.delete(
-      'play_queue',
-      where: 'app_id = ?',
-      whereArgs: [appId],
-    );
+    await db.delete('play_queue', where: 'app_id = ?', whereArgs: [appId]);
   }
 
   /// 重新排序待玩队列
@@ -440,10 +401,7 @@ class GameDatabaseService {
   /// 获取待玩队列详情（包含加入时间）
   Future<List<Map<String, dynamic>>> getPlayQueueWithDetails() async {
     final db = await database;
-    return await db.query(
-      'play_queue',
-      orderBy: 'position ASC',
-    );
+    return await db.query('play_queue', orderBy: 'position ASC');
   }
 
   /// 检查游戏是否在待玩队列中
@@ -476,11 +434,7 @@ class GameDatabaseService {
     final db = await database;
     final batch = db.batch();
     for (final appId in appIds) {
-      batch.delete(
-        'play_queue',
-        where: 'app_id = ?',
-        whereArgs: [appId],
-      );
+      batch.delete('play_queue', where: 'app_id = ?', whereArgs: [appId]);
     }
     await batch.commit(noResult: true);
     AppLogger.info('Batch removed ${appIds.length} games from play queue');

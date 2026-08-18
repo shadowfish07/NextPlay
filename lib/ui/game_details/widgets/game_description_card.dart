@@ -4,10 +4,7 @@ import 'package:flutter/material.dart';
 class GameDescriptionCard extends StatefulWidget {
   final String description;
 
-  const GameDescriptionCard({
-    super.key,
-    required this.description,
-  });
+  const GameDescriptionCard({super.key, required this.description});
 
   @override
   State<GameDescriptionCard> createState() => _GameDescriptionCardState();
@@ -15,15 +12,15 @@ class GameDescriptionCard extends StatefulWidget {
 
 class _GameDescriptionCardState extends State<GameDescriptionCard> {
   bool _isExpanded = false;
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final shouldShowExpandButton = widget.description.length > 200;
-    final displayText = shouldShowExpandButton && !_isExpanded 
+    final displayText = shouldShowExpandButton && !_isExpanded
         ? '${widget.description.substring(0, 200)}...'
         : widget.description;
-    
+
     return Card(
       elevation: 1,
       child: Padding(
@@ -48,14 +45,11 @@ class _GameDescriptionCardState extends State<GameDescriptionCard> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 12),
-            
-            Text(
-              displayText,
-              style: theme.textTheme.bodyMedium,
-            ),
-            
+
+            Text(displayText, style: theme.textTheme.bodyMedium),
+
             if (shouldShowExpandButton) ...[
               const SizedBox(height: 8),
               TextButton.icon(

@@ -4,21 +4,13 @@ import 'package:flutter/material.dart';
 ///
 /// 用于显示Steam连接或同步状态。
 /// 支持三种状态：连接成功、断开连接、同步中。
-enum ConnectionStatus {
-  connected,
-  disconnected,
-  syncing,
-}
+enum ConnectionStatus { connected, disconnected, syncing }
 
 class StatusBadge extends StatelessWidget {
   final ConnectionStatus status;
   final String? customLabel;
 
-  const StatusBadge({
-    super.key,
-    required this.status,
-    this.customLabel,
-  });
+  const StatusBadge({super.key, required this.status, this.customLabel});
 
   @override
   Widget build(BuildContext context) {
@@ -46,11 +38,7 @@ class StatusBadge extends StatelessWidget {
               ),
             )
           else
-            Icon(
-              config.icon,
-              size: 16,
-              color: config.iconColor,
-            ),
+            Icon(config.icon, size: 16, color: config.iconColor),
           const SizedBox(width: 6),
           Text(
             customLabel ?? config.label,

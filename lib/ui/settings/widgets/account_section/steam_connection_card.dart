@@ -236,7 +236,10 @@ class _SteamConnectionCardState extends State<SteamConnectionCard> {
     );
   }
 
-  void _checkConnection(BuildContext context, SettingsViewModel viewModel) async {
+  void _checkConnection(
+    BuildContext context,
+    SettingsViewModel viewModel,
+  ) async {
     viewModel.refreshSteamConnectionCommand.execute();
 
     // 等待命令执行完成

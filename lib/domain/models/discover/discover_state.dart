@@ -12,19 +12,20 @@ class DiscoverState with _$DiscoverState {
   const factory DiscoverState.empty(String message) = _Empty;
   const factory DiscoverState.refreshing() = _Refreshing;
 
-  factory DiscoverState.fromJson(Map<String, dynamic> json) => _$DiscoverStateFromJson(json);
+  factory DiscoverState.fromJson(Map<String, dynamic> json) =>
+      _$DiscoverStateFromJson(json);
 }
 
 /// 推荐操作结果
 enum RecommendationAction {
   @JsonValue('accepted')
-  accepted,     // 接受推荐（开始游戏）
-  @JsonValue('dismissed') 
-  dismissed,    // 不感兴趣
+  accepted, // 接受推荐（开始游戏）
+  @JsonValue('dismissed')
+  dismissed, // 不感兴趣
   @JsonValue('wishlisted')
-  wishlisted,   // 加入愿望清单
+  wishlisted, // 加入愿望清单
   @JsonValue('skipped')
-  skipped,      // 跳过
+  skipped, // 跳过
 }
 
 /// 推荐操作扩展

@@ -5,28 +5,19 @@ import '../theme.dart';
 /// 游戏状态显示工具类 - 统一管理所有状态相关的颜色、图标和文本
 class GameStatusDisplay {
   /// 获取状态图标和颜色
-  static ({IconData icon, Color color}) getStatusIconAndColor(GameStatus status) {
+  static ({IconData icon, Color color}) getStatusIconAndColor(
+    GameStatus status,
+  ) {
     return status.when(
-      notStarted: () => (
-        icon: Icons.hourglass_empty,
-        color: AppTheme.statusNotStarted,
-      ),
-      playing: () => (
-        icon: Icons.play_circle_filled,
-        color: AppTheme.statusPlaying,
-      ),
-      completed: () => (
-        icon: Icons.check_circle,
-        color: AppTheme.statusCompleted,
-      ),
-      abandoned: () => (
-        icon: Icons.cancel,
-        color: AppTheme.statusAbandoned,
-      ),
-      paused: () => (
-        icon: Icons.pause_circle_outline,
-        color: AppTheme.statusPaused,
-      ),
+      notStarted: () =>
+          (icon: Icons.hourglass_empty, color: AppTheme.statusNotStarted),
+      playing: () =>
+          (icon: Icons.play_circle_filled, color: AppTheme.statusPlaying),
+      completed: () =>
+          (icon: Icons.check_circle, color: AppTheme.statusCompleted),
+      abandoned: () => (icon: Icons.cancel, color: AppTheme.statusAbandoned),
+      paused: () =>
+          (icon: Icons.pause_circle_outline, color: AppTheme.statusPaused),
     );
   }
 
@@ -64,11 +55,7 @@ class GameStatusDisplay {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showIcon) ...[
-            Icon(
-              statusData.icon,
-              size: 14,
-              color: statusData.color,
-            ),
+            Icon(statusData.icon, size: 14, color: statusData.color),
             const SizedBox(width: 4),
           ],
           Text(
@@ -80,21 +67,14 @@ class GameStatusDisplay {
           ),
           if (onTap != null) ...[
             const SizedBox(width: 4),
-            Icon(
-              Icons.keyboard_arrow_down,
-              size: 14,
-              color: statusData.color,
-            ),
+            Icon(Icons.keyboard_arrow_down, size: 14, color: statusData.color),
           ],
         ],
       ),
     );
 
     if (onTap != null) {
-      return GestureDetector(
-        onTap: onTap,
-        child: child,
-      );
+      return GestureDetector(onTap: onTap, child: child);
     }
 
     return child;
@@ -115,11 +95,7 @@ class GameStatusDisplay {
         color: statusData.color.withValues(alpha: 0.2),
         shape: BoxShape.circle,
       ),
-      child: Icon(
-        statusData.icon,
-        size: iconSize,
-        color: statusData.color,
-      ),
+      child: Icon(statusData.icon, size: iconSize, color: statusData.color),
     );
   }
 }

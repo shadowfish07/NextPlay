@@ -59,10 +59,7 @@ class LastPlayedText extends StatelessWidget {
             ),
             const SizedBox(width: 4),
           ],
-          Text(
-            displayText,
-            style: style ?? defaultStyle,
-          ),
+          Text(displayText, style: style ?? defaultStyle),
         ],
       ),
     );

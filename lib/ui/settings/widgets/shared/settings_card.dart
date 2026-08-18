@@ -55,11 +55,7 @@ class SettingsCard extends StatelessWidget {
               Row(
                 children: [
                   if (titleIcon != null) ...[
-                    Icon(
-                      titleIcon,
-                      size: 24,
-                      color: colorScheme.onSurface,
-                    ),
+                    Icon(titleIcon, size: 24, color: colorScheme.onSurface),
                     const SizedBox(width: 12),
                   ],
                   Expanded(
@@ -75,10 +71,7 @@ class SettingsCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              Divider(
-                height: 1,
-                color: colorScheme.outlineVariant,
-              ),
+              Divider(height: 1, color: colorScheme.outlineVariant),
               const SizedBox(height: 16),
             ],
             child,

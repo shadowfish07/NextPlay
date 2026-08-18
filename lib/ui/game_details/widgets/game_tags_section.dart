@@ -14,7 +14,7 @@ class GameTagsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Card(
       elevation: 1,
       child: Padding(
@@ -39,9 +39,9 @@ class GameTagsSection extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 游戏类型
             if (genres.isNotEmpty) ...[
               _buildTagSection(
@@ -52,7 +52,7 @@ class GameTagsSection extends StatelessWidget {
               ),
               const SizedBox(height: 12),
             ],
-            
+
             // Steam标签
             if (steamTags.isNotEmpty) ...[
               _buildTagSection(
@@ -75,7 +75,7 @@ class GameTagsSection extends StatelessWidget {
     required bool isFilledStyle,
   }) {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -86,29 +86,23 @@ class GameTagsSection extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        
+
         const SizedBox(height: 8),
-        
+
         Wrap(
           spacing: 6,
           runSpacing: 4,
           children: tags.map((tag) {
             if (isFilledStyle) {
               return Chip(
-                label: Text(
-                  tag,
-                  style: theme.textTheme.labelSmall,
-                ),
+                label: Text(tag, style: theme.textTheme.labelSmall),
                 backgroundColor: theme.colorScheme.primaryContainer,
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               );
             } else {
               return ActionChip(
-                label: Text(
-                  tag,
-                  style: theme.textTheme.labelSmall,
-                ),
+                label: Text(tag, style: theme.textTheme.labelSmall),
                 onPressed: () => _filterByTag(context, tag),
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,

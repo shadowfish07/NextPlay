@@ -44,27 +44,33 @@ class GameRepository {
 
   // 数据变更流
   final _gameLibraryController = StreamController<List<Game>>.broadcast();
-  final _gameStatusController = StreamController<Map<int, GameStatus>>.broadcast();
-  final _recommendationController = StreamController<RecommendationResult>.broadcast();
+  final _gameStatusController =
+      StreamController<Map<int, GameStatus>>.broadcast();
+  final _recommendationController =
+      StreamController<RecommendationResult>.broadcast();
   final _playQueueController = StreamController<List<Game>>.broadcast();
   final _syncProgressController = StreamController<SyncProgress>.broadcast();
+  bool _disposed = false;
+  late final Future<void> ready;
 
   GameRepository({
     required SharedPreferences prefs,
     required SteamApiService steamApiService,
     required IgdbGameService igdbGameService,
     required GameDatabaseService databaseService,
-  })  : _prefs = prefs,
-        _steamApiService = steamApiService,
-        _igdbGameService = igdbGameService,
-        _databaseService = databaseService {
-    _loadFromDatabase();
+  }) : _prefs = prefs,
+       _steamApiService = steamApiService,
+       _igdbGameService = igdbGameService,
+       _databaseService = databaseService {
+    ready = _loadFromDatabase();
   }
 
   // 公开的数据流
   Stream<List<Game>> get gameLibraryStream => _gameLibraryController.stream;
-  Stream<Map<int, GameStatus>> get gameStatusStream => _gameStatusController.stream;
-  Stream<RecommendationResult> get recommendationStream => _recommendationController.stream;
+  Stream<Map<int, GameStatus>> get gameStatusStream =>
+      _gameStatusController.stream;
+  Stream<RecommendationResult> get recommendationStream =>
+      _recommendationController.stream;
   Stream<List<Game>> get playQueueStream => _playQueueController.stream;
   Stream<SyncProgress> get syncProgressStream => _syncProgressController.stream;
 
@@ -91,6 +97,7 @@ class GameRepository {
     if (timeStr == null) return null;
     return DateTime.tryParse(timeStr);
   }
+
   RecommendationResult? get currentRecommendations => _currentRecommendations;
 
   /// 从数据库加载数据到内存缓存
@@ -134,9 +141,10 @@ class GameRepository {
 
       AppLogger.info('Loaded ${_gameCache.length} games from database');
 
+      if (_disposed) return;
       _gameLibraryController.add(gameLibrary);
       _gameStatusController.add(gameStatuses);
-      _notifyPlayQueueChanged();
+      await _notifyPlayQueueChanged();
     } catch (e, stackTrace) {
       AppLogger.error('Error loading from database', e, stackTrace);
     }
@@ -153,7 +161,9 @@ class GameRepository {
     try {
       if (statusStr.startsWith('{')) {
         // 处理旧格式 {runtimeType: statusName} (Dart toString() 输出，非有效 JSON)
-        final legacyMatch = RegExp(r'\{runtimeType:\s*(\w+)\}').firstMatch(statusStr);
+        final legacyMatch = RegExp(
+          r'\{runtimeType:\s*(\w+)\}',
+        ).firstMatch(statusStr);
         if (legacyMatch != null) {
           final statusName = legacyMatch.group(1)!;
           return _statusFromName(statusName);
@@ -224,7 +234,9 @@ class GameRepository {
 
     // 判断多人/单人游戏
     final isMultiplayer = gameModes.any(
-      (m) => m.toLowerCase().contains('multiplayer') || m.toLowerCase().contains('co-op'),
+      (m) =>
+          m.toLowerCase().contains('multiplayer') ||
+          m.toLowerCase().contains('co-op'),
     );
     final isSinglePlayer = gameModes.any(
       (m) => m.toLowerCase().contains('single'),
@@ -260,7 +272,8 @@ class GameRepository {
       publishers: publishers,
       supportsChinese: (igdb?['supports_chinese'] as int? ?? 0) == 1,
       // 推荐系统
-      estimatedCompletionHours: CompletionTimeService.estimateCompletionTimeFromGenres(genres),
+      estimatedCompletionHours:
+          CompletionTimeService.estimateCompletionTimeFromGenres(genres),
       isMultiplayer: isMultiplayer,
       isSinglePlayer: isSinglePlayer,
       // 用户数据
@@ -340,6 +353,7 @@ class GameRepository {
   /// 通知待玩队列变更
   Future<void> _notifyPlayQueueChanged() async {
     final queue = await _databaseService.getPlayQueue();
+    if (_disposed) return;
     final games = queue
         .map((appId) => _gameCache[appId])
         .whereType<Game>()
@@ -373,13 +387,17 @@ class GameRepository {
       // 规则1: 有游玩时间但状态为未开始 -> 改为游玩中
       if (game.playtimeForever > 0 && currentStatus == 'notStarted') {
         statusUpdates[appId] = 'playing';
-        AppLogger.info('Auto-updating game $appId status: notStarted -> playing');
+        AppLogger.info(
+          'Auto-updating game $appId status: notStarted -> playing',
+        );
       }
 
       // 规则2: 近两周有游玩时间 -> 从待玩移除
       if (game.playtimeLastTwoWeeks > 0 && playQueueSet.contains(appId)) {
         removeFromQueue.add(appId);
-        AppLogger.info('Auto-removing game $appId from play queue (played recently)');
+        AppLogger.info(
+          'Auto-removing game $appId from play queue (played recently)',
+        );
       }
     }
 
@@ -392,7 +410,9 @@ class GameRepository {
     // 批量从待玩移除
     if (removeFromQueue.isNotEmpty) {
       await _databaseService.batchRemoveFromPlayQueue(removeFromQueue);
-      AppLogger.info('Auto-removed ${removeFromQueue.length} games from play queue');
+      AppLogger.info(
+        'Auto-removed ${removeFromQueue.length} games from play queue',
+      );
     }
   }
 
@@ -403,18 +423,22 @@ class GameRepository {
   }) async {
     // 生成新的同步任务 ID，自动使之前的任务失效
     final syncId = ++_currentSyncId;
-    AppLogger.info('Starting sync task #$syncId (previous tasks will be cancelled)');
+    AppLogger.info(
+      'Starting sync task #$syncId (previous tasks will be cancelled)',
+    );
 
     // 检查任务是否被取消的辅助函数
     bool isCancelled() => _currentSyncId != syncId;
 
     try {
       AppLogger.info('Starting full game library sync...');
-      _syncProgressController.add(SyncProgress(
-        stage: SyncStage.fetchingSteamLibrary,
-        progress: 0.1,
-        message: '正在连接 Steam...',
-      ));
+      _syncProgressController.add(
+        SyncProgress(
+          stage: SyncStage.fetchingSteamLibrary,
+          progress: 0.1,
+          message: '正在连接 Steam...',
+        ),
+      );
 
       // 第一步：获取 Steam 游戏库
       final steamResult = await _steamApiService.getOwnedGames(
@@ -424,23 +448,30 @@ class GameRepository {
 
       // 检查任务是否被取消
       if (isCancelled()) {
-        AppLogger.info('Sync task #$syncId cancelled after fetching Steam library');
-        _syncProgressController.add(SyncProgress(
-          stage: SyncStage.cancelled,
-          progress: 0.0,
-          message: '同步已被新任务取消',
-        ));
+        AppLogger.info(
+          'Sync task #$syncId cancelled after fetching Steam library',
+        );
+        _syncProgressController.add(
+          SyncProgress(
+            stage: SyncStage.cancelled,
+            progress: 0.0,
+            message: '同步已被新任务取消',
+          ),
+        );
         return const Failure(syncCancelledError);
       }
 
       if (steamResult.isError()) {
-        final errorMsg = steamResult.exceptionOrNull() ?? 'Failed to fetch Steam library';
-        _syncProgressController.add(SyncProgress(
-          stage: SyncStage.error,
-          progress: 0.0,
-          message: '获取 Steam 游戏库失败',
-          errorMessage: errorMsg,
-        ));
+        final errorMsg =
+            steamResult.exceptionOrNull() ?? 'Failed to fetch Steam library';
+        _syncProgressController.add(
+          SyncProgress(
+            stage: SyncStage.error,
+            progress: 0.0,
+            message: '获取 Steam 游戏库失败',
+            errorMessage: errorMsg,
+          ),
+        );
         return Failure(errorMsg);
       }
 
@@ -448,12 +479,14 @@ class GameRepository {
       final totalGames = steamGames.length;
       AppLogger.info('Got $totalGames games from Steam');
 
-      _syncProgressController.add(SyncProgress(
-        stage: SyncStage.fetchingSteamLibrary,
-        progress: 0.15,
-        message: '获取到 $totalGames 个游戏',
-        totalGames: totalGames,
-      ));
+      _syncProgressController.add(
+        SyncProgress(
+          stage: SyncStage.fetchingSteamLibrary,
+          progress: 0.15,
+          message: '获取到 $totalGames 个游戏',
+          totalGames: totalGames,
+        ),
+      );
 
       // 第二步：保存 Steam 数据到数据库
       final steamDataList = steamGames.map((game) {
@@ -476,30 +509,36 @@ class GameRepository {
       // 检查任务是否被取消
       if (isCancelled()) {
         AppLogger.info('Sync task #$syncId cancelled after saving Steam data');
-        _syncProgressController.add(SyncProgress(
-          stage: SyncStage.cancelled,
-          progress: 0.0,
-          message: '同步已被新任务取消',
-        ));
+        _syncProgressController.add(
+          SyncProgress(
+            stage: SyncStage.cancelled,
+            progress: 0.0,
+            message: '同步已被新任务取消',
+          ),
+        );
         return const Failure(syncCancelledError);
       }
 
-      _syncProgressController.add(SyncProgress(
-        stage: SyncStage.fetchingSteamLibrary,
-        progress: 0.2,
-        message: '已保存 Steam 数据',
-        totalGames: totalGames,
-      ));
+      _syncProgressController.add(
+        SyncProgress(
+          stage: SyncStage.fetchingSteamLibrary,
+          progress: 0.2,
+          message: '已保存 Steam 数据',
+          totalGames: totalGames,
+        ),
+      );
 
       // 第三步：批量获取 IGDB 数据（带进度回调）
       final steamIds = steamGames.map((g) => g.appId).toList();
 
-      _syncProgressController.add(SyncProgress(
-        stage: SyncStage.fetchingIgdbData,
-        progress: 0.25,
-        message: '正在获取游戏详情...',
-        totalGames: totalGames,
-      ));
+      _syncProgressController.add(
+        SyncProgress(
+          stage: SyncStage.fetchingIgdbData,
+          progress: 0.25,
+          message: '正在获取游戏详情...',
+          totalGames: totalGames,
+        ),
+      );
 
       final igdbResult = await _igdbGameService.getBatchGameInfo(
         steamIds,
@@ -508,24 +547,28 @@ class GameRepository {
           // 在进度回调中也检查取消状态，避免继续发送进度更新
           if (isCancelled()) return;
           final igdbProgress = 0.25 + (completed / total) * 0.45;
-          _syncProgressController.add(SyncProgress(
-            stage: SyncStage.fetchingIgdbData,
-            progress: igdbProgress.clamp(0.25, 0.7),
-            message: '正在获取游戏详情...',
-            totalGames: totalGames,
-            processedGames: completed.clamp(0, total),
-          ));
+          _syncProgressController.add(
+            SyncProgress(
+              stage: SyncStage.fetchingIgdbData,
+              progress: igdbProgress.clamp(0.25, 0.7),
+              message: '正在获取游戏详情...',
+              totalGames: totalGames,
+              processedGames: completed.clamp(0, total),
+            ),
+          );
         },
       );
 
       // 检查任务是否被取消
       if (isCancelled()) {
         AppLogger.info('Sync task #$syncId cancelled after fetching IGDB data');
-        _syncProgressController.add(SyncProgress(
-          stage: SyncStage.cancelled,
-          progress: 0.0,
-          message: '同步已被新任务取消',
-        ));
+        _syncProgressController.add(
+          SyncProgress(
+            stage: SyncStage.cancelled,
+            progress: 0.0,
+            message: '同步已被新任务取消',
+          ),
+        );
         return const Failure(syncCancelledError);
       }
 
@@ -539,13 +582,15 @@ class GameRepository {
           'IGDB: $foundCount found, $notFoundCount not found, $errorCount errors',
         );
 
-        _syncProgressController.add(SyncProgress(
-          stage: SyncStage.fetchingIgdbData,
-          progress: 0.75,
-          message: '获取到 $foundCount 个游戏详情',
-          totalGames: totalGames,
-          processedGames: foundCount,
-        ));
+        _syncProgressController.add(
+          SyncProgress(
+            stage: SyncStage.fetchingIgdbData,
+            progress: 0.75,
+            message: '获取到 $foundCount 个游戏详情',
+            totalGames: totalGames,
+            processedGames: foundCount,
+          ),
+        );
 
         // 保存 IGDB 数据
         final igdbDataList = igdbResponse.games.map((game) {
@@ -558,31 +603,51 @@ class GameRepository {
             'cover_url': game.coverUrl,
             'cover_width': game.coverWidth,
             'cover_height': game.coverHeight,
-            'release_date': releaseDateTs != null ? releaseDateTs ~/ 1000 : null,
+            'release_date': releaseDateTs != null
+                ? releaseDateTs ~/ 1000
+                : null,
             'aggregated_rating': game.aggregatedRating,
             'igdb_url': game.igdbUrl,
             'genres': json.encode(game.genres),
             'themes': json.encode(game.themes),
             'platforms': json.encode(game.platforms),
             'game_modes': json.encode(game.gameModes),
-            'age_ratings': json.encode(game.ageRatings.map((r) => {
-              'organization': r.organization,
-              'rating': r.rating,
-              'synopsis': r.synopsis,
-            }).toList()),
-            'artworks': json.encode(game.artworks.map((a) => {
-              'image_id': a.imageId,
-              'url': a.url,
-              'width': a.width,
-              'height': a.height,
-              'artwork_type': a.artworkType,
-            }).toList()),
-            'screenshots': json.encode(game.screenshots.map((s) => {
-              'image_id': s.imageId,
-              'url': s.url,
-              'width': s.width,
-              'height': s.height,
-            }).toList()),
+            'age_ratings': json.encode(
+              game.ageRatings
+                  .map(
+                    (r) => {
+                      'organization': r.organization,
+                      'rating': r.rating,
+                      'synopsis': r.synopsis,
+                    },
+                  )
+                  .toList(),
+            ),
+            'artworks': json.encode(
+              game.artworks
+                  .map(
+                    (a) => {
+                      'image_id': a.imageId,
+                      'url': a.url,
+                      'width': a.width,
+                      'height': a.height,
+                      'artwork_type': a.artworkType,
+                    },
+                  )
+                  .toList(),
+            ),
+            'screenshots': json.encode(
+              game.screenshots
+                  .map(
+                    (s) => {
+                      'image_id': s.imageId,
+                      'url': s.url,
+                      'width': s.width,
+                      'height': s.height,
+                    },
+                  )
+                  .toList(),
+            ),
             'developers': json.encode(game.developers),
             'publishers': json.encode(game.publishers),
             'supports_chinese': game.supportsChinese ? 1 : 0,
@@ -592,43 +657,53 @@ class GameRepository {
         await _databaseService.clearIgdbGames();
         await _databaseService.upsertIgdbGames(igdbDataList);
 
-        _syncProgressController.add(SyncProgress(
-          stage: SyncStage.fetchingIgdbData,
-          progress: 0.8,
-          message: '已保存游戏详情数据',
-          totalGames: totalGames,
-          processedGames: foundCount,
-        ));
+        _syncProgressController.add(
+          SyncProgress(
+            stage: SyncStage.fetchingIgdbData,
+            progress: 0.8,
+            message: '已保存游戏详情数据',
+            totalGames: totalGames,
+            processedGames: foundCount,
+          ),
+        );
       } else {
         final igdbError = igdbResult.exceptionOrNull() ?? 'Unknown error';
         AppLogger.warning('Failed to fetch IGDB data: $igdbError');
         // IGDB 失败不阻止整体同步，但记录警告
-        _syncProgressController.add(SyncProgress(
-          stage: SyncStage.fetchingIgdbData,
-          progress: 0.8,
-          message: '游戏详情获取部分失败',
-          errorMessage: '部分游戏详情获取失败: $igdbError',
-          totalGames: totalGames,
-        ));
+        _syncProgressController.add(
+          SyncProgress(
+            stage: SyncStage.fetchingIgdbData,
+            progress: 0.8,
+            message: '游戏详情获取部分失败',
+            errorMessage: '部分游戏详情获取失败: $igdbError',
+            totalGames: totalGames,
+          ),
+        );
       }
 
       // 检查任务是否被取消
       if (isCancelled()) {
-        AppLogger.info('Sync task #$syncId cancelled before initializing user data');
-        _syncProgressController.add(SyncProgress(
-          stage: SyncStage.cancelled,
-          progress: 0.0,
-          message: '同步已被新任务取消',
-        ));
+        AppLogger.info(
+          'Sync task #$syncId cancelled before initializing user data',
+        );
+        _syncProgressController.add(
+          SyncProgress(
+            stage: SyncStage.cancelled,
+            progress: 0.0,
+            message: '同步已被新任务取消',
+          ),
+        );
         return const Failure(syncCancelledError);
       }
 
-      _syncProgressController.add(SyncProgress(
-        stage: SyncStage.initializingUserData,
-        progress: 0.85,
-        message: '正在初始化用户数据...',
-        totalGames: totalGames,
-      ));
+      _syncProgressController.add(
+        SyncProgress(
+          stage: SyncStage.initializingUserData,
+          progress: 0.85,
+          message: '正在初始化用户数据...',
+          totalGames: totalGames,
+        ),
+      );
 
       // 第四步：为新游戏初始化用户数据
       for (final game in steamGames) {
@@ -641,11 +716,13 @@ class GameRepository {
       // 检查任务是否被取消
       if (isCancelled()) {
         AppLogger.info('Sync task #$syncId cancelled before final completion');
-        _syncProgressController.add(SyncProgress(
-          stage: SyncStage.cancelled,
-          progress: 0.0,
-          message: '同步已被新任务取消',
-        ));
+        _syncProgressController.add(
+          SyncProgress(
+            stage: SyncStage.cancelled,
+            progress: 0.0,
+            message: '同步已被新任务取消',
+          ),
+        );
         return const Failure(syncCancelledError);
       }
 
@@ -653,33 +730,46 @@ class GameRepository {
       await _loadFromDatabase();
 
       // 保存同步时间
-      await _prefs.setString('last_sync_time', DateTime.now().toIso8601String());
+      await _prefs.setString(
+        'last_sync_time',
+        DateTime.now().toIso8601String(),
+      );
 
-      _syncProgressController.add(SyncProgress(
-        stage: SyncStage.completed,
-        progress: 1.0,
-        message: '同步完成！共 ${_gameCache.length} 个游戏',
-        totalGames: _gameCache.length,
-      ));
+      _syncProgressController.add(
+        SyncProgress(
+          stage: SyncStage.completed,
+          progress: 1.0,
+          message: '同步完成！共 ${_gameCache.length} 个游戏',
+          totalGames: _gameCache.length,
+        ),
+      );
 
       AppLogger.info('Game library sync completed: ${_gameCache.length} games');
       return Success(gameLibrary);
     } catch (e, stackTrace) {
       final error = 'Game library sync error: $e';
       AppLogger.error(error, e, stackTrace);
-      _syncProgressController.add(SyncProgress(
-        stage: SyncStage.error,
-        progress: 0.0,
-        message: '同步失败: $e',
-      ));
+      _syncProgressController.add(
+        SyncProgress(
+          stage: SyncStage.error,
+          progress: 0.0,
+          message: '同步失败: $e',
+        ),
+      );
       return Failure(error);
     }
   }
 
   /// 更新游戏状态
-  Future<Result<void, String>> updateGameStatus(int appId, GameStatus status) async {
+  Future<Result<void, String>> updateGameStatus(
+    int appId,
+    GameStatus status,
+  ) async {
     try {
-      await _databaseService.updateUserGameStatus(appId, jsonEncode(status.toJson()));
+      await _databaseService.updateUserGameStatus(
+        appId,
+        jsonEncode(status.toJson()),
+      );
       // 更新内存缓存
       _gameStatusCache[appId] = status;
       _gameStatusController.add(gameStatuses);
@@ -728,10 +818,7 @@ class GameRepository {
   /// 获取待玩队列
   Future<List<Game>> get playQueue async {
     final queue = await _databaseService.getPlayQueue();
-    return queue
-        .map((appId) => _gameCache[appId])
-        .whereType<Game>()
-        .toList();
+    return queue.map((appId) => _gameCache[appId]).whereType<Game>().toList();
   }
 
   /// 添加游戏到待玩队列
@@ -792,20 +879,23 @@ class GameRepository {
   /// 获取待玩队列详情（包含加入时间）
   Future<List<PlayQueueItem>> getPlayQueueWithDetails() async {
     final details = await _databaseService.getPlayQueueWithDetails();
-    return details.map((item) {
-      final appId = item['app_id'] as int;
-      final game = _gameCache[appId];
-      final addedAt = DateTime.fromMillisecondsSinceEpoch(
-        item['added_at'] as int,
-      );
-      final position = item['position'] as int;
-      return PlayQueueItem(
-        game: game,
-        appId: appId,
-        addedAt: addedAt,
-        position: position,
-      );
-    }).where((item) => item.game != null).toList();
+    return details
+        .map((item) {
+          final appId = item['app_id'] as int;
+          final game = _gameCache[appId];
+          final addedAt = DateTime.fromMillisecondsSinceEpoch(
+            item['added_at'] as int,
+          );
+          final position = item['position'] as int;
+          return PlayQueueItem(
+            game: game,
+            appId: appId,
+            addedAt: addedAt,
+            position: position,
+          );
+        })
+        .where((item) => item.game != null)
+        .toList();
   }
 
   /// 重新排序待玩队列
@@ -877,20 +967,22 @@ class GameRepository {
     final now = DateTime.now();
     final twoWeeksAgo = now.subtract(const Duration(days: 14));
 
-    final games = _gameCache.values
-        .where((g) => g.lastPlayed != null && g.lastPlayed!.isAfter(twoWeeksAgo))
-        .toList()
-      ..sort((a, b) => b.lastPlayed!.compareTo(a.lastPlayed!));
+    final games =
+        _gameCache.values
+            .where(
+              (g) => g.lastPlayed != null && g.lastPlayed!.isAfter(twoWeeksAgo),
+            )
+            .toList()
+          ..sort((a, b) => b.lastPlayed!.compareTo(a.lastPlayed!));
     return games.take(limit).toList();
   }
 
   /// 获取未玩游戏（用于推荐）
   List<Game> getUnplayedGames({int limit = 10}) {
     final random = Random();
-    final games = _gameCache.values
-        .where((g) => g.playtimeForever == 0)
-        .toList()
-      ..shuffle(random);
+    final games =
+        _gameCache.values.where((g) => g.playtimeForever == 0).toList()
+          ..shuffle(random);
     return games.take(limit).toList();
   }
 
@@ -922,7 +1014,9 @@ class GameRepository {
       }).toList();
 
       final result = RecommendationResult(
-        heroRecommendation: recommendations.isNotEmpty ? recommendations.first : null,
+        heroRecommendation: recommendations.isNotEmpty
+            ? recommendations.first
+            : null,
         alternatives: recommendations.skip(1).toList(),
         totalGamesCount: _gameCache.length,
         recommendableGamesCount: _gameCache.length,
@@ -943,12 +1037,17 @@ class GameRepository {
   Map<String, int> getGameLibraryStats() {
     return {
       'total': _gameCache.length,
-      'withPlaytime': _gameCache.values.where((g) => g.playtimeForever > 0).length,
+      'withPlaytime': _gameCache.values
+          .where((g) => g.playtimeForever > 0)
+          .length,
     };
   }
 
   /// 清理资源
   void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _currentSyncId++;
     _gameLibraryController.close();
     _gameStatusController.close();
     _recommendationController.close();

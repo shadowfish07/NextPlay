@@ -6,6 +6,7 @@ import '../view_models/onboarding_view_model.dart';
 import '../../../routing/routes.dart';
 import '../../core/ui/steam_account_webview_page.dart';
 import '../../core/ui/steam_api_key_webview_page.dart';
+import '../../core/app_keys.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -20,11 +21,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Consumer<OnboardingViewModel>(
       builder: (context, viewModel, child) {
         final state = viewModel.state;
-        
+
         return Scaffold(
+          key: AppKeys.onboardingScreen,
           appBar: AppBar(
             title: Text(state.currentStep.title),
-            leading: state.currentStep.previous != null 
+            leading: state.currentStep.previous != null
                 ? IconButton(
                     icon: const Icon(Icons.arrow_back),
                     onPressed: () => viewModel.previousStepCommand.execute(),
@@ -36,7 +38,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: Column(
               children: [
                 LinearProgressIndicator(
-                  value: state.currentStep.stepNumber / state.currentStep.totalSteps,
+                  value:
+                      state.currentStep.stepNumber /
+                      state.currentStep.totalSteps,
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -44,9 +48,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 32),
-                Expanded(
-                  child: _buildStepContent(context, viewModel),
-                ),
+                Expanded(child: _buildStepContent(context, viewModel)),
                 const SizedBox(height: 16),
                 _buildNavigationButtons(context, viewModel),
               ],
@@ -57,7 +59,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildStepContent(BuildContext context, OnboardingViewModel viewModel) {
+  Widget _buildStepContent(
+    BuildContext context,
+    OnboardingViewModel viewModel,
+  ) {
     final state = viewModel.state;
 
     switch (state.currentStep) {
@@ -74,7 +79,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  Widget _buildWelcomeStep(BuildContext context, OnboardingViewModel viewModel) {
+  Widget _buildWelcomeStep(
+    BuildContext context,
+    OnboardingViewModel viewModel,
+  ) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -102,7 +110,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildSteamConnectionStep(BuildContext context, OnboardingViewModel viewModel) {
+  Widget _buildSteamConnectionStep(
+    BuildContext context,
+    OnboardingViewModel viewModel,
+  ) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -127,8 +138,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildApiKeyGuideStep(BuildContext context, OnboardingViewModel viewModel) {
-    final apiKeyController = TextEditingController(text: viewModel.state.apiKey);
+  Widget _buildApiKeyGuideStep(
+    BuildContext context,
+    OnboardingViewModel viewModel,
+  ) {
+    final apiKeyController = TextEditingController(
+      text: viewModel.state.apiKey,
+    );
     final theme = Theme.of(context);
 
     return SingleChildScrollView(
@@ -146,10 +162,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '步骤：',
-                    style: theme.textTheme.titleMedium,
-                  ),
+                  Text('步骤：', style: theme.textTheme.titleMedium),
                   const SizedBox(height: 8),
                   const Text('1. 点击下方按钮打开 Steam API Key 页面'),
                   const Text('2. 使用您的 Steam 账户登录'),
@@ -188,6 +201,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 24),
           TextField(
+            key: AppKeys.onboardingApiKey,
             controller: apiKeyController,
             decoration: const InputDecoration(
               labelText: 'Steam API Key',
@@ -202,8 +216,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildSteamIdInputStep(BuildContext context, OnboardingViewModel viewModel) {
-    final steamIdController = TextEditingController(text: viewModel.state.steamId);
+  Widget _buildSteamIdInputStep(
+    BuildContext context,
+    OnboardingViewModel viewModel,
+  ) {
+    final steamIdController = TextEditingController(
+      text: viewModel.state.steamId,
+    );
     final theme = Theme.of(context);
 
     return SingleChildScrollView(
@@ -221,10 +240,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '如何获取 Steam ID：',
-                    style: theme.textTheme.titleMedium,
-                  ),
+                  Text('如何获取 Steam ID：', style: theme.textTheme.titleMedium),
                   const SizedBox(height: 8),
                   const Text('1. 点击下方按钮打开 Steam 账户页面'),
                   const Text('2. 登录您的 Steam 账户'),
@@ -262,6 +278,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 24),
           TextField(
+            key: AppKeys.onboardingSteamId,
             controller: steamIdController,
             decoration: const InputDecoration(
               labelText: 'Steam ID',
@@ -278,13 +295,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildDataSyncStep(BuildContext context, OnboardingViewModel viewModel) {
+  Widget _buildDataSyncStep(
+    BuildContext context,
+    OnboardingViewModel viewModel,
+  ) {
     final state = viewModel.state;
     final hasError = state.errorMessage.isNotEmpty;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     return Column(
+      key: AppKeys.onboardingSyncState,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
@@ -366,6 +387,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         // 操作按钮
         if (!state.isLoading && state.gameLibrary.isNotEmpty)
           FilledButton(
+            key: AppKeys.onboardingFinish,
             onPressed: () async {
               await viewModel.completeOnboarding();
               if (context.mounted) {
@@ -377,6 +399,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         // 重试按钮
         if (!state.isLoading && hasError && state.gameLibrary.isEmpty)
           FilledButton.tonal(
+            key: AppKeys.onboardingRetry,
             onPressed: () => viewModel.syncGameLibraryCommand.execute(),
             child: const Text('重试'),
           ),
@@ -384,7 +407,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildNavigationButtons(BuildContext context, OnboardingViewModel viewModel) {
+  Widget _buildNavigationButtons(
+    BuildContext context,
+    OnboardingViewModel viewModel,
+  ) {
     final state = viewModel.state;
 
     if (state.currentStep == OnboardingStep.dataSync) {
@@ -402,6 +428,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         if (viewModel.canGoPrevious)
           Expanded(
             child: OutlinedButton(
+              key: AppKeys.onboardingPrevious,
               onPressed: () => viewModel.previousStepCommand.execute(),
               child: const Text('上一步'),
             ),
@@ -411,11 +438,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         if (viewModel.canGoNext)
           Expanded(
             child: FilledButton(
+              key: AppKeys.onboardingNext,
               onPressed: () => viewModel.nextStepCommand.execute(),
               child: Text(
                 state.currentStep == OnboardingStep.steamConnection
                     ? '开始设置'
-                    : '下一步'
+                    : '下一步',
               ),
             ),
           ),

@@ -6,11 +6,11 @@ part 'filter_criteria.g.dart';
 /// 时间预算筛选
 enum TimeFilter {
   @JsonValue('short')
-  short,   // <5小时
+  short, // <5小时
   @JsonValue('medium')
-  medium,  // 5-20小时
+  medium, // 5-20小时
   @JsonValue('long')
-  long,    // >20小时
+  long, // >20小时
   @JsonValue('any')
   any,
 }
@@ -18,25 +18,25 @@ enum TimeFilter {
 /// 单次游戏时间
 enum SessionTime {
   @JsonValue('quick')
-  quick,    // 30分钟
+  quick, // 30分钟
   @JsonValue('medium')
-  medium,   // 1-2小时
+  medium, // 1-2小时
   @JsonValue('long')
-  long,     // 3小时+
+  long, // 3小时+
   @JsonValue('weekend')
-  weekend,  // 整个周末
+  weekend, // 整个周末
 }
 
 /// 心情匹配筛选
 enum MoodFilter {
   @JsonValue('relaxing')
-  relaxing,   // 轻松
+  relaxing, // 轻松
   @JsonValue('challenging')
   challenging, // 挑战
   @JsonValue('thinking')
-  thinking,   // 思考
+  thinking, // 思考
   @JsonValue('social')
-  social,     // 社交
+  social, // 社交
   @JsonValue('any')
   any,
 }
@@ -53,7 +53,8 @@ class FilterCriteria with _$FilterCriteria {
     @Default(false) bool includeCompleted,
   }) = _FilterCriteria;
 
-  factory FilterCriteria.fromJson(Map<String, dynamic> json) => _$FilterCriteriaFromJson(json);
+  factory FilterCriteria.fromJson(Map<String, dynamic> json) =>
+      _$FilterCriteriaFromJson(json);
 }
 
 /// 时间筛选扩展

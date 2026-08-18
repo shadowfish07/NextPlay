@@ -35,7 +35,7 @@ class InlineStatusSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -44,10 +44,14 @@ class InlineStatusSelector extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: GameStatusDisplay.getStatusColor(currentStatus).withValues(alpha: 0.1),
+            color: GameStatusDisplay.getStatusColor(
+              currentStatus,
+            ).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: GameStatusDisplay.getStatusColor(currentStatus).withValues(alpha: 0.3),
+              color: GameStatusDisplay.getStatusColor(
+                currentStatus,
+              ).withValues(alpha: 0.3),
               width: 1,
             ),
           ),
@@ -94,7 +98,6 @@ class InlineStatusSelector extends StatelessWidget {
       ),
     );
   }
-
 }
 
 /// 状态选择器底部表单
@@ -110,7 +113,7 @@ class _StatusSelectorSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -133,18 +136,18 @@ class _StatusSelectorSheet extends StatelessWidget {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           Text(
             '请为这个游戏选择合适的状态',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // 状态选项网格
           GridView.count(
             crossAxisCount: 2,
@@ -162,7 +165,7 @@ class _StatusSelectorSheet extends StatelessWidget {
               );
             }).toList(),
           ),
-          
+
           const SizedBox(height: 20),
         ],
       ),
@@ -186,7 +189,7 @@ class _StatusOption extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final statusColor = _getStatusColor(status);
-    
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -194,12 +197,12 @@ class _StatusOption extends StatelessWidget {
         onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
-            color: isSelected 
+            color: isSelected
                 ? statusColor.withValues(alpha: 0.15)
                 : theme.colorScheme.surfaceContainerLow,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected 
+              color: isSelected
                   ? statusColor
                   : theme.colorScheme.outline.withValues(alpha: 0.3),
               width: isSelected ? 2 : 1,
@@ -211,14 +214,18 @@ class _StatusOption extends StatelessWidget {
             children: [
               Icon(
                 GameStatusDisplay.getStatusIcon(status),
-                color: isSelected ? statusColor : theme.colorScheme.onSurfaceVariant,
+                color: isSelected
+                    ? statusColor
+                    : theme.colorScheme.onSurfaceVariant,
                 size: 20,
               ),
               const SizedBox(height: 4),
               Text(
                 status.displayName,
                 style: theme.textTheme.labelMedium?.copyWith(
-                  color: isSelected ? statusColor : theme.colorScheme.onSurfaceVariant,
+                  color: isSelected
+                      ? statusColor
+                      : theme.colorScheme.onSurfaceVariant,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),
                 textAlign: TextAlign.center,

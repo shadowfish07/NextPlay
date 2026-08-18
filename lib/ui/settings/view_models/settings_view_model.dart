@@ -13,6 +13,7 @@ class SettingsViewModel extends ChangeNotifier {
   final GameRepository _gameRepository;
   final SteamValidationService _steamValidationService;
   final SharedPreferences _prefs;
+  bool _disposed = false;
 
   // Commands - 现有的
   late final Command<void, void> refreshSteamConnectionCommand;
@@ -51,7 +52,8 @@ class SettingsViewModel extends ChangeNotifier {
   // 偏好设置状态（占位）- 仅UI显示，暂不影响推荐逻辑
   double _typeBalanceWeight = 0.5; // 0.0 = diverse, 1.0 = single type
   String _timePreference = 'any'; // 'short', 'medium', 'long', 'any'
-  String _moodPreference = 'any'; // 'relax', 'challenge', 'think', 'social', 'any'
+  String _moodPreference =
+      'any'; // 'relax', 'challenge', 'think', 'social', 'any'
   List<String> _excludedCategories = []; // 排除的游戏类别
   String _igdbLanguage = 'en'; // IGDB 数据语言
 
@@ -103,32 +105,32 @@ class SettingsViewModel extends ChangeNotifier {
       _handleRefreshSteamConnection,
       initialValue: null,
     );
-    
+
     updateApiKeyCommand = Command.createAsync<String, void>(
       _handleUpdateApiKey,
       initialValue: null,
     );
-    
+
     updateSteamIdCommand = Command.createAsync<String, void>(
       _handleUpdateSteamId,
       initialValue: null,
     );
-    
+
     syncGameLibraryCommand = Command.createAsyncNoParam(
       _handleSyncGameLibrary,
       initialValue: null,
     );
-    
+
     toggleThemeCommand = Command.createAsync<bool, void>(
       _handleToggleTheme,
       initialValue: null,
     );
-    
+
     clearCacheCommand = Command.createAsyncNoParam(
       _handleClearCache,
       initialValue: null,
     );
-    
+
     clearAllDataCommand = Command.createAsyncNoParam(
       _handleClearAllData,
       initialValue: null,
@@ -165,7 +167,7 @@ class SettingsViewModel extends ChangeNotifier {
       initialValue: null,
     );
   }
-  
+
   void _loadSettings() {
     try {
       // 只加载UI专用的状态，其他数据通过getter动态获取
@@ -177,7 +179,9 @@ class SettingsViewModel extends ChangeNotifier {
       _moodPreference = _prefs.getString('mood_preference') ?? 'any';
 
       // 加载排除类别列表
-      final excludedCategoriesJson = _prefs.getStringList('excluded_categories');
+      final excludedCategoriesJson = _prefs.getStringList(
+        'excluded_categories',
+      );
       _excludedCategories = excludedCategoriesJson ?? [];
 
       // 加载 IGDB 语言设置
@@ -188,11 +192,15 @@ class SettingsViewModel extends ChangeNotifier {
 
       // 监听游戏库变化，当数据库加载完成时更新UI
       _gameLibrarySubscription = _gameRepository.gameLibraryStream.listen((_) {
-        AppLogger.info('Game library updated, notifying listeners. Count: $gameCount');
+        AppLogger.info(
+          'Game library updated, notifying listeners. Count: $gameCount',
+        );
         notifyListeners();
       });
 
-      AppLogger.info('Settings loaded: Steam connected=$isSteamConnected, Game count=$gameCount, Preferences loaded');
+      AppLogger.info(
+        'Settings loaded: Steam connected=$isSteamConnected, Game count=$gameCount, Preferences loaded',
+      );
       notifyListeners();
     } catch (e, stackTrace) {
       AppLogger.error('Failed to load settings', e, stackTrace);
@@ -200,7 +208,7 @@ class SettingsViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   Future<void> _handleRefreshSteamConnection() async {
     try {
       _isCheckingConnection = true;
@@ -231,7 +239,9 @@ class SettingsViewModel extends ChangeNotifier {
           _isCheckingConnection = false;
           _errorMessage = failure.message;
           notifyListeners();
-          AppLogger.warning('Steam connection check failed: ${failure.message}');
+          AppLogger.warning(
+            'Steam connection check failed: ${failure.message}',
+          );
         },
       );
     } catch (e, stackTrace) {
@@ -241,7 +251,7 @@ class SettingsViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   Future<void> _handleUpdateApiKey(String newApiKey) async {
     try {
       AppLogger.info('Updating API key');
@@ -256,7 +266,7 @@ class SettingsViewModel extends ChangeNotifier {
       _setError('Failed to update API key');
     }
   }
-  
+
   Future<void> _handleUpdateSteamId(String newSteamId) async {
     try {
       AppLogger.info('Updating Steam ID');
@@ -271,7 +281,7 @@ class SettingsViewModel extends ChangeNotifier {
       _setError('Failed to update Steam ID');
     }
   }
-  
+
   Future<void> _handleSyncGameLibrary() async {
     try {
       _isSyncing = true;
@@ -284,7 +294,9 @@ class SettingsViewModel extends ChangeNotifier {
 
       // 监听同步进度
       _syncProgressSubscription?.cancel();
-      _syncProgressSubscription = _gameRepository.syncProgressStream.listen((progress) {
+      _syncProgressSubscription = _gameRepository.syncProgressStream.listen((
+        progress,
+      ) {
         // 如果收到取消状态，说明有新任务启动，当前任务被取消
         // 标记取消状态，不更新UI，让新任务的进度来更新
         if (progress.isCancelled) {
@@ -298,7 +310,8 @@ class SettingsViewModel extends ChangeNotifier {
         _syncTotalGames = progress.totalGames;
         _syncCurrentBatch = progress.currentBatch;
         _syncTotalBatches = progress.totalBatches;
-        if (progress.errorMessage != null && progress.errorMessage!.isNotEmpty) {
+        if (progress.errorMessage != null &&
+            progress.errorMessage!.isNotEmpty) {
           _errorMessage = progress.errorMessage!;
         }
         notifyListeners();
@@ -335,12 +348,12 @@ class SettingsViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   Future<void> _handleToggleTheme(bool isDark) async {
     try {
       _isDarkTheme = isDark;
       await _prefs.setBool('dark_theme', isDark);
-      
+
       AppLogger.info('Theme changed to: ${isDark ? 'dark' : 'light'}');
       notifyListeners();
     } catch (e, stackTrace) {
@@ -348,7 +361,7 @@ class SettingsViewModel extends ChangeNotifier {
       _setError('Failed to change theme');
     }
   }
-  
+
   Future<void> _handleClearCache() async {
     try {
       AppLogger.info('Clearing cache');
@@ -363,7 +376,7 @@ class SettingsViewModel extends ChangeNotifier {
       _setError('Failed to clear cache');
     }
   }
-  
+
   Future<void> _handleClearAllData() async {
     try {
       AppLogger.info('Clearing all application data');
@@ -407,15 +420,20 @@ class SettingsViewModel extends ChangeNotifier {
       return 'Unknown';
     }
   }
-  
+
   void _setError(String error) {
     _errorMessage = error;
     notifyListeners();
   }
-  
+
   void clearError() {
     _errorMessage = '';
     notifyListeners();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
   }
 
   // 偏好设置 Command Handlers（占位实现）
@@ -479,7 +497,9 @@ class SettingsViewModel extends ChangeNotifier {
 
       await _prefs.setStringList('excluded_categories', _excludedCategories);
 
-      AppLogger.info('Excluded categories updated: ${_excludedCategories.length} categories');
+      AppLogger.info(
+        'Excluded categories updated: ${_excludedCategories.length} categories',
+      );
       notifyListeners();
     } catch (e, stackTrace) {
       AppLogger.error('Failed to toggle excluded category', e, stackTrace);
@@ -514,6 +534,7 @@ class SettingsViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _syncProgressSubscription?.cancel();
     _gameLibrarySubscription?.cancel();
     super.dispose();

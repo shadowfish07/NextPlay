@@ -43,10 +43,7 @@ class AchievementCompact extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(width: 4),
-          Text(
-            '$unlocked/$total',
-            style: textStyle ?? defaultTextStyle,
-          ),
+          Text('$unlocked/$total', style: textStyle ?? defaultTextStyle),
         ],
       ),
     );

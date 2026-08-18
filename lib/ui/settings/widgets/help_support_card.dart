@@ -17,7 +17,7 @@ class HelpSupportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -26,19 +26,13 @@ class HelpSupportCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.help_outline,
-                  color: theme.colorScheme.primary,
-                ),
+                Icon(Icons.help_outline, color: theme.colorScheme.primary),
                 const SizedBox(width: 12),
-                Text(
-                  '帮助与支持',
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text('帮助与支持', style: theme.textTheme.titleMedium),
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // User Guide
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -51,7 +45,7 @@ class HelpSupportCard extends StatelessWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: onShowUserGuide ?? () => _showUserGuide(context),
             ),
-            
+
             // FAQ
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -64,7 +58,7 @@ class HelpSupportCard extends StatelessWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: onShowFAQ ?? () => _showFAQ(context),
             ),
-            
+
             // Privacy Policy
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -77,9 +71,9 @@ class HelpSupportCard extends StatelessWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: onShowPrivacyPolicy ?? () => _showPrivacyPolicy(context),
             ),
-            
+
             const Divider(),
-            
+
             // About Section
             Text(
               '关于应用',
@@ -88,7 +82,7 @@ class HelpSupportCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            
+
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Icon(
@@ -161,10 +155,7 @@ class UserGuideSheet extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(
-                  '使用指南',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
+                Text('使用指南', style: Theme.of(context).textTheme.headlineSmall),
                 const Spacer(),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
@@ -179,7 +170,8 @@ class UserGuideSheet extends StatelessWidget {
                 children: const [
                   _GuideSection(
                     title: '1. 连接 Steam 账户',
-                    content: '首次使用需要连接您的 Steam 账户。请准备好 Steam API Key 和 Steam ID。',
+                    content:
+                        '首次使用需要连接您的 Steam 账户。请准备好 Steam API Key 和 Steam ID。',
                   ),
                   _GuideSection(
                     title: '2. 同步游戏库',
@@ -223,10 +215,7 @@ class FAQSheet extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(
-                  '常见问题',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
+                Text('常见问题', style: Theme.of(context).textTheme.headlineSmall),
                 const Spacer(),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
@@ -241,7 +230,8 @@ class FAQSheet extends StatelessWidget {
                 children: const [
                   _FAQItem(
                     question: '如何获取 Steam API Key？',
-                    answer: '访问 https://steamcommunity.com/dev/apikey，使用 Steam 账户登录，填写域名（可填 localhost），同意条款即可获得。',
+                    answer:
+                        '访问 https://steamcommunity.com/dev/apikey，使用 Steam 账户登录，填写域名（可填 localhost），同意条款即可获得。',
                   ),
                   _FAQItem(
                     question: '如何获取 Steam ID？',
@@ -285,10 +275,7 @@ class PrivacyPolicySheet extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(
-                  '隐私政策',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
+                Text('隐私政策', style: Theme.of(context).textTheme.headlineSmall),
                 const Spacer(),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
@@ -303,7 +290,8 @@ class PrivacyPolicySheet extends StatelessWidget {
                 children: const [
                   _GuideSection(
                     title: '数据收集',
-                    content: 'NextPlay 只收集您明确提供的 Steam API Key 和 Steam ID，用于连接您的 Steam 账户。',
+                    content:
+                        'NextPlay 只收集您明确提供的 Steam API Key 和 Steam ID，用于连接您的 Steam 账户。',
                   ),
                   _GuideSection(
                     title: '数据使用',
@@ -335,15 +323,12 @@ class _GuideSection extends StatelessWidget {
   final String title;
   final String content;
 
-  const _GuideSection({
-    required this.title,
-    required this.content,
-  });
+  const _GuideSection({required this.title, required this.content});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Column(
@@ -373,15 +358,12 @@ class _FAQItem extends StatelessWidget {
   final String question;
   final String answer;
 
-  const _FAQItem({
-    required this.question,
-    required this.answer,
-  });
+  const _FAQItem({required this.question, required this.answer});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Column(

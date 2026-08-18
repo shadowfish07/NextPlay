@@ -5,14 +5,20 @@ class AppTheme {
   static const Color _primarySeedColor = Color(0xFF2A48A0); // Rich gaming blue
   static const Color _accentColor = Color(0xFF6B73FF); // Electric blue accent
   static const Color _gameHighlight = Color(0xFF00D4FF); // Cyan highlight
-  
+
   // Gaming dark surface colors
-  static const Color _gamingSurface = Color(0xFF0F1419); // Deep charcoal background
+  static const Color _gamingSurface = Color(
+    0xFF0F1419,
+  ); // Deep charcoal background
   static const Color _gamingCard = Color(0xFF1A1F26); // Card background
   static const Color _gamingElevated = Color(0xFF252A32); // Elevated surfaces
-  static const Color _gameMetaBackground = Color(0xFF1E2328); // Metadata backgrounds
-  static const Color _gameTagBackground = Color(0xFF2A3441); // Genre tag backgrounds
-  
+  static const Color _gameMetaBackground = Color(
+    0xFF1E2328,
+  ); // Metadata backgrounds
+  static const Color _gameTagBackground = Color(
+    0xFF2A3441,
+  ); // Genre tag backgrounds
+
   // Game status colors
   static const Color _statusPlaying = Color(0xFF4CAF50);
   static const Color _statusCompleted = Color(0xFF2196F3);
@@ -20,7 +26,7 @@ class AppTheme {
   static const Color _statusAbandoned = Color(0xFFF44336);
   static const Color _statusPaused = Color(0xFFFF5722);
   static const Color _statusMultiplayer = Color(0xFF9C27B0);
-  
+
   // Enhanced light theme for consistency
   static ThemeData get lightTheme {
     return ThemeData(
@@ -29,13 +35,8 @@ class AppTheme {
         seedColor: _primarySeedColor,
         brightness: Brightness.light,
       ),
-      appBarTheme: const AppBarTheme(
-        centerTitle: true,
-        elevation: 0,
-      ),
-      cardTheme: const CardThemeData(
-        elevation: 2,
-      ),
+      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
+      cardTheme: const CardThemeData(elevation: 2),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(88, 40),
@@ -73,12 +74,12 @@ class AppTheme {
       secondary: _gameHighlight,
       tertiary: const Color(0xFF9C27B0),
     );
-    
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: _gamingSurface,
-      
+
       // Enhanced AppBar for gaming aesthetic
       appBarTheme: AppBarTheme(
         centerTitle: true,
@@ -88,7 +89,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         shadowColor: _accentColor.withValues(alpha: 0.1),
       ),
-      
+
       // Gaming-style cards
       cardTheme: CardThemeData(
         elevation: 12,
@@ -103,7 +104,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Premium button styles
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -117,7 +118,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(88, 48),
@@ -128,7 +129,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Gaming-style chips
       chipTheme: ChipThemeData(
         backgroundColor: _gameTagBackground,
@@ -145,7 +146,7 @@ class AppTheme {
           width: 0.5,
         ),
       ),
-      
+
       // Enhanced navigation bar
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: _gamingCard,
@@ -175,23 +176,21 @@ class AppTheme {
         elevation: 8,
         shadowColor: _accentColor.withValues(alpha: 0.05),
       ),
-      
+
       // Enhanced list tile theme
       listTileTheme: ListTileThemeData(
         tileColor: _gamingCard,
         selectedTileColor: _accentColor.withValues(alpha: 0.1),
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      
+
       // Enhanced divider theme
       dividerTheme: DividerThemeData(
         color: _gamingElevated.withValues(alpha: 0.5),
         thickness: 0.5,
       ),
-      
+
       // Progress indicator theme
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: _gameHighlight,
@@ -200,7 +199,7 @@ class AppTheme {
       ),
     );
   }
-  
+
   // Gaming status colors (public accessors)
   static Color get statusPlaying => _statusPlaying;
   static Color get statusCompleted => _statusCompleted;
@@ -208,7 +207,7 @@ class AppTheme {
   static Color get statusAbandoned => _statusAbandoned;
   static Color get statusPaused => _statusPaused;
   static Color get statusMultiplayer => _statusMultiplayer;
-  
+
   // Gaming surface colors (public accessors)
   static Color get gamingSurface => _gamingSurface;
   static Color get gamingCard => _gamingCard;

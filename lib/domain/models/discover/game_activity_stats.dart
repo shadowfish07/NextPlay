@@ -8,10 +8,13 @@ class GameActivityStats with _$GameActivityStats {
   const factory GameActivityStats({
     /// 今日游玩的游戏数量
     required int todayGamesCount,
+
     /// 本周游玩的游戏数量
     required int weekGamesCount,
+
     /// 本月游玩的游戏数量
     required int monthGamesCount,
+
     /// 近两周总游玩时长（分钟）
     required int twoWeeksPlaytimeMinutes,
   }) = _GameActivityStats;

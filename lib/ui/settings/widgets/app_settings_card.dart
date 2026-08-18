@@ -33,7 +33,7 @@ class AppSettingsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -47,14 +47,11 @@ class AppSettingsCard extends StatelessWidget {
                   color: theme.colorScheme.primary,
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  '应用设置',
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text('应用设置', style: theme.textTheme.titleMedium),
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Theme Setting
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -69,9 +66,9 @@ class AppSettingsCard extends StatelessWidget {
                 onChanged: isLoading ? null : onThemeChanged,
               ),
             ),
-            
+
             const Divider(),
-            
+
             // Language Setting
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -84,34 +81,36 @@ class AppSettingsCard extends StatelessWidget {
               trailing: PopupMenuButton<String>(
                 enabled: !isLoading,
                 onSelected: onLanguageChanged,
-                itemBuilder: (context) => supportedLanguages.map((lang) => 
-                  PopupMenuItem<String>(
-                    value: lang,
-                    child: Row(
-                      children: [
-                        if (language == lang)
-                          Icon(
-                            Icons.check,
-                            color: theme.colorScheme.primary,
-                            size: 20,
-                          )
-                        else
-                          const SizedBox(width: 20),
-                        const SizedBox(width: 8),
-                        Text(languageLabels[lang]!),
-                      ],
-                    ),
-                  ),
-                ).toList(),
+                itemBuilder: (context) => supportedLanguages
+                    .map(
+                      (lang) => PopupMenuItem<String>(
+                        value: lang,
+                        child: Row(
+                          children: [
+                            if (language == lang)
+                              Icon(
+                                Icons.check,
+                                color: theme.colorScheme.primary,
+                                size: 20,
+                              )
+                            else
+                              const SizedBox(width: 20),
+                            const SizedBox(width: 8),
+                            Text(languageLabels[lang]!),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
                 child: Icon(
                   Icons.arrow_drop_down,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
-            
+
             const Divider(),
-            
+
             // Data Management Section
             Text(
               '数据管理',
@@ -120,7 +119,7 @@ class AppSettingsCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            
+
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Icon(
@@ -129,38 +128,34 @@ class AppSettingsCard extends StatelessWidget {
               ),
               title: const Text('清除缓存'),
               subtitle: const Text('清除游戏图片和临时数据'),
-              trailing: isLoading 
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.chevron_right),
+              trailing: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.chevron_right),
               onTap: isLoading ? null : onClearCache,
             ),
-            
+
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                Icons.delete_sweep,
-                color: theme.colorScheme.error,
-              ),
+              leading: Icon(Icons.delete_sweep, color: theme.colorScheme.error),
               title: Text(
                 '清除所有数据',
                 style: TextStyle(color: theme.colorScheme.error),
               ),
               subtitle: const Text('删除所有应用数据，重置到初始状态'),
-              trailing: isLoading 
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(
-                    Icons.chevron_right,
-                    color: theme.colorScheme.error,
-                  ),
-              onTap: isLoading ? null : () => _showClearAllDataConfirmation(context),
+              trailing: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(Icons.chevron_right, color: theme.colorScheme.error),
+              onTap: isLoading
+                  ? null
+                  : () => _showClearAllDataConfirmation(context),
             ),
           ],
         ),

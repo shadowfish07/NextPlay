@@ -418,7 +418,7 @@ class GameLibraryCard extends StatelessWidget {
           : null,
       icon: Icon(statusData.icon, size: 16, color: statusData.color),
       label: Text(
-        status.displayName, 
+        status.displayName,
         style: theme.textTheme.labelMedium?.copyWith(color: statusData.color),
       ),
       style: TextButton.styleFrom(

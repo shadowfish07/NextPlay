@@ -10,17 +10,17 @@ class OnboardingRepository {
   final SharedPreferences _prefs;
   final SteamValidationService _steamValidationService;
   final GameRepository _gameRepository;
-  
-  final StreamController<OnboardingState> _stateController = 
+
+  final StreamController<OnboardingState> _stateController =
       StreamController<OnboardingState>.broadcast();
-  
+
   OnboardingState _currentState = OnboardingState.initial();
-  
+
   OnboardingRepository({
     required SharedPreferences sharedPreferences,
     required SteamValidationService steamValidationService,
     required GameRepository gameRepository,
-  }) : _prefs = sharedPreferences, 
+  }) : _prefs = sharedPreferences,
        _steamValidationService = steamValidationService,
        _gameRepository = gameRepository {
     _loadState();
@@ -34,14 +34,16 @@ class OnboardingRepository {
       final isCompleted = _prefs.getBool('onboarding_completed') ?? false;
       final apiKey = _prefs.getString('api_key') ?? '';
       final steamId = _prefs.getString('steam_id') ?? '';
-      
+
       _currentState = OnboardingState(
         isCompleted: isCompleted,
         apiKey: apiKey,
         steamId: steamId,
-        currentStep: isCompleted ? OnboardingStep.dataSync : OnboardingStep.welcome,
+        currentStep: isCompleted
+            ? OnboardingStep.dataSync
+            : OnboardingStep.welcome,
       );
-      
+
       AppLogger.info('Onboarding state loaded: completed=$isCompleted');
       _stateController.add(_currentState);
     } catch (e, stackTrace) {
@@ -58,10 +60,12 @@ class OnboardingRepository {
       _stateController.add(_currentState);
     } catch (e, stackTrace) {
       AppLogger.error('Failed to update current step', e, stackTrace);
-      _stateController.add(_currentState.copyWith(
-        errorMessage: 'Failed to update step',
-        isLoading: false,
-      ));
+      _stateController.add(
+        _currentState.copyWith(
+          errorMessage: 'Failed to update step',
+          isLoading: false,
+        ),
+      );
     }
   }
 
@@ -73,10 +77,12 @@ class OnboardingRepository {
       _stateController.add(_currentState);
     } catch (e, stackTrace) {
       AppLogger.error('Failed to complete onboarding', e, stackTrace);
-      _stateController.add(_currentState.copyWith(
-        errorMessage: 'Failed to complete onboarding',
-        isLoading: false,
-      ));
+      _stateController.add(
+        _currentState.copyWith(
+          errorMessage: 'Failed to complete onboarding',
+          isLoading: false,
+        ),
+      );
     }
   }
 
@@ -84,17 +90,18 @@ class OnboardingRepository {
     try {
       AppLogger.info('Saving API key without validation');
       await _prefs.setString('api_key', apiKey);
-      
-      _currentState = _currentState.copyWith(
-        apiKey: apiKey,
-        errorMessage: '',
-      );
+
+      _currentState = _currentState.copyWith(apiKey: apiKey, errorMessage: '');
       _stateController.add(_currentState);
     } catch (e, stackTrace) {
-      AppLogger.error('Failed to save API key without validation', e, stackTrace);
-      _stateController.add(_currentState.copyWith(
-        errorMessage: 'Failed to save API key',
-      ));
+      AppLogger.error(
+        'Failed to save API key without validation',
+        e,
+        stackTrace,
+      );
+      _stateController.add(
+        _currentState.copyWith(errorMessage: 'Failed to save API key'),
+      );
     }
   }
 
@@ -102,33 +109,37 @@ class OnboardingRepository {
     try {
       AppLogger.info('Saving Steam ID without validation');
       await _prefs.setString('steam_id', steamId);
-      
+
       _currentState = _currentState.copyWith(
         steamId: steamId,
         errorMessage: '',
       );
       _stateController.add(_currentState);
     } catch (e, stackTrace) {
-      AppLogger.error('Failed to save Steam ID without validation', e, stackTrace);
-      _stateController.add(_currentState.copyWith(
-        errorMessage: 'Failed to save Steam ID',
-      ));
+      AppLogger.error(
+        'Failed to save Steam ID without validation',
+        e,
+        stackTrace,
+      );
+      _stateController.add(
+        _currentState.copyWith(errorMessage: 'Failed to save Steam ID'),
+      );
     }
   }
 
   Future<void> saveApiKey(String apiKey) async {
     try {
       AppLogger.info('Saving API key');
-      
+
       _currentState = _currentState.copyWith(
         apiKey: apiKey,
         isLoading: true,
         errorMessage: '',
       );
       _stateController.add(_currentState);
-      
+
       final result = await _steamValidationService.validateApiKey(apiKey);
-      
+
       if (result.isSuccess()) {
         await _prefs.setString('api_key', apiKey);
         _currentState = _currentState.copyWith(
@@ -145,31 +156,33 @@ class OnboardingRepository {
         );
         AppLogger.error('API key validation failed: ${error.message}');
       }
-      
+
       _stateController.add(_currentState);
     } catch (e, stackTrace) {
       AppLogger.error('Failed to save API key', e, stackTrace);
-      _stateController.add(_currentState.copyWith(
-        isApiKeyValid: false,
-        isLoading: false,
-        errorMessage: 'Failed to save API key',
-      ));
+      _stateController.add(
+        _currentState.copyWith(
+          isApiKeyValid: false,
+          isLoading: false,
+          errorMessage: 'Failed to save API key',
+        ),
+      );
     }
   }
 
   Future<void> saveSteamId(String steamId) async {
     try {
       AppLogger.info('Saving Steam ID');
-      
+
       _currentState = _currentState.copyWith(
         steamId: steamId,
         isLoading: true,
         errorMessage: '',
       );
       _stateController.add(_currentState);
-      
+
       final result = await _steamValidationService.validateSteamId(steamId);
-      
+
       if (result.isSuccess()) {
         await _prefs.setString('steam_id', steamId);
         _currentState = _currentState.copyWith(
@@ -186,15 +199,17 @@ class OnboardingRepository {
         );
         AppLogger.error('Steam ID validation failed: ${error.message}');
       }
-      
+
       _stateController.add(_currentState);
     } catch (e, stackTrace) {
       AppLogger.error('Failed to save Steam ID', e, stackTrace);
-      _stateController.add(_currentState.copyWith(
-        isSteamIdValid: false,
-        isLoading: false,
-        errorMessage: 'Failed to save Steam ID',
-      ));
+      _stateController.add(
+        _currentState.copyWith(
+          isSteamIdValid: false,
+          isLoading: false,
+          errorMessage: 'Failed to save Steam ID',
+        ),
+      );
     }
   }
 
@@ -232,10 +247,8 @@ class OnboardingRepository {
       );
       _stateController.add(_currentState);
 
-      final credentialsResult = await _steamValidationService.validateCredentials(
-        apiKey: apiKey,
-        steamId: steamId,
-      );
+      final credentialsResult = await _steamValidationService
+          .validateCredentials(apiKey: apiKey, steamId: steamId);
 
       if (!credentialsResult.isSuccess()) {
         final error = credentialsResult.exceptionOrNull()!;
@@ -249,7 +262,9 @@ class OnboardingRepository {
 
       // 先订阅 GameRepository 的同步进度（必须在调用 syncGameLibrary 之前订阅，
       // 否则会错过初始的进度事件，导致进度条跳变）
-      progressSubscription = _gameRepository.syncProgressStream.listen((progress) {
+      progressSubscription = _gameRepository.syncProgressStream.listen((
+        progress,
+      ) {
         _currentState = _currentState.copyWith(
           syncProgress: progress.progress,
           syncMessage: progress.message,
@@ -300,14 +315,15 @@ class OnboardingRepository {
       );
       _stateController.add(_currentState);
 
-      AppLogger.info('Game library sync completed with ${gameLibrary.length} games');
+      AppLogger.info(
+        'Game library sync completed with ${gameLibrary.length} games',
+      );
     } catch (e, stackTrace) {
       AppLogger.error('Failed to sync game library', e, stackTrace);
       await progressSubscription?.cancel();
-      _stateController.add(_currentState.copyWith(
-        isLoading: false,
-        errorMessage: '同步失败: $e',
-      ));
+      _stateController.add(
+        _currentState.copyWith(isLoading: false, errorMessage: '同步失败: $e'),
+      );
     }
   }
 

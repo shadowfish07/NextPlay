@@ -69,7 +69,7 @@ class SmallGameCard extends StatelessWidget {
                 children: [
                   // 游戏封面 - 固定高度
                   _buildGameCover(),
-                  
+
                   // 游戏信息 - 固定高度区域
                   Padding(
                     padding: const EdgeInsets.all(8),
@@ -109,9 +109,7 @@ class SmallGameCard extends StatelessWidget {
           // 封面图片
           Container(
             width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppTheme.gameMetaBackground,
-            ),
+            decoration: BoxDecoration(color: AppTheme.gameMetaBackground),
             child: ClipRRect(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
@@ -155,14 +153,9 @@ class SmallGameCard extends StatelessWidget {
             ),
           ),
 
-
           // 队列位置徽章 (仅队列卡片)
           if (queuePosition != null)
-            Positioned(
-              top: 6,
-              left: 6,
-              child: _buildQueuePositionBadge(),
-            ),
+            Positioned(top: 6, left: 6, child: _buildQueuePositionBadge()),
 
           // 待玩角标 (右上角)
           if (isInWishlist && queuePosition == null)
@@ -222,7 +215,7 @@ class SmallGameCard extends StatelessWidget {
   /// 构建游戏标题
   Widget _buildGameTitle(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Align(
       alignment: Alignment.topLeft,
       child: Text(
@@ -358,7 +351,6 @@ class SmallGameCard extends StatelessWidget {
       ),
     );
   }
-
 }
 
 /// 横向游戏列表组件
@@ -381,7 +373,7 @@ class HorizontalGameList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     if (games.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -421,7 +413,7 @@ class HorizontalGameList extends StatelessWidget {
             ],
           ),
         ),
-        
+
         // 横向列表
         SizedBox(
           height: 212, // 匹配卡片高度
@@ -432,10 +424,10 @@ class HorizontalGameList extends StatelessWidget {
             separatorBuilder: (context, index) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final game = games[index];
-              final status = index < statuses.length 
-                  ? statuses[index] 
+              final status = index < statuses.length
+                  ? statuses[index]
                   : const GameStatus.notStarted();
-              
+
               return SmallGameCard(
                 game: game,
                 status: status,
@@ -445,7 +437,7 @@ class HorizontalGameList extends StatelessWidget {
             },
           ),
         ),
-        
+
         const SizedBox(height: 24),
       ],
     );

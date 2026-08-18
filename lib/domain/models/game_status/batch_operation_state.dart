@@ -7,8 +7,8 @@ part 'batch_operation_state.g.dart';
 
 /// 批量操作步骤枚举
 enum BatchOperationStep {
-  zeroPlaytime,    // 0时长游戏确认
-  highPlaytime,    // 高时长游戏确认  
+  zeroPlaytime, // 0时长游戏确认
+  highPlaytime, // 高时长游戏确认
 }
 
 extension BatchOperationStepExtension on BatchOperationStep {
@@ -65,7 +65,7 @@ class GameSelectionItem with _$GameSelectionItem {
     String? reason,
   }) = _GameSelectionItem;
 
-  factory GameSelectionItem.fromJson(Map<String, dynamic> json) => 
+  factory GameSelectionItem.fromJson(Map<String, dynamic> json) =>
       _$GameSelectionItemFromJson(json);
 }
 
@@ -83,7 +83,7 @@ class BatchOperationState with _$BatchOperationState {
     @Default(0) int totalCount,
   }) = _BatchOperationState;
 
-  factory BatchOperationState.fromJson(Map<String, dynamic> json) => 
+  factory BatchOperationState.fromJson(Map<String, dynamic> json) =>
       _$BatchOperationStateFromJson(json);
 }
 
@@ -97,14 +97,14 @@ class BatchOperationResult with _$BatchOperationResult {
     @Default([]) List<String> errors,
   }) = _BatchOperationResult;
 
-  factory BatchOperationResult.fromJson(Map<String, dynamic> json) => 
+  factory BatchOperationResult.fromJson(Map<String, dynamic> json) =>
       _$BatchOperationResultFromJson(json);
 }
 
 extension BatchOperationResultExtension on BatchOperationResult {
   bool get isSuccess => failureCount == 0;
   double get successRate => totalCount > 0 ? successCount / totalCount : 0.0;
-  
+
   String get summary {
     if (isSuccess) {
       return '成功处理 $successCount 个游戏';

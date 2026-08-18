@@ -116,9 +116,7 @@ class GameProgressCard extends StatelessWidget {
             alpha: 0.65,
           ),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: surfaceTone.withValues(alpha: 0.85),
-          ),
+          border: Border.all(color: surfaceTone.withValues(alpha: 0.85)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

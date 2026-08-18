@@ -12,7 +12,8 @@ class SteamAccountWebViewPage extends StatefulWidget {
   });
 
   @override
-  State<SteamAccountWebViewPage> createState() => _SteamAccountWebViewPageState();
+  State<SteamAccountWebViewPage> createState() =>
+      _SteamAccountWebViewPageState();
 }
 
 class _SteamAccountWebViewPageState extends State<SteamAccountWebViewPage> {
@@ -33,7 +34,8 @@ class _SteamAccountWebViewPageState extends State<SteamAccountWebViewPage> {
     if (_controller == null) return;
 
     try {
-      final result = await _controller!.evaluateJavascript(source: '''
+      final result = await _controller!.evaluateJavascript(
+        source: '''
         (function() {
           var element = document.querySelector('.youraccount_steamid');
           if (element) {
@@ -45,7 +47,8 @@ class _SteamAccountWebViewPageState extends State<SteamAccountWebViewPage> {
           }
           return '';
         })();
-      ''');
+      ''',
+      );
 
       String steamId = result?.toString() ?? '';
       steamId = steamId.replaceAll('"', '').replaceAll("'", '');
@@ -97,7 +100,9 @@ class _SteamAccountWebViewPageState extends State<SteamAccountWebViewPage> {
             child: Row(
               children: [
                 Icon(
-                  _foundSteamId != null ? Icons.check_circle : Icons.info_outline,
+                  _foundSteamId != null
+                      ? Icons.check_circle
+                      : Icons.info_outline,
                   color: _foundSteamId != null
                       ? colorScheme.onPrimaryContainer
                       : colorScheme.onSurfaceVariant,

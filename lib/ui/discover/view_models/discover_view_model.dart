@@ -13,6 +13,7 @@ import '../../../utils/logger.dart';
 /// 发现页ViewModel - 管理活动统计和游戏推荐
 class DiscoverViewModel extends ChangeNotifier {
   final GameRepository _gameRepository;
+  bool _disposed = false;
 
   // UI状态
   DiscoverState _state = const DiscoverState.loading();
@@ -31,7 +32,8 @@ class DiscoverViewModel extends ChangeNotifier {
   late Command<int, void> removeFromPlayQueueCommand;
   late Command<int, bool> togglePlayQueueCommand;
   late Command<List<int>, void> reorderPlayQueueCommand;
-  late Command<GameRecommendationAction, void> handleRecommendationActionCommand;
+  late Command<GameRecommendationAction, void>
+  handleRecommendationActionCommand;
 
   // 流订阅
   StreamSubscription? _gameLibrarySubscription;
@@ -39,7 +41,7 @@ class DiscoverViewModel extends ChangeNotifier {
   StreamSubscription? _playQueueSubscription;
 
   DiscoverViewModel({required GameRepository gameRepository})
-      : _gameRepository = gameRepository {
+    : _gameRepository = gameRepository {
     _initializeCommands();
     _subscribeToStreams();
     _initializeState();
@@ -62,14 +64,17 @@ class DiscoverViewModel extends ChangeNotifier {
   GameActivityStats get activityStats => _gameRepository.getActivityStats();
 
   /// 获取最近在玩的游戏
-  List<Game> get recentlyPlayedGames => _gameRepository.getRecentlyPlayedGames(limit: 10);
+  List<Game> get recentlyPlayedGames =>
+      _gameRepository.getRecentlyPlayedGames(limit: 10);
 
   /// 获取未玩游戏（用于推荐）- 使用缓存避免重复随机
   List<Game> get unplayedGames => _cachedRecommendations;
 
   /// 主推荐游戏
   Game? get heroRecommendation {
-    return _cachedRecommendations.isNotEmpty ? _cachedRecommendations.first : null;
+    return _cachedRecommendations.isNotEmpty
+        ? _cachedRecommendations.first
+        : null;
   }
 
   /// 备选推荐游戏
@@ -97,12 +102,10 @@ class DiscoverViewModel extends ChangeNotifier {
 
   void _initializeCommands() {
     // 刷新数据Command
-    refreshCommand = Command.createAsyncNoParamNoResult(
-      () async {
-        AppLogger.info('Refreshing discover data');
-        notifyListeners();
-      },
-    );
+    refreshCommand = Command.createAsyncNoParamNoResult(() async {
+      AppLogger.info('Refreshing discover data');
+      notifyListeners();
+    });
 
     // 生成推荐Command（重新随机未玩游戏列表）
     generateRecommendationsCommand = Command.createAsyncNoParamNoResult(
@@ -114,126 +117,124 @@ class DiscoverViewModel extends ChangeNotifier {
     );
 
     // 更新游戏状态Command
-    updateGameStatusCommand = Command.createAsyncNoResult<(int, GameStatus)>(
-      (params) async {
-        final (appId, status) = params;
-        AppLogger.info('Updating game status for $appId to $status');
+    updateGameStatusCommand = Command.createAsyncNoResult<(int, GameStatus)>((
+      params,
+    ) async {
+      final (appId, status) = params;
+      AppLogger.info('Updating game status for $appId to $status');
 
-        final result = await _gameRepository.updateGameStatus(appId, status);
+      final result = await _gameRepository.updateGameStatus(appId, status);
 
-        result.fold(
-          (_) {
-            AppLogger.info('Game status updated successfully');
-            notifyListeners();
-          },
-          (error) {
-            AppLogger.error('Failed to update game status: $error');
-          },
-        );
-      },
-    );
+      result.fold(
+        (_) {
+          AppLogger.info('Game status updated successfully');
+          notifyListeners();
+        },
+        (error) {
+          AppLogger.error('Failed to update game status: $error');
+        },
+      );
+    });
 
     // 添加到待玩队列Command
-    addToPlayQueueCommand = Command.createAsyncNoResult<int>(
-      (appId) async {
-        AppLogger.info('Adding game $appId to play queue');
+    addToPlayQueueCommand = Command.createAsyncNoResult<int>((appId) async {
+      AppLogger.info('Adding game $appId to play queue');
 
-        final result = await _gameRepository.addToPlayQueue(appId);
+      final result = await _gameRepository.addToPlayQueue(appId);
 
-        result.fold(
-          (_) {
-            AppLogger.info('Game $appId added to play queue successfully');
-            _loadPlayQueue();
-          },
-          (error) {
-            AppLogger.error('Failed to add game to play queue: $error');
-          },
-        );
-      },
-    );
+      result.fold(
+        (_) {
+          AppLogger.info('Game $appId added to play queue successfully');
+          _loadPlayQueue();
+        },
+        (error) {
+          AppLogger.error('Failed to add game to play queue: $error');
+        },
+      );
+    });
 
     // 从待玩队列移除Command
-    removeFromPlayQueueCommand = Command.createAsyncNoResult<int>(
-      (appId) async {
-        AppLogger.info('Removing game $appId from play queue');
+    removeFromPlayQueueCommand = Command.createAsyncNoResult<int>((
+      appId,
+    ) async {
+      AppLogger.info('Removing game $appId from play queue');
 
-        final result = await _gameRepository.removeFromPlayQueue(appId);
+      final result = await _gameRepository.removeFromPlayQueue(appId);
 
-        result.fold(
-          (_) {
-            AppLogger.info('Game $appId removed from play queue');
-            _loadPlayQueue();
-          },
-          (error) {
-            AppLogger.error('Failed to remove game from play queue: $error');
-          },
-        );
-      },
-    );
+      result.fold(
+        (_) {
+          AppLogger.info('Game $appId removed from play queue');
+          _loadPlayQueue();
+        },
+        (error) {
+          AppLogger.error('Failed to remove game from play queue: $error');
+        },
+      );
+    });
 
     // 切换待玩状态Command
-    togglePlayQueueCommand = Command.createAsync<int, bool>(
-      (appId) async {
-        AppLogger.info('Toggling play queue for game $appId');
+    togglePlayQueueCommand = Command.createAsync<int, bool>((appId) async {
+      AppLogger.info('Toggling play queue for game $appId');
 
-        final result = await _gameRepository.togglePlayQueue(appId);
+      final result = await _gameRepository.togglePlayQueue(appId);
 
-        return result.fold(
-          (isAdded) {
-            AppLogger.info('Game $appId ${isAdded ? "added to" : "removed from"} play queue');
-            _loadPlayQueue();
-            return isAdded;
-          },
-          (error) {
-            AppLogger.error('Failed to toggle play queue: $error');
-            return false;
-          },
-        );
-      },
-      initialValue: false,
-    );
+      return result.fold(
+        (isAdded) {
+          AppLogger.info(
+            'Game $appId ${isAdded ? "added to" : "removed from"} play queue',
+          );
+          _loadPlayQueue();
+          return isAdded;
+        },
+        (error) {
+          AppLogger.error('Failed to toggle play queue: $error');
+          return false;
+        },
+      );
+    }, initialValue: false);
 
     // 重新排序待玩队列Command
-    reorderPlayQueueCommand = Command.createAsyncNoResult<List<int>>(
-      (appIds) async {
-        AppLogger.info('Reordering play queue');
+    reorderPlayQueueCommand = Command.createAsyncNoResult<List<int>>((
+      appIds,
+    ) async {
+      AppLogger.info('Reordering play queue');
 
-        final result = await _gameRepository.reorderPlayQueue(appIds);
+      final result = await _gameRepository.reorderPlayQueue(appIds);
 
-        result.fold(
-          (_) {
-            AppLogger.info('Play queue reordered successfully');
-            _loadPlayQueue();
-          },
-          (error) {
-            AppLogger.error('Failed to reorder play queue: $error');
-          },
-        );
-      },
-    );
+      result.fold(
+        (_) {
+          AppLogger.info('Play queue reordered successfully');
+          _loadPlayQueue();
+        },
+        (error) {
+          AppLogger.error('Failed to reorder play queue: $error');
+        },
+      );
+    });
 
     // 处理推荐操作Command
-    handleRecommendationActionCommand = Command.createAsyncNoResult<GameRecommendationAction>(
-      (action) async {
-        AppLogger.info('Handling recommendation action: ${action.action} for game ${action.gameAppId}');
+    handleRecommendationActionCommand =
+        Command.createAsyncNoResult<GameRecommendationAction>((action) async {
+          AppLogger.info(
+            'Handling recommendation action: ${action.action} for game ${action.gameAppId}',
+          );
 
-        switch (action.action) {
-          case RecommendationAction.accepted:
-            await _gameRepository.updateGameStatus(
-              action.gameAppId,
-              const GameStatus.playing(),
-            );
-            break;
-          case RecommendationAction.dismissed:
-          case RecommendationAction.wishlisted:
-          case RecommendationAction.skipped:
-            break;
-        }
+          switch (action.action) {
+            case RecommendationAction.accepted:
+              await _gameRepository.updateGameStatus(
+                action.gameAppId,
+                const GameStatus.playing(),
+              );
+              break;
+            case RecommendationAction.dismissed:
+            case RecommendationAction.wishlisted:
+            case RecommendationAction.skipped:
+              break;
+          }
 
-        notifyListeners();
-        AppLogger.info('Recommendation action handled successfully');
-      },
-    );
+          notifyListeners();
+          AppLogger.info('Recommendation action handled successfully');
+        });
   }
 
   // ==================== Stream Subscriptions ====================
@@ -304,8 +305,14 @@ class DiscoverViewModel extends ChangeNotifier {
   }
 
   @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
+  @override
   void dispose() {
     AppLogger.info('Disposing DiscoverViewModel');
+    _disposed = true;
 
     _gameLibrarySubscription?.cancel();
     _gameStatusSubscription?.cancel();
@@ -335,7 +342,8 @@ class GameRecommendationAction {
   });
 
   @override
-  String toString() => 'GameRecommendationAction(gameAppId: $gameAppId, action: $action)';
+  String toString() =>
+      'GameRecommendationAction(gameAppId: $gameAppId, action: $action)';
 
   @override
   bool operator ==(Object other) =>

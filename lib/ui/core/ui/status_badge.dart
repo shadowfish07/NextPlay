@@ -58,11 +58,7 @@ class StatusBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (config.showIcon) ...[
-            Icon(
-              statusIcon,
-              size: config.iconSize,
-              color: Colors.white,
-            ),
+            Icon(statusIcon, size: config.iconSize, color: Colors.white),
             SizedBox(width: config.iconSpacing),
           ],
           Text(

@@ -14,5 +14,6 @@ class GameLibrary with _$GameLibrary {
     @Default(0) int totalPlaytime,
   }) = _GameLibrary;
 
-  factory GameLibrary.fromJson(Map<String, dynamic> json) => _$GameLibraryFromJson(json);
+  factory GameLibrary.fromJson(Map<String, dynamic> json) =>
+      _$GameLibraryFromJson(json);
 }

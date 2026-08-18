@@ -143,8 +143,8 @@ class _GameDetailsSliverAppBarState extends State<GameDetailsSliverAppBar> {
           child: images.isEmpty
               ? _buildFallbackImage(context)
               : images.length == 1
-                  ? _buildSingleImage(context, images.first)
-                  : _buildImagePageView(context, images),
+              ? _buildSingleImage(context, images.first)
+              : _buildImagePageView(context, images),
         ),
 
         // 渐变遮罩（忽略点击事件，让下层图片可点击）

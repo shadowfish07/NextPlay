@@ -12,6 +12,7 @@ import 'game_metadata_card.dart';
 import 'game_progress_card.dart';
 import 'game_achievement_card.dart';
 import 'game_description_card.dart';
+import '../../core/app_keys.dart';
 
 /// 游戏详情页面
 class GameDetailsScreen extends StatelessWidget {
@@ -41,6 +42,7 @@ class GameDetailsScreen extends StatelessWidget {
   /// 构建加载状态
   Widget _buildLoadingState(BuildContext context) {
     return Scaffold(
+      key: AppKeys.detailsLoading,
       appBar: AppBar(title: const Text('游戏详情')),
       body: const Center(
         child: common_widgets.LoadingWidget(message: '加载游戏详情中...'),
@@ -54,10 +56,12 @@ class GameDetailsScreen extends StatelessWidget {
     GameDetailsViewModel viewModel,
   ) {
     return Scaffold(
+      key: AppKeys.detailsError,
       appBar: AppBar(title: const Text('游戏详情')),
       body: Center(
         child: common_widgets.ErrorWidget(
           message: viewModel.errorMessage!,
+          retryKey: AppKeys.detailsRetry,
           onRetry: () => viewModel.refreshGameDataCommand.execute(),
         ),
       ),
@@ -67,6 +71,7 @@ class GameDetailsScreen extends StatelessWidget {
   /// 构建游戏未找到状态
   Widget _buildNotFoundState(BuildContext context) {
     return Scaffold(
+      key: AppKeys.detailsScreen,
       appBar: AppBar(title: const Text('游戏详情')),
       body: const Center(child: common_widgets.ErrorWidget(message: '未找到游戏信息')),
     );
@@ -77,6 +82,7 @@ class GameDetailsScreen extends StatelessWidget {
     final game = viewModel.game!;
 
     return Scaffold(
+      key: AppKeys.detailsScreen,
       body: CustomScrollView(
         slivers: [
           // 可折叠的应用栏和hero图片
@@ -100,6 +106,7 @@ class GameDetailsScreen extends StatelessWidget {
 
                   // 游戏基础信息卡片
                   GameInfoHeaderCard(
+                    key: AppKeys.detailsStatus,
                     game: game,
                     gameStatus: viewModel.gameStatus!,
                     onStatusChanged: (status) =>
@@ -154,15 +161,11 @@ class GameDetailsScreen extends StatelessWidget {
                       duration: const Duration(milliseconds: 200),
                       switchInCurve: Curves.easeOut,
                       switchOutCurve: Curves.easeIn,
-                      child:
-                          (game.summary != null &&
-                              game.summary!.isNotEmpty)
+                      child: (game.summary != null && game.summary!.isNotEmpty)
                           ? Column(
                               key: const ValueKey('description'),
                               children: [
-                                GameDescriptionCard(
-                                  description: game.summary!,
-                                ),
+                                GameDescriptionCard(description: game.summary!),
                                 const SizedBox(height: 16),
                               ],
                             )

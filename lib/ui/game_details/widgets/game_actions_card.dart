@@ -41,7 +41,7 @@ class _GameActionsCardState extends State<GameActionsCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Card(
       elevation: 1,
       child: Padding(
@@ -66,9 +66,9 @@ class _GameActionsCardState extends State<GameActionsCard> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 笔记区域
             _buildNotesSection(context),
           ],
@@ -79,7 +79,7 @@ class _GameActionsCardState extends State<GameActionsCard> {
 
   Widget _buildNotesSection(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     if (widget.isEditingNotes) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,9 +96,9 @@ class _GameActionsCardState extends State<GameActionsCard> {
             ),
             style: theme.textTheme.bodyMedium,
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           Row(
             children: [
               FilledButton.icon(
@@ -106,9 +106,9 @@ class _GameActionsCardState extends State<GameActionsCard> {
                 icon: const Icon(Icons.save, size: 16),
                 label: const Text('保存'),
               ),
-              
+
               const SizedBox(width: 8),
-              
+
               TextButton.icon(
                 onPressed: () {
                   _notesController.text = widget.userNotes;
@@ -122,7 +122,7 @@ class _GameActionsCardState extends State<GameActionsCard> {
         ],
       );
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -131,7 +131,9 @@ class _GameActionsCardState extends State<GameActionsCard> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.3,
+              ),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: theme.colorScheme.outline.withValues(alpha: 0.2),
@@ -143,7 +145,9 @@ class _GameActionsCardState extends State<GameActionsCard> {
                 Icon(
                   Icons.edit_note_outlined,
                   size: 32,
-                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.6,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -162,9 +166,9 @@ class _GameActionsCardState extends State<GameActionsCard> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           OutlinedButton.icon(
             onPressed: widget.onToggleNotesEditing,
             icon: const Icon(Icons.add, size: 16),
@@ -175,17 +179,16 @@ class _GameActionsCardState extends State<GameActionsCard> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.3,
+              ),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(
-              widget.userNotes,
-              style: theme.textTheme.bodyMedium,
-            ),
+            child: Text(widget.userNotes, style: theme.textTheme.bodyMedium),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           OutlinedButton.icon(
             onPressed: widget.onToggleNotesEditing,
             icon: const Icon(Icons.edit, size: 16),

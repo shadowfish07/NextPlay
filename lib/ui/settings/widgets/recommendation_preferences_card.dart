@@ -68,7 +68,7 @@ class RecommendationPreferencesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -77,24 +77,15 @@ class RecommendationPreferencesCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.tune,
-                  color: theme.colorScheme.primary,
-                ),
+                Icon(Icons.tune, color: theme.colorScheme.primary),
                 const SizedBox(width: 12),
-                Text(
-                  '推荐偏好',
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text('推荐偏好', style: theme.textTheme.titleMedium),
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Type Balance Weight
-            Text(
-              '类型平衡权重',
-              style: theme.textTheme.titleSmall,
-            ),
+            Text('类型平衡权重', style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -123,48 +114,47 @@ class RecommendationPreferencesCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Time Preference
-            Text(
-              '时间偏好',
-              style: theme.textTheme.titleSmall,
-            ),
+            Text('时间偏好', style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
-              children: timePreferences.map((pref) => FilterChip(
-                label: Text(timePreferenceLabels[pref]!),
-                selected: timePreference == pref,
-                onSelected: (selected) {
-                  if (selected) onTimePreferenceChanged(pref);
-                },
-              )).toList(),
+              children: timePreferences
+                  .map(
+                    (pref) => FilterChip(
+                      label: Text(timePreferenceLabels[pref]!),
+                      selected: timePreference == pref,
+                      onSelected: (selected) {
+                        if (selected) onTimePreferenceChanged(pref);
+                      },
+                    ),
+                  )
+                  .toList(),
             ),
             const SizedBox(height: 16),
-            
+
             // Mood Preference
-            Text(
-              '心情偏好',
-              style: theme.textTheme.titleSmall,
-            ),
+            Text('心情偏好', style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
-              children: moodPreferences.map((pref) => FilterChip(
-                label: Text(moodPreferenceLabels[pref]!),
-                selected: moodPreference == pref,
-                onSelected: (selected) {
-                  if (selected) onMoodPreferenceChanged(pref);
-                },
-              )).toList(),
+              children: moodPreferences
+                  .map(
+                    (pref) => FilterChip(
+                      label: Text(moodPreferenceLabels[pref]!),
+                      selected: moodPreference == pref,
+                      onSelected: (selected) {
+                        if (selected) onMoodPreferenceChanged(pref);
+                      },
+                    ),
+                  )
+                  .toList(),
             ),
             const SizedBox(height: 16),
-            
+
             // Excluded Categories
-            Text(
-              '排除类型',
-              style: theme.textTheme.titleSmall,
-            ),
+            Text('排除类型', style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             Text(
               '选择不希望推荐的游戏类型',
@@ -175,19 +165,25 @@ class RecommendationPreferencesCard extends StatelessWidget {
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
-              children: gameCategories.map((category) => FilterChip(
-                label: Text(category),
-                selected: excludedCategories.contains(category),
-                onSelected: (selected) {
-                  final newExcluded = List<String>.from(excludedCategories);
-                  if (selected) {
-                    newExcluded.add(category);
-                  } else {
-                    newExcluded.remove(category);
-                  }
-                  onExcludedCategoriesChanged(newExcluded);
-                },
-              )).toList(),
+              children: gameCategories
+                  .map(
+                    (category) => FilterChip(
+                      label: Text(category),
+                      selected: excludedCategories.contains(category),
+                      onSelected: (selected) {
+                        final newExcluded = List<String>.from(
+                          excludedCategories,
+                        );
+                        if (selected) {
+                          newExcluded.add(category);
+                        } else {
+                          newExcluded.remove(category);
+                        }
+                        onExcludedCategoriesChanged(newExcluded);
+                      },
+                    ),
+                  )
+                  .toList(),
             ),
           ],
         ),

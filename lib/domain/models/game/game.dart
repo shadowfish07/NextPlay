@@ -122,7 +122,9 @@ extension GameExtension on Game {
   /// 优先级: artwork_type=3 > artwork_type=2 > cover
   String get detailBackgroundUrl {
     // 优先查找 artwork_type=3 (Key art with logo)
-    final keyArtWithLogo = artworks.where((a) => a.artworkType == 3).firstOrNull;
+    final keyArtWithLogo = artworks
+        .where((a) => a.artworkType == 3)
+        .firstOrNull;
     if (keyArtWithLogo != null) {
       return keyArtWithLogo.url;
     }

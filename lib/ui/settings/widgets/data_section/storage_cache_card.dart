@@ -132,10 +132,9 @@ class StorageCacheCard extends StatelessWidget {
               // 导航回引导页面
               Future.delayed(const Duration(milliseconds: 500), () {
                 if (context.mounted) {
-                  Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/onboarding',
-                    (route) => false,
-                  );
+                  Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/onboarding', (route) => false);
                 }
               });
             },

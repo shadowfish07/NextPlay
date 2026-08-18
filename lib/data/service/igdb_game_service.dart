@@ -12,9 +12,7 @@ class IgdbGameService {
     _dio.options.baseUrl = _baseUrl;
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 60);
-    _dio.options.headers = {
-      'Content-Type': 'application/json',
-    };
+    _dio.options.headers = {'Content-Type': 'application/json'};
   }
 
   static const int _maxIdsPerRequest = 100;
@@ -30,7 +28,9 @@ class IgdbGameService {
       return Success(IgdbBatchResponse(games: [], notFound: [], errors: []));
     }
 
-    AppLogger.info('Fetching IGDB data for ${steamIds.length} games (language: $language)');
+    AppLogger.info(
+      'Fetching IGDB data for ${steamIds.length} games (language: $language)',
+    );
 
     // 分批处理
     final allGames = <IgdbGameData>[];
@@ -42,7 +42,9 @@ class IgdbGameService {
 
     for (var i = 0; i < batches.length; i++) {
       final batch = batches[i];
-      AppLogger.info('Processing batch ${i + 1}/${batches.length} (${batch.length} games)');
+      AppLogger.info(
+        'Processing batch ${i + 1}/${batches.length} (${batch.length} games)',
+      );
 
       final result = await _fetchBatch(
         batch,
@@ -73,11 +75,13 @@ class IgdbGameService {
       '${allErrors.length} errors',
     );
 
-    return Success(IgdbBatchResponse(
-      games: allGames,
-      notFound: allNotFound,
-      errors: allErrors,
-    ));
+    return Success(
+      IgdbBatchResponse(
+        games: allGames,
+        notFound: allNotFound,
+        errors: allErrors,
+      ),
+    );
   }
 
   /// 将列表分割成多个批次
@@ -107,14 +111,18 @@ class IgdbGameService {
       );
 
       if (response.statusCode != 200) {
-        return Failure('HTTP ${response.statusCode}: Failed to fetch IGDB data');
+        return Failure(
+          'HTTP ${response.statusCode}: Failed to fetch IGDB data',
+        );
       }
 
       final data = response.data as Map<String, dynamic>;
       return Success(_parseBatchResponse(data));
     } on DioException catch (e) {
-      AppLogger.error('DioException details - status: ${e.response?.statusCode}, '
-          'data: ${e.response?.data}');
+      AppLogger.error(
+        'DioException details - status: ${e.response?.statusCode}, '
+        'data: ${e.response?.data}',
+      );
       return Failure('Network error: ${e.message}');
     } catch (e, stackTrace) {
       AppLogger.error('Error fetching batch', e, stackTrace);
@@ -149,18 +157,16 @@ class IgdbGameService {
     final errorsData = data['errors'] as List? ?? [];
     for (final errorJson in errorsData) {
       if (errorJson is Map<String, dynamic>) {
-        errors.add(IgdbError(
-          steamId: errorJson['steamId'] as int? ?? 0,
-          reason: errorJson['reason'] as String? ?? 'Unknown error',
-        ));
+        errors.add(
+          IgdbError(
+            steamId: errorJson['steamId'] as int? ?? 0,
+            reason: errorJson['reason'] as String? ?? 'Unknown error',
+          ),
+        );
       }
     }
 
-    return IgdbBatchResponse(
-      games: games,
-      notFound: notFound,
-      errors: errors,
-    );
+    return IgdbBatchResponse(games: games, notFound: notFound, errors: errors);
   }
 
   /// 解析单个游戏数据

@@ -5,6 +5,7 @@ import '../../../domain/models/game/game_status.dart';
 import '../../core/ui/game_status_display.dart';
 import '../../core/ui/status_badge.dart';
 import '../../game_status/widgets/inline_status_selector.dart';
+import '../../core/app_keys.dart';
 
 /// 游戏基础信息头部卡片
 class GameInfoHeaderCard extends StatelessWidget {
@@ -60,11 +61,7 @@ class GameInfoHeaderCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(
-                    Icons.flag_outlined,
-                    size: 18,
-                    color: Colors.white,
-                  ),
+                  Icon(Icons.flag_outlined, size: 18, color: Colors.white),
                   const SizedBox(width: 8),
                   Text(
                     '当前状态',
@@ -119,6 +116,7 @@ class GameInfoHeaderCard extends StatelessWidget {
             Expanded(
               child: isInWishlist
                   ? FilledButton.icon(
+                      key: AppKeys.detailsWishlist,
                       onPressed: onToggleWishlist,
                       icon: const Icon(Icons.bookmark, size: 18),
                       label: const Text('已加入待玩'),
@@ -127,6 +125,7 @@ class GameInfoHeaderCard extends StatelessWidget {
                       ),
                     )
                   : FilledButton.tonalIcon(
+                      key: AppKeys.detailsWishlist,
                       onPressed: onToggleWishlist,
                       icon: const Icon(Icons.bookmark_border, size: 18),
                       label: const Text('加入待玩'),

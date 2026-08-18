@@ -37,9 +37,9 @@ class GameStatusGallery extends StatelessWidget {
       children: [
         // 选择控制栏
         if (isSelectionMode) _buildSelectionControls(context),
-        
+
         const SizedBox(height: 16),
-        
+
         // 游戏网格
         Expanded(
           child: GridView.builder(
@@ -69,7 +69,7 @@ class GameStatusGallery extends StatelessWidget {
   /// 构建空状态
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -101,7 +101,7 @@ class GameStatusGallery extends StatelessWidget {
   /// 构建选择控制栏
   Widget _buildSelectionControls(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -120,7 +120,7 @@ class GameStatusGallery extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // 全选按钮
           TextButton.icon(
             onPressed: isAllSelected ? onSelectNone : onSelectAll,
@@ -158,12 +158,13 @@ class _GameCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final game = gameItem.game;
-    
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: isSelectionMode 
-            ? () => onSelectionChanged?.call(game.appId, false) // 移除选择逻辑，设为false
+        onTap: isSelectionMode
+            ? () =>
+                  onSelectionChanged?.call(game.appId, false) // 移除选择逻辑，设为false
             : null,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,9 +197,9 @@ class _GameCard extends StatelessWidget {
                           )
                         : null,
                   ),
-                  
+
                   // 移除选择状态覆盖
-                  
+
                   // 状态改变指示器
                   if (gameItem.currentStatus != gameItem.suggestedStatus)
                     Positioned(
@@ -236,7 +237,7 @@ class _GameCard extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             // 游戏信息
             Expanded(
               flex: 2,
@@ -254,9 +255,9 @@ class _GameCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    
+
                     const SizedBox(height: 4),
-                    
+
                     // 游戏时长
                     Text(
                       _formatPlaytime(game.playtimeForever),
@@ -264,16 +265,20 @@ class _GameCard extends StatelessWidget {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    
+
                     const Spacer(),
-                    
+
                     // 状态行
                     Row(
                       children: [
                         // 当前状态
                         Container(
                           decoration: BoxDecoration(
-                            color: _getStatusColor(gameItem.currentStatus, theme, false),
+                            color: _getStatusColor(
+                              gameItem.currentStatus,
+                              theme,
+                              false,
+                            ),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           padding: const EdgeInsets.symmetric(
@@ -283,14 +288,19 @@ class _GameCard extends StatelessWidget {
                           child: Text(
                             gameItem.currentStatus.displayName,
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: _getStatusColor(gameItem.currentStatus, theme, true),
+                              color: _getStatusColor(
+                                gameItem.currentStatus,
+                                theme,
+                                true,
+                              ),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
-                        
+
                         // 箭头和建议状态
-                        if (gameItem.currentStatus != gameItem.suggestedStatus) ...[
+                        if (gameItem.currentStatus !=
+                            gameItem.suggestedStatus) ...[
                           const SizedBox(width: 4),
                           Icon(
                             Icons.arrow_forward,
@@ -300,7 +310,11 @@ class _GameCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Container(
                             decoration: BoxDecoration(
-                              color: _getStatusColor(gameItem.suggestedStatus, theme, false),
+                              color: _getStatusColor(
+                                gameItem.suggestedStatus,
+                                theme,
+                                false,
+                              ),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             padding: const EdgeInsets.symmetric(
@@ -310,7 +324,11 @@ class _GameCard extends StatelessWidget {
                             child: Text(
                               gameItem.suggestedStatus.displayName,
                               style: theme.textTheme.labelSmall?.copyWith(
-                                color: _getStatusColor(gameItem.suggestedStatus, theme, true),
+                                color: _getStatusColor(
+                                  gameItem.suggestedStatus,
+                                  theme,
+                                  true,
+                                ),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -331,7 +349,7 @@ class _GameCard extends StatelessWidget {
   /// 格式化游戏时长
   String _formatPlaytime(int minutes) {
     if (minutes == 0) return '未游玩';
-    
+
     final hours = minutes / 60.0;
     if (hours < 1.0) {
       return '$minutes分钟';
@@ -345,23 +363,17 @@ class _GameCard extends StatelessWidget {
     // 这里保持原有的主题颜色逻辑，因为它与固定状态颜色不同
     // 如果需要统一，可以在GameStatusDisplay中添加主题颜色方法
     final colorScheme = theme.colorScheme;
-    
+
     return status.when(
-      notStarted: () => isText 
-          ? colorScheme.onSurfaceVariant 
+      notStarted: () => isText
+          ? colorScheme.onSurfaceVariant
           : colorScheme.surfaceContainerHighest,
-      playing: () => isText 
-          ? colorScheme.primary
-          : colorScheme.primaryContainer,
-      completed: () => isText
-          ? colorScheme.tertiary
-          : colorScheme.tertiaryContainer,
-      abandoned: () => isText
-          ? colorScheme.error
-          : colorScheme.errorContainer,
-      paused: () => isText
-          ? colorScheme.outline
-          : colorScheme.outlineVariant,
+      playing: () =>
+          isText ? colorScheme.primary : colorScheme.primaryContainer,
+      completed: () =>
+          isText ? colorScheme.tertiary : colorScheme.tertiaryContainer,
+      abandoned: () => isText ? colorScheme.error : colorScheme.errorContainer,
+      paused: () => isText ? colorScheme.outline : colorScheme.outlineVariant,
     );
   }
 }

@@ -55,7 +55,8 @@ class _SteamApiKeyWebViewPageState extends State<SteamApiKeyWebViewPage> {
     if (_controller == null) return;
 
     try {
-      final result = await _controller!.evaluateJavascript(source: '''
+      final result = await _controller!.evaluateJavascript(
+        source: '''
         (function() {
           var container = document.getElementById('bodyContents_ex');
           if (container) {
@@ -72,7 +73,8 @@ class _SteamApiKeyWebViewPageState extends State<SteamApiKeyWebViewPage> {
           }
           return '';
         })();
-      ''');
+      ''',
+      );
 
       String apiKey = result?.toString() ?? '';
       apiKey = apiKey.replaceAll('"', '').replaceAll("'", '');
@@ -124,7 +126,9 @@ class _SteamApiKeyWebViewPageState extends State<SteamApiKeyWebViewPage> {
             child: Row(
               children: [
                 Icon(
-                  _foundApiKey != null ? Icons.check_circle : Icons.info_outline,
+                  _foundApiKey != null
+                      ? Icons.check_circle
+                      : Icons.info_outline,
                   color: _foundApiKey != null
                       ? colorScheme.onPrimaryContainer
                       : colorScheme.onSurfaceVariant,

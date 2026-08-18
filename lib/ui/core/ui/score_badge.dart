@@ -55,10 +55,7 @@ class ScoreBadge extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: color.withValues(alpha: 0.15),
-          border: Border.all(
-            color: color.withValues(alpha: 0.6),
-            width: 1.2,
-          ),
+          border: Border.all(color: color.withValues(alpha: 0.6), width: 1.2),
         ),
         alignment: Alignment.center,
         child: Text(
@@ -97,10 +94,7 @@ class ScoreBadge extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: color.withValues(alpha: 0.25),
-              border: Border.all(
-                color: color,
-                width: 1.5,
-              ),
+              border: Border.all(color: color, width: 1.5),
             ),
             alignment: Alignment.center,
             child: Text(

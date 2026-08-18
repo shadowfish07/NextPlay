@@ -11,6 +11,7 @@ import '../../core/theme.dart';
 import 'activity_stats_section.dart';
 import 'small_game_card.dart';
 import 'new_game_recommendation_card.dart';
+import '../../core/app_keys.dart';
 
 /// 发现页主屏幕
 class DiscoverScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: AppKeys.discoverScreen,
       body: Consumer<DiscoverViewModel>(
         builder: (context, viewModel, child) {
           return CustomScrollView(
@@ -73,9 +75,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ),
         ),
       ),
-      actions: const [
-        SyncStatusIndicator(),
-      ],
+      actions: const [SyncStatusIndicator()],
     );
   }
 
@@ -93,7 +93,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   /// 构建加载状态
   Widget _buildLoadingState() {
     return const SliverFillRemaining(
-      child: common_widgets.LoadingWidget(message: '加载中...', size: 48),
+      child: common_widgets.LoadingWidget(
+        key: AppKeys.discoverLoading,
+        message: '加载中...',
+        size: 48,
+      ),
     );
   }
 
@@ -101,7 +105,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Widget _buildErrorState(BuildContext context, String message) {
     return SliverFillRemaining(
       child: common_widgets.ErrorWidget(
+        key: AppKeys.discoverError,
         message: message,
+        retryKey: AppKeys.discoverRetry,
         onRetry: () {
           context.read<DiscoverViewModel>().refreshCommand.execute();
         },
@@ -115,6 +121,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
     return SliverFillRemaining(
       child: Center(
+        key: AppKeys.discoverEmpty,
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
@@ -174,8 +181,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ),
 
         // 2.5 待玩列表（无数据时隐藏）
-        if (viewModel.hasPlayQueue)
-          _buildWishlistSection(context, viewModel),
+        if (viewModel.hasPlayQueue) _buildWishlistSection(context, viewModel),
 
         // 3. 发现新游戏
         _buildRecommendationSection(context, viewModel),
@@ -206,6 +212,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
 
     return Column(
+      key: AppKeys.discoverRecommendation,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 标题
@@ -215,6 +222,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: NewGameRecommendationCard(
+            key: AppKeys.recommendation(heroGame.appId),
             game: heroGame,
             gameStatus:
                 gameStatuses[heroGame.appId] ?? const GameStatus.notStarted(),
@@ -270,8 +278,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       title: '待玩列表',
       items: playQueueItems,
       statuses: playQueueItems
-          .map((item) =>
-              gameStatuses[item.appId] ?? const GameStatus.notStarted())
+          .map(
+            (item) => gameStatuses[item.appId] ?? const GameStatus.notStarted(),
+          )
           .toList(),
       onGameTap: (game) => _onGameTap(game),
       onReorder: (appIds) {
@@ -391,10 +400,7 @@ class _WishlistGameListState extends State<_WishlistGameList> {
           const Spacer(),
           TextButton.icon(
             onPressed: _toggleReorderMode,
-            icon: Icon(
-              _isReorderMode ? Icons.check : Icons.sort,
-              size: 18,
-            ),
+            icon: Icon(_isReorderMode ? Icons.check : Icons.sort, size: 18),
             label: Text(_isReorderMode ? '完成' : '排序'),
           ),
         ],
@@ -491,10 +497,7 @@ class _WishlistGameListState extends State<_WishlistGameList> {
       animation: animation,
       builder: (context, child) {
         final scale = Tween<double>(begin: 1.0, end: 1.05).animate(animation);
-        return Transform.scale(
-          scale: scale.value,
-          child: child,
-        );
+        return Transform.scale(scale: scale.value, child: child);
       },
       child: child,
     );

@@ -8,11 +8,7 @@ class SettingsSectionHeader extends StatelessWidget {
   final String title;
   final EdgeInsetsGeometry? padding;
 
-  const SettingsSectionHeader({
-    super.key,
-    required this.title,
-    this.padding,
-  });
+  const SettingsSectionHeader({super.key, required this.title, this.padding});
 
   @override
   Widget build(BuildContext context) {

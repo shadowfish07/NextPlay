@@ -16,7 +16,7 @@ class AppInfoService {
   // 缓存PackageInfo实例，避免重复调用平台接口
   static PackageInfo? _cachedPackageInfo;
 
-/// 获取包信息
+  /// 获取包信息
   ///
   /// Returns: [Result] containing PackageInfo with complete application information
   static Future<Result<PackageInfo, AppInfoException>> getPackageInfo() async {
@@ -30,15 +30,14 @@ class AppInfoService {
       AppLogger.info('Fetching package info from platform');
       _cachedPackageInfo = await PackageInfo.fromPlatform();
 
-      AppLogger.info('Package info retrieved: ${_cachedPackageInfo!.appName} v${_cachedPackageInfo!.version}+${_cachedPackageInfo!.buildNumber}');
+      AppLogger.info(
+        'Package info retrieved: ${_cachedPackageInfo!.appName} v${_cachedPackageInfo!.version}+${_cachedPackageInfo!.buildNumber}',
+      );
       return Result.success(_cachedPackageInfo!);
     } catch (e, stackTrace) {
       AppLogger.error('Failed to get package info', e, stackTrace);
       return Result.failure(
-        AppInfoException(
-          'Failed to retrieve package information',
-          details: e,
-        ),
+        AppInfoException('Failed to retrieve package information', details: e),
       );
     }
   }

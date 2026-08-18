@@ -96,7 +96,7 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
                   value: event == null
                       ? null
                       : event.cumulativeBytesLoaded /
-                          (event.expectedTotalBytes ?? 1),
+                            (event.expectedTotalBytes ?? 1),
                 ),
               ),
             ),

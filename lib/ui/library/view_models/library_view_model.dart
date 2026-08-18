@@ -10,11 +10,12 @@ import '../../../utils/logger.dart';
 /// 游戏库页面的ViewModel
 class LibraryViewModel extends ChangeNotifier {
   final GameRepository _gameRepository;
+  bool _disposed = false;
 
   // UI状态 - 仅保留UI专用的状态，不缓存业务数据
   bool _isLoading = false;
   String _errorMessage = '';
-  
+
   // 搜索和筛选状态
   String _searchQuery = '';
   Set<GameStatus> _statusFilters = {};
@@ -47,7 +48,7 @@ class LibraryViewModel extends ChangeNotifier {
   late final Command<void, void> clearFiltersCommand;
 
   LibraryViewModel({required GameRepository gameRepository})
-      : _gameRepository = gameRepository {
+    : _gameRepository = gameRepository {
     _initializeCommands();
     _subscribeToRepositoryStreams();
     _loadInitialData();
@@ -65,10 +66,11 @@ class LibraryViewModel extends ChangeNotifier {
   bool get sortAscending => _sortAscending;
   bool get isInSelectionMode => _isInSelectionMode;
   Set<int> get selectedGameIds => Set.unmodifiable(_selectedGameIds);
-  bool get hasFilters => _searchQuery.isNotEmpty || 
-                        _statusFilters.isNotEmpty || 
-                        _genreFilters.isNotEmpty;
-  
+  bool get hasFilters =>
+      _searchQuery.isNotEmpty ||
+      _statusFilters.isNotEmpty ||
+      _genreFilters.isNotEmpty;
+
   /// 获取游戏库统计信息
   LibraryStats get libraryStats {
     final stats = _gameRepository.getGameLibraryStats();
@@ -83,7 +85,7 @@ class LibraryViewModel extends ChangeNotifier {
       recentlyPlayed: stats['recentlyPlayed'] ?? 0,
     );
   }
-  
+
   /// 获取所有唯一的游戏类型 - 直接从Repository获取,按游戏数量降序排序
   List<String> get availableGenres {
     final genreCounts = <String, int>{};
@@ -104,7 +106,7 @@ class LibraryViewModel extends ChangeNotifier {
 
     return sortedGenres.map((e) => e.key).toList();
   }
-  
+
   /// 获取选中游戏的数量
   int get selectedGamesCount => _selectedGameIds.length;
 
@@ -121,19 +123,25 @@ class LibraryViewModel extends ChangeNotifier {
     });
 
     // 状态筛选
-    applyStatusFiltersCommand = Command.createAsyncNoResult<Set<GameStatus>>((filters) async {
+    applyStatusFiltersCommand = Command.createAsyncNoResult<Set<GameStatus>>((
+      filters,
+    ) async {
       _statusFilters = filters;
       notifyListeners(); // 触发UI重新计算筛选结果
     });
 
     // 类型筛选
-    applyGenreFiltersCommand = Command.createAsyncNoResult<Set<String>>((filters) async {
+    applyGenreFiltersCommand = Command.createAsyncNoResult<Set<String>>((
+      filters,
+    ) async {
       _genreFilters = filters;
       notifyListeners(); // 触发UI重新计算筛选结果
     });
 
     // 排序
-    changeSortCommand = Command.createAsyncNoResult<LibrarySortOption>((option) async {
+    changeSortCommand = Command.createAsyncNoResult<LibrarySortOption>((
+      option,
+    ) async {
       if (_sortOption == option) {
         _sortAscending = !_sortAscending;
       } else {
@@ -151,7 +159,9 @@ class LibraryViewModel extends ChangeNotifier {
     });
 
     // 更新游戏状态
-    updateGameStatusCommand = Command.createAsyncNoResult<GameStatusUpdate>((update) async {
+    updateGameStatusCommand = Command.createAsyncNoResult<GameStatusUpdate>((
+      update,
+    ) async {
       await _updateGameStatus(update.appId, update.status);
     });
 
@@ -165,7 +175,9 @@ class LibraryViewModel extends ChangeNotifier {
     });
 
     // 切换游戏选择状态
-    toggleGameSelectionCommand = Command.createAsyncNoResult<int>((appId) async {
+    toggleGameSelectionCommand = Command.createAsyncNoResult<int>((
+      appId,
+    ) async {
       if (_selectedGameIds.contains(appId)) {
         _selectedGameIds.remove(appId);
       } else {
@@ -175,7 +187,9 @@ class LibraryViewModel extends ChangeNotifier {
     });
 
     // 批量更新状态
-    batchUpdateStatusCommand = Command.createAsyncNoResult<GameStatus>((status) async {
+    batchUpdateStatusCommand = Command.createAsyncNoResult<GameStatus>((
+      status,
+    ) async {
       await _batchUpdateStatus(status);
     });
 
@@ -190,12 +204,16 @@ class LibraryViewModel extends ChangeNotifier {
 
   void _subscribeToRepositoryStreams() {
     // 监听游戏库变化 - 不缓存数据，只通知UI更新
-    _gameLibrarySubscription = _gameRepository.gameLibraryStream.listen((games) {
+    _gameLibrarySubscription = _gameRepository.gameLibraryStream.listen((
+      games,
+    ) {
       notifyListeners(); // 触发UI重新获取数据
     });
 
     // 监听游戏状态变化 - 不缓存数据，只通知UI更新
-    _gameStatusSubscription = _gameRepository.gameStatusStream.listen((statuses) {
+    _gameStatusSubscription = _gameRepository.gameStatusStream.listen((
+      statuses,
+    ) {
       notifyListeners(); // 触发UI重新获取数据
     });
 
@@ -244,8 +262,11 @@ class LibraryViewModel extends ChangeNotifier {
       final query = _searchQuery.toLowerCase();
       filtered = filtered.where((game) {
         final nameMatch = game.name.toLowerCase().contains(query);
-        final localizedNameMatch = game.localizedName?.toLowerCase().contains(query) ?? false;
-        final genreMatch = game.genres.any((genre) => genre.toLowerCase().contains(query));
+        final localizedNameMatch =
+            game.localizedName?.toLowerCase().contains(query) ?? false;
+        final genreMatch = game.genres.any(
+          (genre) => genre.toLowerCase().contains(query),
+        );
         return nameMatch || localizedNameMatch || genreMatch;
       }).toList();
     }
@@ -253,7 +274,8 @@ class LibraryViewModel extends ChangeNotifier {
     // 应用状态筛选
     if (_statusFilters.isNotEmpty) {
       filtered = filtered.where((game) {
-        final status = gameStatuses[game.appId] ?? const GameStatus.notStarted();
+        final status =
+            gameStatuses[game.appId] ?? const GameStatus.notStarted();
         return _statusFilters.contains(status);
       }).toList();
     }
@@ -268,7 +290,7 @@ class LibraryViewModel extends ChangeNotifier {
     // 应用排序
     filtered.sort((a, b) {
       int comparison = 0;
-      
+
       switch (_sortOption) {
         case LibrarySortOption.name:
           comparison = a.name.compareTo(b.name);
@@ -288,7 +310,9 @@ class LibraryViewModel extends ChangeNotifier {
           }
           break;
         case LibrarySortOption.completionTime:
-          comparison = a.estimatedCompletionHours.compareTo(b.estimatedCompletionHours);
+          comparison = a.estimatedCompletionHours.compareTo(
+            b.estimatedCompletionHours,
+          );
           break;
         case LibrarySortOption.rating:
           comparison = a.aggregatedRating.compareTo(b.aggregatedRating);
@@ -339,7 +363,9 @@ class LibraryViewModel extends ChangeNotifier {
         }
       }
 
-      AppLogger.info('Batch updated $successCount games to ${status.displayName}');
+      AppLogger.info(
+        'Batch updated $successCount games to ${status.displayName}',
+      );
       _selectedGameIds.clear();
       _isInSelectionMode = false;
       notifyListeners();
@@ -386,7 +412,13 @@ class LibraryViewModel extends ChangeNotifier {
   }
 
   @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
+  @override
   void dispose() {
+    _disposed = true;
     _gameLibrarySubscription?.cancel();
     _gameStatusSubscription?.cancel();
     _playQueueSubscription?.cancel();

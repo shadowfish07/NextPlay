@@ -78,14 +78,18 @@ class LibraryListItem extends StatelessWidget {
               fit: BoxFit.cover,
               placeholder: (context, url) => Container(
                 color: AppTheme.gamingElevated,
-                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                child: const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
               errorWidget: (context, url, error) => CachedNetworkImage(
                 imageUrl: game.libraryImageUrl,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Container(
                   color: AppTheme.gamingElevated,
-                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
                 errorWidget: (context, url, error) => Container(
                   color: AppTheme.gamingElevated,
@@ -134,9 +138,7 @@ class LibraryListItem extends StatelessWidget {
       game.displayName,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
-      style: theme.textTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
+      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
     );
   }
 
@@ -166,11 +168,7 @@ class LibraryListItem extends StatelessWidget {
         const SizedBox(width: 6),
         // 近两周时长（仅当有近期游玩时显示）
         if (hasRecentPlaytime) ...[
-          Icon(
-            Icons.trending_up,
-            size: 14,
-            color: AppTheme.gameHighlight,
-          ),
+          Icon(Icons.trending_up, size: 14, color: AppTheme.gameHighlight),
           const SizedBox(width: 4),
           Text(
             _formatPlaytime(game.playtimeLastTwoWeeks),
@@ -219,7 +217,8 @@ class LibraryListItem extends StatelessWidget {
   Widget _buildMetadataRow(ThemeData theme) {
     final visibleGenres = game.genres.take(2).toList();
     final hasRating = game.aggregatedRating > 0;
-    final hasMetadata = (game.hasAchievements && game.totalAchievements > 0) ||
+    final hasMetadata =
+        (game.hasAchievements && game.totalAchievements > 0) ||
         hasRating ||
         visibleGenres.isNotEmpty;
 
@@ -247,11 +246,7 @@ class LibraryListItem extends StatelessWidget {
             ),
           ),
         // 评分
-        if (hasRating)
-          ScoreBadge(
-            score: game.aggregatedRating,
-            compact: true,
-          ),
+        if (hasRating) ScoreBadge(score: game.aggregatedRating, compact: true),
         // 分隔符
         if ((game.hasAchievements && game.totalAchievements > 0 || hasRating) &&
             visibleGenres.isNotEmpty)

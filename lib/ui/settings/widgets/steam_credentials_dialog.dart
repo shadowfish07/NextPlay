@@ -29,7 +29,7 @@ class _SteamCredentialsDialogState extends State<SteamCredentialsDialog> {
     _apiKeyController = TextEditingController(text: widget.currentApiKey);
     _steamIdController = TextEditingController(text: widget.currentSteamId);
     _checkValid();
-    
+
     _apiKeyController.addListener(_checkValid);
     _steamIdController.addListener(_checkValid);
   }
@@ -43,15 +43,16 @@ class _SteamCredentialsDialogState extends State<SteamCredentialsDialog> {
 
   void _checkValid() {
     setState(() {
-      _isValid = _apiKeyController.text.trim().isNotEmpty && 
-                 _steamIdController.text.trim().isNotEmpty;
+      _isValid =
+          _apiKeyController.text.trim().isNotEmpty &&
+          _steamIdController.text.trim().isNotEmpty;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return AlertDialog(
       title: const Text('更新 Steam 凭据'),
       content: SizedBox(
@@ -67,7 +68,7 @@ class _SteamCredentialsDialogState extends State<SteamCredentialsDialog> {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // API Key Field
             TextField(
               controller: _apiKeyController,
@@ -81,7 +82,9 @@ class _SteamCredentialsDialogState extends State<SteamCredentialsDialog> {
                   children: [
                     IconButton(
                       icon: Icon(
-                        _isApiKeyVisible ? Icons.visibility_off : Icons.visibility,
+                        _isApiKeyVisible
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                       ),
                       onPressed: () {
                         setState(() {
@@ -98,14 +101,12 @@ class _SteamCredentialsDialogState extends State<SteamCredentialsDialog> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // Steam ID Field
             TextField(
               controller: _steamIdController,
               keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-              ],
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: InputDecoration(
                 labelText: 'Steam ID',
                 hintText: '输入您的 Steam ID（纯数字）',
@@ -135,7 +136,7 @@ class _SteamCredentialsDialogState extends State<SteamCredentialsDialog> {
   void _handleSave() {
     final apiKey = _apiKeyController.text.trim();
     final steamId = _steamIdController.text.trim();
-    
+
     widget.onSave(apiKey, steamId);
     Navigator.of(context).pop();
   }

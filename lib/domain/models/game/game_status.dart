@@ -12,7 +12,8 @@ class GameStatus with _$GameStatus {
   const factory GameStatus.abandoned() = _Abandoned;
   const factory GameStatus.paused() = _Paused;
 
-  factory GameStatus.fromJson(Map<String, dynamic> json) => _$GameStatusFromJson(json);
+  factory GameStatus.fromJson(Map<String, dynamic> json) =>
+      _$GameStatusFromJson(json);
 }
 
 /// 游戏状态扩展方法

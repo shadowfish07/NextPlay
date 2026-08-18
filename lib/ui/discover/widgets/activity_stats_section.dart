@@ -6,10 +6,7 @@ import '../../core/theme.dart';
 class ActivityStatsSection extends StatelessWidget {
   final GameActivityStats stats;
 
-  const ActivityStatsSection({
-    super.key,
-    required this.stats,
-  });
+  const ActivityStatsSection({super.key, required this.stats});
 
   @override
   Widget build(BuildContext context) {
@@ -91,10 +88,7 @@ class _StatCard extends StatelessWidget {
           ],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -122,9 +116,7 @@ class _StatCard extends StatelessWidget {
           // 单位
           Text(
             unit,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: Colors.white54,
-            ),
+            style: theme.textTheme.labelSmall?.copyWith(color: Colors.white54),
           ),
         ],
       ),

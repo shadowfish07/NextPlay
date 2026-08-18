@@ -43,19 +43,21 @@ class CompletionTimeService {
       // 1. 检查特殊游戏列表
       if (_specialGameHours.containsKey(game.appId)) {
         final specialHours = _specialGameHours[game.appId]!;
-        AppLogger.info('Using special completion time for ${game.name}: ${specialHours}h');
+        AppLogger.info(
+          'Using special completion time for ${game.name}: ${specialHours}h',
+        );
         return specialHours;
       }
 
       // 2. 基于已有游戏时长进行估算
       if (game.playtimeForever > 0) {
         final hoursPlayed = game.playtimeForever / 60.0;
-        
+
         // 如果游戏时长已经很长，可能是多人游戏或沙盒游戏
         if (hoursPlayed > 100) {
           return hoursPlayed * 1.2; // 预留20%的额外时间
         }
-        
+
         // 如果游戏时长适中，基于类型调整
         if (hoursPlayed > 10) {
           final genreMultiplier = _getGenreMultiplier(game.genres);
@@ -78,7 +80,9 @@ class CompletionTimeService {
 
         if (validGenres > 0) {
           final averageTime = totalEstimate / validGenres;
-          AppLogger.info('Estimated completion time for ${game.name} based on genres: ${averageTime.toInt()}h');
+          AppLogger.info(
+            'Estimated completion time for ${game.name} based on genres: ${averageTime.toInt()}h',
+          );
           return averageTime;
         }
       }
@@ -94,7 +98,9 @@ class CompletionTimeService {
         for (final theme in game.themes) {
           final hours = _genreAverageHours[theme];
           if (hours != null) {
-            AppLogger.info('Estimated completion time for ${game.name} based on theme "$theme": ${hours.toInt()}h');
+            AppLogger.info(
+              'Estimated completion time for ${game.name} based on theme "$theme": ${hours.toInt()}h',
+            );
             return hours;
           }
         }
@@ -102,11 +108,16 @@ class CompletionTimeService {
 
       // 6. 默认值
       const defaultHours = 15.0;
-      AppLogger.info('Using default completion time for ${game.name}: ${defaultHours.toInt()}h');
+      AppLogger.info(
+        'Using default completion time for ${game.name}: ${defaultHours.toInt()}h',
+      );
       return defaultHours;
-
     } catch (e, stackTrace) {
-      AppLogger.error('Error estimating completion time for ${game.name}', e, stackTrace);
+      AppLogger.error(
+        'Error estimating completion time for ${game.name}',
+        e,
+        stackTrace,
+      );
       return 15.0; // 错误时返回默认值
     }
   }
@@ -130,7 +141,7 @@ class CompletionTimeService {
     if (longCount > shortCount) {
       return 1.5;
     }
-    
+
     // 如果包含短时游戏类型，降低乘数
     if (shortCount > longCount) {
       return 0.8;
@@ -143,13 +154,15 @@ class CompletionTimeService {
   /// 批量估算游戏时长
   static Map<int, double> batchEstimate(List<Game> games) {
     final results = <int, double>{};
-    
-    AppLogger.info('Starting batch completion time estimation for ${games.length} games');
-    
+
+    AppLogger.info(
+      'Starting batch completion time estimation for ${games.length} games',
+    );
+
     for (final game in games) {
       results[game.appId] = estimateCompletionTime(game);
     }
-    
+
     AppLogger.info('Completed batch estimation');
     return results;
   }

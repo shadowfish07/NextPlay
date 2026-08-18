@@ -1,102 +1,117 @@
+import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../data/service/steam_validation_service.dart';
-import '../data/service/steam_api_service.dart';
-import '../data/service/igdb_game_service.dart';
-import '../data/service/game_database_service.dart';
-import '../data/repository/onboarding/onboarding_repository.dart';
+
 import '../data/repository/game_repository.dart';
-import '../ui/onboarding/view_models/onboarding_view_model.dart';
+import '../data/repository/onboarding/onboarding_repository.dart';
+import '../data/service/game_database_service.dart';
+import '../data/service/igdb_game_service.dart';
+import '../data/service/steam_api_service.dart';
+import '../data/service/steam_validation_service.dart';
+import '../main_viewmodel.dart';
 import '../ui/discover/view_models/discover_view_model.dart';
 import '../ui/library/view_models/library_view_model.dart';
+import '../ui/onboarding/view_models/onboarding_view_model.dart';
 import '../ui/settings/view_models/settings_view_model.dart';
-import '../main_viewmodel.dart';
 
-class Dependencies {
-  // 单例实例缓存
-  static SharedPreferences? _sharedPreferences;
-  static SteamApiService? _steamApiService;
-  static IgdbGameService? _igdbGameService;
-  static GameDatabaseService? _gameDatabaseService;
-  static SteamValidationService? _steamValidationService;
-  static GameRepository? _gameRepository;
-  static OnboardingRepository? _onboardingRepository;
-  
-  /// 初始化所有依赖
-  static Future<void> _initializeDependencies() async {
-    if (_sharedPreferences != null) return; // 已初始化
+/// Explicit application composition root.
+///
+/// Production creates real services through [production]. Tests can construct
+/// the same graph with isolated stores and fake service subclasses. No static
+/// state is retained between application or test runs.
+class AppDependencies {
+  AppDependencies._({
+    required this.sharedPreferences,
+    required this.steamApiService,
+    required this.igdbGameService,
+    required this.gameDatabaseService,
+    required this.steamValidationService,
+    required this.gameRepository,
+    required this.onboardingRepository,
+  });
 
-    _sharedPreferences = await SharedPreferences.getInstance();
-    _steamApiService = SteamApiService();
-    _igdbGameService = IgdbGameService();
-    _gameDatabaseService = GameDatabaseService();
-    _steamValidationService = SteamValidationService(
-      steamApiService: _steamApiService!,
+  final SharedPreferences sharedPreferences;
+  final SteamApiService steamApiService;
+  final IgdbGameService igdbGameService;
+  final GameDatabaseService gameDatabaseService;
+  final SteamValidationService steamValidationService;
+  final GameRepository gameRepository;
+  final OnboardingRepository onboardingRepository;
+
+  static Future<AppDependencies> production() async {
+    final prefs = await SharedPreferences.getInstance();
+    return create(sharedPreferences: prefs);
+  }
+
+  static AppDependencies create({
+    required SharedPreferences sharedPreferences,
+    SteamApiService? steamApiService,
+    IgdbGameService? igdbGameService,
+    GameDatabaseService? gameDatabaseService,
+  }) {
+    final steam = steamApiService ?? SteamApiService();
+    final igdb = igdbGameService ?? IgdbGameService();
+    final database = gameDatabaseService ?? GameDatabaseService();
+    final validation = SteamValidationService(steamApiService: steam);
+    final games = GameRepository(
+      prefs: sharedPreferences,
+      steamApiService: steam,
+      igdbGameService: igdb,
+      databaseService: database,
+    );
+    final onboarding = OnboardingRepository(
+      sharedPreferences: sharedPreferences,
+      steamValidationService: validation,
+      gameRepository: games,
     );
 
-    _gameRepository = GameRepository(
-      prefs: _sharedPreferences!,
-      steamApiService: _steamApiService!,
-      igdbGameService: _igdbGameService!,
-      databaseService: _gameDatabaseService!,
-    );
-
-    _onboardingRepository = OnboardingRepository(
-      sharedPreferences: _sharedPreferences!,
-      steamValidationService: _steamValidationService!,
-      gameRepository: _gameRepository!,
+    return AppDependencies._(
+      sharedPreferences: sharedPreferences,
+      steamApiService: steam,
+      igdbGameService: igdb,
+      gameDatabaseService: database,
+      steamValidationService: validation,
+      gameRepository: games,
+      onboardingRepository: onboarding,
     );
   }
 
-  static Future<List<ChangeNotifierProvider>> get providers async {
-    await _initializeDependencies();
+  List<SingleChildWidget> get providers => [
+    Provider<SharedPreferences>.value(value: sharedPreferences),
+    Provider<SteamApiService>.value(value: steamApiService),
+    Provider<IgdbGameService>.value(value: igdbGameService),
+    Provider<GameDatabaseService>.value(value: gameDatabaseService),
+    Provider<SteamValidationService>.value(value: steamValidationService),
+    Provider<OnboardingRepository>.value(value: onboardingRepository),
+    Provider<GameRepository>.value(value: gameRepository),
+    ChangeNotifierProvider<OnboardingViewModel>(
+      create: (_) => OnboardingViewModel(repository: onboardingRepository),
+    ),
+    ChangeNotifierProvider<DiscoverViewModel>(
+      create: (_) => DiscoverViewModel(gameRepository: gameRepository),
+    ),
+    ChangeNotifierProvider<LibraryViewModel>(
+      create: (_) => LibraryViewModel(gameRepository: gameRepository),
+    ),
+    ChangeNotifierProvider<SettingsViewModel>(
+      create: (_) => SettingsViewModel(
+        onboardingRepository: onboardingRepository,
+        gameRepository: gameRepository,
+        steamValidationService: steamValidationService,
+        prefs: sharedPreferences,
+      ),
+    ),
+    ChangeNotifierProvider<MainViewModel>(create: (_) => MainViewModel()),
+  ];
 
-    return [
-      ChangeNotifierProvider<OnboardingViewModel>(
-        create: (context) => OnboardingViewModel(
-          repository: _onboardingRepository!,
-        ),
-      ),
-      
-      ChangeNotifierProvider<DiscoverViewModel>(
-        create: (context) => DiscoverViewModel(
-          gameRepository: _gameRepository!,
-        ),
-      ),
-      
-      ChangeNotifierProvider<LibraryViewModel>(
-        create: (context) => LibraryViewModel(
-          gameRepository: _gameRepository!,
-        ),
-      ),
-      
-      ChangeNotifierProvider<SettingsViewModel>(
-        create: (context) => SettingsViewModel(
-          onboardingRepository: _onboardingRepository!,
-          gameRepository: _gameRepository!,
-          steamValidationService: _steamValidationService!,
-          prefs: _sharedPreferences!,
-        ),
-      ),
-      
-      // Placeholder for main view model - will be implemented later
-      ChangeNotifierProvider<MainViewModel>(
-        create: (context) => MainViewModel(),
-      ),
-    ];
-  }
+  Widget wrap(Widget child) =>
+      MultiProvider(providers: providers, child: child);
 
-  static Future<List<Provider>> get serviceProviders async {
-    await _initializeDependencies();
-
-    return [
-      Provider<SharedPreferences>.value(value: _sharedPreferences!),
-      Provider<SteamApiService>.value(value: _steamApiService!),
-      Provider<IgdbGameService>.value(value: _igdbGameService!),
-      Provider<GameDatabaseService>.value(value: _gameDatabaseService!),
-      Provider<SteamValidationService>.value(value: _steamValidationService!),
-      Provider<OnboardingRepository>.value(value: _onboardingRepository!),
-      Provider<GameRepository>.value(value: _gameRepository!),
-    ];
+  Future<void> dispose() async {
+    onboardingRepository.dispose();
+    gameRepository.dispose();
+    igdbGameService.dispose();
+    await gameDatabaseService.close();
   }
 }

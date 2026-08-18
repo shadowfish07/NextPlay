@@ -8,6 +8,7 @@ import '../../core/ui/game_status_display.dart';
 import '../../core/ui/sync_status_indicator.dart';
 import 'game_library_filters.dart';
 import 'library_list_item.dart';
+import '../../core/app_keys.dart';
 
 /// 游戏库页面 - 展示和管理用户的游戏库
 class LibraryScreen extends StatefulWidget {
@@ -53,11 +54,12 @@ class _LibraryScreenState extends State<LibraryScreen>
         }
 
         return Scaffold(
+          key: AppKeys.libraryScreen,
           body: CustomScrollView(
             slivers: [
               // 应用栏
               _buildSliverAppBar(context, viewModel),
-              
+
               // 筛选器
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -70,22 +72,28 @@ class _LibraryScreenState extends State<LibraryScreen>
                     sortAscending: viewModel.sortAscending,
                     availableGenres: viewModel.availableGenres,
                     libraryStats: viewModel.libraryStats,
-                    onSearchChanged: (query) => viewModel.searchCommand.execute(query),
-                    onStatusFiltersChanged: (filters) => viewModel.applyStatusFiltersCommand.execute(filters),
-                    onGenreFiltersChanged: (filters) => viewModel.applyGenreFiltersCommand.execute(filters),
-                    onSortChanged: (option) => viewModel.changeSortCommand.execute(option),
-                    onSortDirectionChanged: (ascending) => viewModel.changeSortDirectionCommand.execute(ascending),
-                    onClearFilters: () => viewModel.clearFiltersCommand.execute(),
+                    onSearchChanged: (query) =>
+                        viewModel.searchCommand.execute(query),
+                    onStatusFiltersChanged: (filters) =>
+                        viewModel.applyStatusFiltersCommand.execute(filters),
+                    onGenreFiltersChanged: (filters) =>
+                        viewModel.applyGenreFiltersCommand.execute(filters),
+                    onSortChanged: (option) =>
+                        viewModel.changeSortCommand.execute(option),
+                    onSortDirectionChanged: (ascending) =>
+                        viewModel.changeSortDirectionCommand.execute(ascending),
+                    onClearFilters: () =>
+                        viewModel.clearFiltersCommand.execute(),
                     hasFilters: viewModel.hasFilters,
                   ),
                 ),
               ),
-              
+
               // 游戏列表
               _buildGamesList(context, viewModel),
             ],
           ),
-          
+
           // 浮动操作按钮
           floatingActionButton: _buildFloatingActionButton(context, viewModel),
         );
@@ -151,10 +159,11 @@ class _LibraryScreenState extends State<LibraryScreen>
   }
 
   /// 构建应用栏操作按钮
-  List<Widget> _buildAppBarActions(BuildContext context, LibraryViewModel viewModel) {
-    return const [
-      SyncStatusIndicator(),
-    ];
+  List<Widget> _buildAppBarActions(
+    BuildContext context,
+    LibraryViewModel viewModel,
+  ) {
+    return const [SyncStatusIndicator()];
   }
 
   /// 构建游戏列表
@@ -162,6 +171,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     if (viewModel.isLoading && viewModel.games.isEmpty) {
       return const SliverFillRemaining(
         child: common_widgets.LoadingWidget(
+          key: AppKeys.libraryLoading,
           message: '加载游戏库...',
         ),
       );
@@ -170,7 +180,9 @@ class _LibraryScreenState extends State<LibraryScreen>
     if (viewModel.errorMessage.isNotEmpty) {
       return SliverFillRemaining(
         child: common_widgets.ErrorWidget(
+          key: AppKeys.libraryError,
           message: viewModel.errorMessage,
+          retryKey: AppKeys.libraryRetry,
           onRetry: () {
             viewModel.clearError();
             viewModel.refreshCommand.execute();
@@ -181,6 +193,7 @@ class _LibraryScreenState extends State<LibraryScreen>
 
     if (viewModel.games.isEmpty) {
       return SliverFillRemaining(
+        key: AppKeys.libraryEmpty,
         child: _buildEmptyState(context, viewModel),
       );
     }
@@ -194,30 +207,28 @@ class _LibraryScreenState extends State<LibraryScreen>
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final game = viewModel.games[index];
-            final status = viewModel.getGameStatus(game.appId);
-            final isSelected = viewModel.isGameSelected(game.appId);
-            final isInWishlist = viewModel.isInPlayQueue(game.appId);
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final game = viewModel.games[index];
+          final status = viewModel.getGameStatus(game.appId);
+          final isSelected = viewModel.isGameSelected(game.appId);
+          final isInWishlist = viewModel.isInPlayQueue(game.appId);
 
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: LibraryListItem(
-                game: game,
-                status: status,
-                isSelected: isSelected,
-                isInSelectionMode: viewModel.isInSelectionMode,
-                isInWishlist: isInWishlist,
-                onTap: () => _handleGameTap(viewModel, game.appId),
-                onLongPress: () => _handleGameLongPress(viewModel),
-                onStatusChanged: (newStatus) =>
-                    _handleStatusChange(viewModel, game.appId, newStatus),
-              ),
-            );
-          },
-          childCount: viewModel.games.length,
-        ),
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: LibraryListItem(
+              key: AppKeys.libraryItem(game.appId),
+              game: game,
+              status: status,
+              isSelected: isSelected,
+              isInSelectionMode: viewModel.isInSelectionMode,
+              isInWishlist: isInWishlist,
+              onTap: () => _handleGameTap(viewModel, game.appId),
+              onLongPress: () => _handleGameLongPress(viewModel),
+              onStatusChanged: (newStatus) =>
+                  _handleStatusChange(viewModel, game.appId, newStatus),
+            ),
+          );
+        }, childCount: viewModel.games.length),
       ),
     );
   }
@@ -225,7 +236,7 @@ class _LibraryScreenState extends State<LibraryScreen>
   /// 构建空状态
   Widget _buildEmptyState(BuildContext context, LibraryViewModel viewModel) {
     final theme = Theme.of(context);
-    
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -246,9 +257,7 @@ class _LibraryScreenState extends State<LibraryScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              viewModel.hasFilters 
-                  ? '尝试调整筛选条件或清除筛选'
-                  : '请先在设置页面同步你的Steam游戏库',
+              viewModel.hasFilters ? '尝试调整筛选条件或清除筛选' : '请先在设置页面同步你的Steam游戏库',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -268,7 +277,10 @@ class _LibraryScreenState extends State<LibraryScreen>
   }
 
   /// 构建浮动操作按钮
-  Widget _buildFloatingActionButton(BuildContext context, LibraryViewModel viewModel) {
+  Widget _buildFloatingActionButton(
+    BuildContext context,
+    LibraryViewModel viewModel,
+  ) {
     return ScaleTransition(
       scale: _fabAnimation,
       child: Column(
@@ -282,10 +294,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                 heroTag: status.displayName,
                 onPressed: () => _handleBatchStatusUpdate(viewModel, status),
                 backgroundColor: GameStatusDisplay.getStatusColor(status),
-                child: Icon(
-                  GameStatusDisplay.getStatusIcon(status),
-                  size: 20,
-                ),
+                child: Icon(GameStatusDisplay.getStatusIcon(status), size: 20),
               ),
             );
           }),
@@ -294,14 +303,16 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
   }
 
-
   /// 处理游戏点击
   void _handleGameTap(LibraryViewModel viewModel, int appId) {
     if (viewModel.isInSelectionMode) {
       viewModel.toggleGameSelectionCommand.execute(appId);
     } else {
       // 导航到游戏详情页
-      context.pushNamed('gameDetails', pathParameters: {'appId': appId.toString()});
+      context.pushNamed(
+        'gameDetails',
+        pathParameters: {'appId': appId.toString()},
+      );
     }
   }
 
@@ -313,7 +324,11 @@ class _LibraryScreenState extends State<LibraryScreen>
   }
 
   /// 处理状态变更
-  void _handleStatusChange(LibraryViewModel viewModel, int appId, GameStatus newStatus) {
+  void _handleStatusChange(
+    LibraryViewModel viewModel,
+    int appId,
+    GameStatus newStatus,
+  ) {
     viewModel.updateGameStatusCommand.execute(
       GameStatusUpdate(appId: appId, status: newStatus),
     );
@@ -322,9 +337,9 @@ class _LibraryScreenState extends State<LibraryScreen>
   /// 处理批量状态更新
   void _handleBatchStatusUpdate(LibraryViewModel viewModel, GameStatus status) {
     if (viewModel.selectedGamesCount == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先选择要更新的游戏')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先选择要更新的游戏')));
       return;
     }
 
@@ -332,7 +347,9 @@ class _LibraryScreenState extends State<LibraryScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('批量更新确认'),
-        content: Text('确定要将选中的 ${viewModel.selectedGamesCount} 个游戏状态更新为"${status.displayName}"吗？'),
+        content: Text(
+          '确定要将选中的 ${viewModel.selectedGamesCount} 个游戏状态更新为"${status.displayName}"吗？',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),

@@ -106,12 +106,27 @@ class RecommendationPreferencesCard extends StatelessWidget {
             children: [
               _buildMoodChip(context, 'relax', '放松', Icons.spa, viewModel),
               _buildMoodChip(
-                  context, 'challenge', '挑战', Icons.fitness_center, viewModel),
+                context,
+                'challenge',
+                '挑战',
+                Icons.fitness_center,
+                viewModel,
+              ),
               _buildMoodChip(
-                  context, 'think', '思考', Icons.psychology, viewModel),
+                context,
+                'think',
+                '思考',
+                Icons.psychology,
+                viewModel,
+              ),
+              _buildMoodChip(context, 'social', '社交', Icons.people, viewModel),
               _buildMoodChip(
-                  context, 'social', '社交', Icons.people, viewModel),
-              _buildMoodChip(context, 'any', '不限', Icons.all_inclusive, viewModel),
+                context,
+                'any',
+                '不限',
+                Icons.all_inclusive,
+                viewModel,
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -139,7 +154,9 @@ class RecommendationPreferencesCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: _commonCategories.map((category) {
-              final isExcluded = viewModel.excludedCategories.contains(category);
+              final isExcluded = viewModel.excludedCategories.contains(
+                category,
+              );
 
               return FilterChip(
                 label: Text(category),
@@ -187,11 +204,7 @@ class RecommendationPreferencesCard extends StatelessWidget {
     return FilterChip(
       label: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16),
-          const SizedBox(width: 4),
-          Text(label),
-        ],
+        children: [Icon(icon, size: 16), const SizedBox(width: 4), Text(label)],
       ),
       selected: isSelected,
       onSelected: (selected) {

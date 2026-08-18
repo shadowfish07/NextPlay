@@ -19,7 +19,10 @@ class SyncStatusIndicator extends StatelessWidget {
     );
   }
 
-  Widget _buildSyncingIndicator(BuildContext context, SettingsViewModel viewModel) {
+  Widget _buildSyncingIndicator(
+    BuildContext context,
+    SettingsViewModel viewModel,
+  ) {
     final theme = Theme.of(context);
     final progress = viewModel.syncProgress;
     final message = viewModel.syncMessage;

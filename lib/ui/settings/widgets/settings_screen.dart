@@ -7,6 +7,7 @@ import 'account_section/data_sync_card.dart';
 import 'appearance_section/language_settings_card.dart';
 import 'data_section/storage_cache_card.dart';
 import 'about_section/app_information_card.dart';
+import '../../core/app_keys.dart';
 
 /// 设置页面（重新设计）
 ///
@@ -20,14 +21,11 @@ class SettingsScreen extends StatelessWidget {
     return Consumer<SettingsViewModel>(
       builder: (context, viewModel, child) {
         return Scaffold(
+          key: AppKeys.settingsScreen,
           body: CustomScrollView(
             slivers: [
               // App Bar
-              SliverAppBar(
-                title: const Text('设置'),
-                pinned: true,
-                elevation: 0,
-              ),
+              SliverAppBar(title: const Text('设置'), pinned: true, elevation: 0),
 
               // Main Content
               SliverPadding(
@@ -36,7 +34,10 @@ class SettingsScreen extends StatelessWidget {
                   delegate: SliverChildListDelegate([
                     // Error Message Banner
                     if (viewModel.errorMessage.isNotEmpty) ...[
-                      _ErrorBanner(message: viewModel.errorMessage),
+                      _ErrorBanner(
+                        key: AppKeys.settingsError,
+                        message: viewModel.errorMessage,
+                      ),
                       const SizedBox(height: 16),
                     ],
 
@@ -50,8 +51,9 @@ class SettingsScreen extends StatelessWidget {
                     const SteamConnectionCard(),
                     const SizedBox(height: 16),
                     const DataSyncCard(),
-                    const SizedBox(height: 24), // Larger spacing between sections
-
+                    const SizedBox(
+                      height: 24,
+                    ), // Larger spacing between sections
                     // Appearance Section
                     // const ThemeDisplayCard(),
                     // const SizedBox(height: 16),
@@ -82,7 +84,7 @@ class SettingsScreen extends StatelessWidget {
 class _ErrorBanner extends StatelessWidget {
   final String message;
 
-  const _ErrorBanner({required this.message});
+  const _ErrorBanner({super.key, required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -95,10 +97,7 @@ class _ErrorBanner extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Icon(
-              Icons.error_outline,
-              color: colorScheme.onErrorContainer,
-            ),
+            Icon(Icons.error_outline, color: colorScheme.onErrorContainer),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -109,10 +108,7 @@ class _ErrorBanner extends StatelessWidget {
               ),
             ),
             IconButton(
-              icon: Icon(
-                Icons.close,
-                color: colorScheme.onErrorContainer,
-              ),
+              icon: Icon(Icons.close, color: colorScheme.onErrorContainer),
               onPressed: () {
                 context.read<SettingsViewModel>().clearError();
               },
@@ -137,10 +133,7 @@ class _ConnectionBanner extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Icon(
-              Icons.cloud_off,
-              color: colorScheme.onSecondaryContainer,
-            ),
+            Icon(Icons.cloud_off, color: colorScheme.onSecondaryContainer),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

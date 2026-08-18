@@ -65,7 +65,8 @@ class RecommendationResult {
       heroRecommendation: heroRecommendation ?? this.heroRecommendation,
       alternatives: alternatives ?? this.alternatives,
       totalGamesCount: totalGamesCount ?? this.totalGamesCount,
-      recommendableGamesCount: recommendableGamesCount ?? this.recommendableGamesCount,
+      recommendableGamesCount:
+          recommendableGamesCount ?? this.recommendableGamesCount,
       generatedAt: generatedAt ?? this.generatedAt,
     );
   }
@@ -132,10 +133,14 @@ class RecommendationStats {
   }) {
     return RecommendationStats(
       totalRecommendations: totalRecommendations ?? this.totalRecommendations,
-      acceptedRecommendations: acceptedRecommendations ?? this.acceptedRecommendations,
-      dismissedRecommendations: dismissedRecommendations ?? this.dismissedRecommendations,
-      genreRecommendationCounts: genreRecommendationCounts ?? this.genreRecommendationCounts,
-      genreAcceptanceCounts: genreAcceptanceCounts ?? this.genreAcceptanceCounts,
+      acceptedRecommendations:
+          acceptedRecommendations ?? this.acceptedRecommendations,
+      dismissedRecommendations:
+          dismissedRecommendations ?? this.dismissedRecommendations,
+      genreRecommendationCounts:
+          genreRecommendationCounts ?? this.genreRecommendationCounts,
+      genreAcceptanceCounts:
+          genreAcceptanceCounts ?? this.genreAcceptanceCounts,
       lastRecommendationAt: lastRecommendationAt ?? this.lastRecommendationAt,
     );
   }
@@ -169,11 +174,14 @@ class RecommendationConfig {
   }) {
     return RecommendationConfig(
       enableGenreBalance: enableGenreBalance ?? this.enableGenreBalance,
-      enableTimeBasedScoring: enableTimeBasedScoring ?? this.enableTimeBasedScoring,
+      enableTimeBasedScoring:
+          enableTimeBasedScoring ?? this.enableTimeBasedScoring,
       enableMoodMatching: enableMoodMatching ?? this.enableMoodMatching,
       genreBalanceWeight: genreBalanceWeight ?? this.genreBalanceWeight,
-      recentRecommendationLimit: recentRecommendationLimit ?? this.recentRecommendationLimit,
-      alternativeRecommendationCount: alternativeRecommendationCount ?? this.alternativeRecommendationCount,
+      recentRecommendationLimit:
+          recentRecommendationLimit ?? this.recentRecommendationLimit,
+      alternativeRecommendationCount:
+          alternativeRecommendationCount ?? this.alternativeRecommendationCount,
     );
   }
 }
@@ -191,7 +199,7 @@ extension GameRecommendationExtension on GameRecommendation {
   /// 推荐标签
   List<String> get recommendationTags {
     final baseTags = <String>[];
-    
+
     // 基于状态添加标签
     status.when(
       notStarted: () => baseTags.add('全新体验'),
@@ -209,7 +217,7 @@ extension GameRecommendationExtension on GameRecommendation {
 
     // 合并自定义标签
     baseTags.addAll(tags);
-    
+
     return baseTags;
   }
 
