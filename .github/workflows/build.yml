@@ -63,6 +63,9 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs
+
       - name: Install runner dependencies
         run: |
           sudo apt-get update
