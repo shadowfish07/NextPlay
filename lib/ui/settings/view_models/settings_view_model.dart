@@ -48,6 +48,7 @@ class SettingsViewModel extends ChangeNotifier {
   bool _wasSyncCancelled = false; // 跟踪当前任务是否被取消
   StreamSubscription? _syncProgressSubscription;
   StreamSubscription? _gameLibrarySubscription;
+  StreamSubscription? _onboardingSubscription;
 
   // 偏好设置状态（占位）- 仅UI显示，暂不影响推荐逻辑
   double _typeBalanceWeight = 0.5; // 0.0 = diverse, 1.0 = single type
@@ -70,12 +71,12 @@ class SettingsViewModel extends ChangeNotifier {
     _loadSettings();
   }
 
-  // Getters - 从Repository或SharedPreferences动态获取数据
+  // Getters - 凭据由 OnboardingRepository 统一管理
   bool get isCheckingConnection => _isCheckingConnection;
   bool get isSyncing => _isSyncing;
   String get errorMessage => _errorMessage;
-  String get apiKey => _prefs.getString('api_key') ?? '';
-  String get steamId => _prefs.getString('steam_id') ?? '';
+  String get apiKey => _onboardingRepository.currentState.apiKey;
+  String get steamId => _onboardingRepository.currentState.steamId;
   bool get isSteamConnected => apiKey.isNotEmpty && steamId.isNotEmpty;
   bool get isDarkTheme => _isDarkTheme;
   int get gameCount => _gameRepository.gameLibrary.length;
@@ -198,6 +199,10 @@ class SettingsViewModel extends ChangeNotifier {
         notifyListeners();
       });
 
+      _onboardingSubscription = _onboardingRepository.state.listen((_) {
+        notifyListeners();
+      });
+
       AppLogger.info(
         'Settings loaded: Steam connected=$isSteamConnected, Game count=$gameCount, Preferences loaded',
       );
@@ -257,7 +262,6 @@ class SettingsViewModel extends ChangeNotifier {
       AppLogger.info('Updating API key');
 
       await _onboardingRepository.saveApiKey(newApiKey);
-      await _prefs.setString('api_key', newApiKey);
 
       AppLogger.info('API key updated successfully');
       notifyListeners();
@@ -272,7 +276,6 @@ class SettingsViewModel extends ChangeNotifier {
       AppLogger.info('Updating Steam ID');
 
       await _onboardingRepository.saveSteamId(newSteamId);
-      await _prefs.setString('steam_id', newSteamId);
 
       AppLogger.info('Steam ID updated successfully');
       notifyListeners();
@@ -381,6 +384,7 @@ class SettingsViewModel extends ChangeNotifier {
     try {
       AppLogger.info('Clearing all application data');
 
+      await _onboardingRepository.clearCredentials();
       await _prefs.clear();
 
       // 重置本地UI状态
@@ -537,6 +541,7 @@ class SettingsViewModel extends ChangeNotifier {
     _disposed = true;
     _syncProgressSubscription?.cancel();
     _gameLibrarySubscription?.cancel();
+    _onboardingSubscription?.cancel();
     super.dispose();
   }
 }

@@ -2,12 +2,16 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../domain/models/onboarding/onboarding_state.dart';
 import '../../../domain/models/onboarding/onboarding_step.dart';
+import '../../service/api_key_storage.dart';
 import '../../service/steam_validation_service.dart';
 import '../game_repository.dart';
 import '../../../utils/logger.dart';
 
 class OnboardingRepository {
+  static const legacyApiKeyPreference = 'api_key';
+
   final SharedPreferences _prefs;
+  final ApiKeyStorage _apiKeyStorage;
   final SteamValidationService _steamValidationService;
   final GameRepository _gameRepository;
 
@@ -15,24 +19,27 @@ class OnboardingRepository {
       StreamController<OnboardingState>.broadcast();
 
   OnboardingState _currentState = OnboardingState.initial();
+  late final Future<void> ready;
 
   OnboardingRepository({
     required SharedPreferences sharedPreferences,
+    required ApiKeyStorage apiKeyStorage,
     required SteamValidationService steamValidationService,
     required GameRepository gameRepository,
   }) : _prefs = sharedPreferences,
+       _apiKeyStorage = apiKeyStorage,
        _steamValidationService = steamValidationService,
        _gameRepository = gameRepository {
-    _loadState();
+    ready = _loadState();
   }
 
   Stream<OnboardingState> get state => _stateController.stream;
   OnboardingState get currentState => _currentState;
 
-  void _loadState() {
+  Future<void> _loadState() async {
     try {
       final isCompleted = _prefs.getBool('onboarding_completed') ?? false;
-      final apiKey = _prefs.getString('api_key') ?? '';
+      final apiKey = await _readApiKeyWithMigration();
       final steamId = _prefs.getString('steam_id') ?? '';
 
       _currentState = OnboardingState(
@@ -50,6 +57,53 @@ class OnboardingRepository {
       AppLogger.error('Failed to load onboarding state', e, stackTrace);
       _stateController.add(OnboardingState.initial());
     }
+  }
+
+  Future<String> _readApiKeyWithMigration() async {
+    final legacyApiKey = _prefs.getString(legacyApiKeyPreference)?.trim() ?? '';
+
+    try {
+      final secureApiKey = (await _apiKeyStorage.read())?.trim() ?? '';
+      if (secureApiKey.isNotEmpty) {
+        if (legacyApiKey.isNotEmpty) {
+          await _prefs.remove(legacyApiKeyPreference);
+          AppLogger.info('Removed stale legacy API key after secure read');
+        }
+        return secureApiKey;
+      }
+
+      if (legacyApiKey.isEmpty) {
+        return '';
+      }
+
+      await _apiKeyStorage.write(legacyApiKey);
+      final verifiedApiKey = (await _apiKeyStorage.read())?.trim() ?? '';
+      if (verifiedApiKey != legacyApiKey) {
+        throw StateError('Secure API key verification failed');
+      }
+
+      await _prefs.remove(legacyApiKeyPreference);
+      AppLogger.info('Migrated legacy API key to secure storage');
+      return verifiedApiKey;
+    } catch (error, stackTrace) {
+      if (legacyApiKey.isNotEmpty) {
+        AppLogger.warning(
+          'Secure API key migration deferred; using retained legacy value',
+        );
+        AppLogger.error('Secure API key migration error', error, stackTrace);
+        return legacyApiKey;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _persistApiKey(String apiKey) async {
+    await _apiKeyStorage.write(apiKey);
+    final verifiedApiKey = await _apiKeyStorage.read();
+    if (verifiedApiKey != apiKey) {
+      throw StateError('Secure API key verification failed');
+    }
+    await _prefs.remove(legacyApiKeyPreference);
   }
 
   Future<void> updateCurrentStep(OnboardingStep step) async {
@@ -86,22 +140,30 @@ class OnboardingRepository {
     }
   }
 
-  Future<void> saveApiKeyWithoutValidation(String apiKey) async {
+  void updateApiKeyDraft(String apiKey) {
+    _currentState = _currentState.copyWith(apiKey: apiKey, errorMessage: '');
+    _stateController.add(_currentState);
+  }
+
+  Future<bool> saveApiKeyWithoutValidation(String apiKey) async {
     try {
       AppLogger.info('Saving API key without validation');
-      await _prefs.setString('api_key', apiKey);
+      await _persistApiKey(apiKey);
 
       _currentState = _currentState.copyWith(apiKey: apiKey, errorMessage: '');
       _stateController.add(_currentState);
+      return true;
     } catch (e, stackTrace) {
       AppLogger.error(
         'Failed to save API key without validation',
         e,
         stackTrace,
       );
-      _stateController.add(
-        _currentState.copyWith(errorMessage: 'Failed to save API key'),
+      _currentState = _currentState.copyWith(
+        errorMessage: 'Failed to save API key',
       );
+      _stateController.add(_currentState);
+      return false;
     }
   }
 
@@ -141,7 +203,7 @@ class OnboardingRepository {
       final result = await _steamValidationService.validateApiKey(apiKey);
 
       if (result.isSuccess()) {
-        await _prefs.setString('api_key', apiKey);
+        await _persistApiKey(apiKey);
         _currentState = _currentState.copyWith(
           isApiKeyValid: true,
           isLoading: false,
@@ -325,6 +387,19 @@ class OnboardingRepository {
         _currentState.copyWith(isLoading: false, errorMessage: '同步失败: $e'),
       );
     }
+  }
+
+  Future<void> clearCredentials() async {
+    await _apiKeyStorage.delete();
+    await _prefs.remove(legacyApiKeyPreference);
+    await _prefs.remove('steam_id');
+    _currentState = _currentState.copyWith(
+      apiKey: '',
+      steamId: '',
+      isApiKeyValid: false,
+      isSteamIdValid: false,
+    );
+    _stateController.add(_currentState);
   }
 
   void dispose() {

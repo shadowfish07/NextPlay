@@ -40,8 +40,8 @@ class OnboardingViewModel extends ChangeNotifier {
       initialValue: null,
     );
 
-    saveApiKeyCommand = Command.createAsync<String, void>(
-      _handleSaveApiKey,
+    saveApiKeyCommand = Command.createSync<String, void>(
+      _handleUpdateApiKeyDraft,
       initialValue: null,
     );
 
@@ -105,6 +105,14 @@ class OnboardingViewModel extends ChangeNotifier {
     final nextStep = currentStep.next;
 
     if (nextStep != null) {
+      if (currentStep == OnboardingStep.apiKeyGuide) {
+        final saved = await _repository.saveApiKeyWithoutValidation(
+          _state.apiKey,
+        );
+        if (!saved) {
+          return;
+        }
+      }
       AppLogger.info('Moving to next step: $nextStep');
       await _repository.updateCurrentStep(nextStep);
     }
@@ -120,9 +128,8 @@ class OnboardingViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> _handleSaveApiKey(String apiKey) async {
-    AppLogger.info('Saving API key without validation');
-    await _repository.saveApiKeyWithoutValidation(apiKey);
+  void _handleUpdateApiKeyDraft(String apiKey) {
+    _repository.updateApiKeyDraft(apiKey);
   }
 
   Future<void> _handleSaveSteamId(String steamId) async {

@@ -22,7 +22,7 @@ NextPlay 是一款基于 Steam 游戏库的智能游戏推荐应用。通过连�
 - **路由管理**: go_router
 - **数据模型**: freezed
 - **本地数据库**: SQLite (sqflite)
-- **配置存储**: SharedPreferences
+- **配置存储**: SharedPreferences（非敏感设置）+ flutter_secure_storage（Steam API Key）
 
 ## Project Conventions
 

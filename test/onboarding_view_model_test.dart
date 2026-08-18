@@ -40,10 +40,49 @@ void main() {
     expect(viewModel.state.currentStep, OnboardingStep.welcome);
   });
 
-  test('API key input is saved through the command path', () async {
-    viewModel.saveApiKeyCommand.execute('fixture-key');
+  test('API key input updates the draft through the command path', () async {
+    viewModel.saveApiKeyCommand.execute('partial');
     await Future<void>.delayed(Duration.zero);
-    expect(viewModel.state.apiKey, 'fixture-key');
+    viewModel.saveApiKeyCommand.execute(TestFixtures.apiKey);
+    await Future<void>.delayed(Duration.zero);
+    expect(viewModel.state.apiKey, TestFixtures.apiKey);
+  });
+
+  test('leaving the API key step persists the latest draft securely', () async {
+    viewModel.nextStepCommand.execute();
+    await Future<void>.delayed(Duration.zero);
+    viewModel.nextStepCommand.execute();
+    await Future<void>.delayed(Duration.zero);
+    expect(viewModel.state.currentStep, OnboardingStep.apiKeyGuide);
+
+    viewModel.saveApiKeyCommand.execute(TestFixtures.apiKey);
+    await Future<void>.delayed(Duration.zero);
+    final secureStorage = dependencies.apiKeyStorage as FakeApiKeyStorage;
+    expect(secureStorage.value, isNull);
+
+    viewModel.nextStepCommand.execute();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(secureStorage.value, TestFixtures.apiKey);
+    expect(viewModel.state.currentStep, OnboardingStep.steamIdInput);
+  });
+
+  test('secure write failure keeps the user on the API key step', () async {
+    viewModel.nextStepCommand.execute();
+    await Future<void>.delayed(Duration.zero);
+    viewModel.nextStepCommand.execute();
+    await Future<void>.delayed(Duration.zero);
+    viewModel.saveApiKeyCommand.execute(TestFixtures.apiKey);
+    await Future<void>.delayed(Duration.zero);
+
+    final secureStorage = dependencies.apiKeyStorage as FakeApiKeyStorage;
+    secureStorage.failWrites = true;
+    viewModel.nextStepCommand.execute();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(viewModel.state.currentStep, OnboardingStep.apiKeyGuide);
+    expect(viewModel.state.errorMessage, isNotEmpty);
+    expect(secureStorage.value, isNull);
   });
 
   test('sync exposes loading and success state with latency', () async {

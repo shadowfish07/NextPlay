@@ -1,9 +1,45 @@
 import 'package:result_dart/result_dart.dart';
 
+import 'package:nextplay/data/service/api_key_storage.dart';
 import 'package:nextplay/data/service/igdb_game_service.dart';
 import 'package:nextplay/data/service/steam_api_service.dart';
 import 'package:nextplay/domain/models/game/game.dart';
 import 'package:nextplay/domain/models/game/igdb_game_data.dart';
+
+class FakeApiKeyStorage implements ApiKeyStorage {
+  FakeApiKeyStorage({this.value});
+
+  String? value;
+  bool failReads = false;
+  bool failWrites = false;
+  bool failDeletes = false;
+  int writeCount = 0;
+
+  @override
+  Future<String?> read() async {
+    if (failReads) {
+      throw StateError('Fake secure read failure');
+    }
+    return value;
+  }
+
+  @override
+  Future<void> write(String apiKey) async {
+    writeCount += 1;
+    if (failWrites) {
+      throw StateError('Fake secure write failure');
+    }
+    value = apiKey;
+  }
+
+  @override
+  Future<void> delete() async {
+    if (failDeletes) {
+      throw StateError('Fake secure delete failure');
+    }
+    value = null;
+  }
+}
 
 enum FakeServiceMode { success, empty, failure }
 

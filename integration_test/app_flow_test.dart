@@ -1,7 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:nextplay/data/repository/onboarding/onboarding_repository.dart';
+import 'package:nextplay/data/service/api_key_storage.dart';
 import 'package:nextplay/ui/core/app_keys.dart';
 
 import '../test/support/fixtures.dart';
@@ -9,6 +15,66 @@ import '../test/support/test_app.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('migrates a released API key with Android secure storage', (
+    tester,
+  ) async {
+    final preferences = await SharedPreferences.getInstance();
+    final apiKeyStorage = SecureApiKeyStorage();
+    await apiKeyStorage.delete();
+    await preferences.clear();
+    await preferences.setString(
+      OnboardingRepository.legacyApiKeyPreference,
+      TestFixtures.apiKey,
+    );
+    await preferences.setString('steam_id', TestFixtures.steamId);
+    await preferences.setBool('onboarding_completed', true);
+
+    final dependencies = await createTestDependencies(
+      preferencesInstance: preferences,
+      apiKeyStorage: apiKeyStorage,
+      databaseName: 'nextplay_secure_migration_e2e.db',
+    );
+
+    expect(
+      dependencies.onboardingRepository.currentState.apiKey,
+      TestFixtures.apiKey,
+    );
+    expect(dependencies.onboardingRepository.currentState.isCompleted, isTrue);
+    expect(
+      preferences.containsKey(OnboardingRepository.legacyApiKeyPreference),
+      isFalse,
+    );
+    expect(await apiKeyStorage.read(), TestFixtures.apiKey);
+
+    final sharedPreferencesDirectory = Directory(
+      path.join(Directory.systemTemp.parent.path, 'shared_prefs'),
+    );
+    final securePreferencesFile = File(
+      path.join(sharedPreferencesDirectory.path, 'nextplay_secure.xml'),
+    );
+    for (
+      var attempt = 0;
+      attempt < 20 && !securePreferencesFile.existsSync();
+      attempt++
+    ) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    expect(securePreferencesFile.existsSync(), isTrue);
+    expect(
+      await securePreferencesFile.readAsString(),
+      isNot(contains(TestFixtures.apiKey)),
+    );
+
+    await tester.pumpWidget(buildTestApp(dependencies));
+    await _waitFor(tester, find.byKey(AppKeys.discoverScreen));
+    expect(find.byKey(AppKeys.onboardingScreen), findsNothing);
+    await disposeTestApp(tester);
+
+    await dependencies.dispose();
+    await apiKeyStorage.delete();
+    await preferences.clear();
+  });
 
   testWidgets('credential-free onboarding and core navigation flow', (
     tester,

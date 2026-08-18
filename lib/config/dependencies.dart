@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/repository/game_repository.dart';
 import '../data/repository/onboarding/onboarding_repository.dart';
+import '../data/service/api_key_storage.dart';
 import '../data/service/game_database_service.dart';
 import '../data/service/igdb_game_service.dart';
 import '../data/service/steam_api_service.dart';
@@ -23,6 +24,7 @@ import '../ui/settings/view_models/settings_view_model.dart';
 class AppDependencies {
   AppDependencies._({
     required this.sharedPreferences,
+    required this.apiKeyStorage,
     required this.steamApiService,
     required this.igdbGameService,
     required this.gameDatabaseService,
@@ -32,6 +34,7 @@ class AppDependencies {
   });
 
   final SharedPreferences sharedPreferences;
+  final ApiKeyStorage apiKeyStorage;
   final SteamApiService steamApiService;
   final IgdbGameService igdbGameService;
   final GameDatabaseService gameDatabaseService;
@@ -41,15 +44,19 @@ class AppDependencies {
 
   static Future<AppDependencies> production() async {
     final prefs = await SharedPreferences.getInstance();
-    return create(sharedPreferences: prefs);
+    return create(
+      sharedPreferences: prefs,
+      apiKeyStorage: SecureApiKeyStorage(),
+    );
   }
 
-  static AppDependencies create({
+  static Future<AppDependencies> create({
     required SharedPreferences sharedPreferences,
+    required ApiKeyStorage apiKeyStorage,
     SteamApiService? steamApiService,
     IgdbGameService? igdbGameService,
     GameDatabaseService? gameDatabaseService,
-  }) {
+  }) async {
     final steam = steamApiService ?? SteamApiService();
     final igdb = igdbGameService ?? IgdbGameService();
     final database = gameDatabaseService ?? GameDatabaseService();
@@ -62,12 +69,16 @@ class AppDependencies {
     );
     final onboarding = OnboardingRepository(
       sharedPreferences: sharedPreferences,
+      apiKeyStorage: apiKeyStorage,
       steamValidationService: validation,
       gameRepository: games,
     );
 
+    await onboarding.ready;
+
     return AppDependencies._(
       sharedPreferences: sharedPreferences,
+      apiKeyStorage: apiKeyStorage,
       steamApiService: steam,
       igdbGameService: igdb,
       gameDatabaseService: database,

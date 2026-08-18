@@ -4,6 +4,9 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+source "$repo_root/tool/load_env.sh"
+nextplay_load_env "$repo_root"
+
 package_name="me.zqydev.nextplay.debug"
 avd_name="${NEXTPLAY_AVD:-NextPlay_E2E_API_36}"
 boot_timeout="${NEXTPLAY_ANDROID_BOOT_TIMEOUT_SECONDS:-180}"

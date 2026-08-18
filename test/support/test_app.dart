@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'package:nextplay/config/dependencies.dart';
+import 'package:nextplay/data/service/api_key_storage.dart';
 import 'package:nextplay/data/service/game_database_service.dart';
 import 'package:nextplay/main.dart';
 
@@ -13,21 +14,26 @@ import 'fixtures.dart';
 
 Future<AppDependencies> createTestDependencies({
   Map<String, Object> preferences = const {},
+  SharedPreferences? preferencesInstance,
   FakeServiceMode steamMode = FakeServiceMode.success,
   FakeServiceMode igdbMode = FakeServiceMode.success,
   Duration steamDelay = Duration.zero,
   Duration igdbDelay = Duration.zero,
   String databaseName = 'nextplay_test.db',
   bool resetDatabase = true,
+  ApiKeyStorage? apiKeyStorage,
 }) async {
-  SharedPreferences.setMockInitialValues(preferences);
+  if (preferencesInstance == null) {
+    SharedPreferences.setMockInitialValues(preferences);
+  }
   if (resetDatabase) {
     final databasesPath = await getDatabasesPath();
     await deleteDatabase(path.join(databasesPath, databaseName));
   }
-  final prefs = await SharedPreferences.getInstance();
-  final dependencies = AppDependencies.create(
+  final prefs = preferencesInstance ?? await SharedPreferences.getInstance();
+  final dependencies = await AppDependencies.create(
     sharedPreferences: prefs,
+    apiKeyStorage: apiKeyStorage ?? FakeApiKeyStorage(),
     steamApiService: FakeSteamApiService(
       mode: steamMode,
       delay: steamDelay,

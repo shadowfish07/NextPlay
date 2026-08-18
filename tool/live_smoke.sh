@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+source "$repo_root/tool/load_env.sh"
+nextplay_load_env "$repo_root"
+
 local_url="${NEXTPLAY_IGDB_LOCAL_URL:-http://127.0.0.1:61000}"
 public_url="${NEXTPLAY_IGDB_PUBLIC_URL:-https://igdb.zqydev.me}"
 timeout_seconds="${NEXTPLAY_LIVE_TIMEOUT_SECONDS:-15}"
