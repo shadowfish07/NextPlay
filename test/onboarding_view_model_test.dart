@@ -100,11 +100,11 @@ void main() {
       repository: dependencies.onboardingRepository,
     );
 
-    viewModel.syncGameLibraryCommand.execute();
+    final syncFuture = viewModel.syncGameLibraryCommand.executeWithFuture();
     await Future<void>.delayed(const Duration(milliseconds: 5));
     expect(viewModel.state.isLoading, isTrue);
 
-    await Future<void>.delayed(const Duration(milliseconds: 150));
+    await syncFuture;
     expect(viewModel.state.isLoading, isFalse);
     expect(viewModel.state.gameLibrary, hasLength(3));
     expect(viewModel.state.syncProgress, 1.0);
