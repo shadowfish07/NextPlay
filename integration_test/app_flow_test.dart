@@ -8,10 +8,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:nextplay/data/repository/onboarding/onboarding_repository.dart';
 import 'package:nextplay/data/service/api_key_storage.dart';
+import 'package:nextplay/domain/models/game/game.dart';
+import 'package:nextplay/domain/models/game/igdb_game_data.dart';
 import 'package:nextplay/ui/core/app_keys.dart';
+import 'package:nextplay/ui/discover/widgets/new_game_recommendation_card.dart';
 
 import '../test/support/fixtures.dart';
 import '../test/support/test_app.dart';
+
+const _captureVisualEvidence = bool.fromEnvironment(
+  'NEXTPLAY_CAPTURE_VISUAL_EVIDENCE',
+);
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -79,7 +86,26 @@ void main() {
   testWidgets('credential-free onboarding and core navigation flow', (
     tester,
   ) async {
+    final steamGames = <Game>[
+      ...TestFixtures.games,
+      const Game(appId: 738520, name: 'Breathedge'),
+      const Game(appId: 646570, name: 'Slay the Spire'),
+      const Game(appId: 367520, name: 'Hollow Knight'),
+    ];
+    final igdbGames = <IgdbGameData>[
+      ...TestFixtures.igdbGames,
+      const IgdbGameData(
+        steamId: 738520,
+        name: 'Breathedge',
+        coverUrl:
+            'https://images.igdb.com/igdb/image/upload/t_cover_big/co2wvo.jpg',
+      ),
+      const IgdbGameData(steamId: 646570, name: 'Slay the Spire'),
+      const IgdbGameData(steamId: 367520, name: 'Hollow Knight'),
+    ];
     final dependencies = await createTestDependencies(
+      steamGames: steamGames,
+      igdbGames: igdbGames,
       databaseName: 'nextplay_android_e2e.db',
     );
 
@@ -109,11 +135,67 @@ void main() {
       find.byKey(AppKeys.onboardingFinish),
       timeout: const Duration(seconds: 20),
     );
-    expect(find.text('3 个游戏'), findsOneWidget);
+    expect(find.text('6 个游戏'), findsOneWidget);
 
     await _tapAndWait(tester, AppKeys.onboardingFinish);
     await _waitFor(tester, find.byKey(AppKeys.discoverScreen));
     expect(find.byKey(AppKeys.discoverRecommendation), findsOneWidget);
+    final verifiedRecommendations = <int>{};
+    for (var attempt = 0; attempt < 30; attempt++) {
+      final recommendation = tester.widget<NewGameRecommendationCard>(
+        find.byType(NewGameRecommendationCard),
+      );
+      final recommendationImage = tester.widget<Image>(
+        find
+            .descendant(
+              of: find.byType(NewGameRecommendationCard),
+              matching: find.byType(Image),
+            )
+            .first,
+      );
+      final recommendationImageUrl =
+          (recommendationImage.image as NetworkImage).url;
+      expect(
+        recommendationImageUrl.contains('/t_cover_big_2x/') ||
+            recommendationImageUrl.contains('library_600x900'),
+        isTrue,
+      );
+      expect(recommendationImageUrl, isNot(contains('header.jpg')));
+      final isNewRecommendation = verifiedRecommendations.add(
+        recommendation.game.appId,
+      );
+      debugPrint(
+        'Verified portrait recommendation: '
+        '${recommendation.game.appId} ${recommendation.game.name} '
+        '$recommendationImageUrl',
+      );
+      if (_captureVisualEvidence && isNewRecommendation) {
+        await tester.ensureVisible(find.byType(NewGameRecommendationCard));
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(seconds: 3)),
+        );
+        await tester.pump();
+        debugPrint(
+          'Visual evidence ready: '
+          '${recommendation.game.appId} ${recommendation.game.name}',
+        );
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(seconds: 2)),
+        );
+      }
+      if (verifiedRecommendations.length >= 3) break;
+
+      final nextRecommendation = find.descendant(
+        of: find.byType(NewGameRecommendationCard),
+        matching: find.byIcon(Icons.refresh),
+      );
+      await tester.ensureVisible(nextRecommendation);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(nextRecommendation);
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    expect(verifiedRecommendations, hasLength(greaterThanOrEqualTo(3)));
 
     await _tapAndWait(tester, AppKeys.libraryDestination);
     await _waitFor(tester, find.byKey(AppKeys.libraryScreen));

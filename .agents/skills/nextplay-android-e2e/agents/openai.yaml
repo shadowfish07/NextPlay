@@ -1,0 +1,4 @@
+interface:
+  display_name: "NextPlay Android E2E"
+  short_description: "运行并诊断 NextPlay Android 端到端验证"
+  default_prompt: "Use $nextplay-android-e2e to verify this NextPlay change on Android and diagnose any CI failure."

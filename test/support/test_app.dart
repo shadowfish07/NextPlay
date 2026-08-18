@@ -7,6 +7,8 @@ import 'package:sqflite/sqflite.dart';
 import 'package:nextplay/config/dependencies.dart';
 import 'package:nextplay/data/service/api_key_storage.dart';
 import 'package:nextplay/data/service/game_database_service.dart';
+import 'package:nextplay/domain/models/game/game.dart';
+import 'package:nextplay/domain/models/game/igdb_game_data.dart';
 import 'package:nextplay/main.dart';
 
 import 'fake_services.dart';
@@ -19,6 +21,8 @@ Future<AppDependencies> createTestDependencies({
   FakeServiceMode igdbMode = FakeServiceMode.success,
   Duration steamDelay = Duration.zero,
   Duration igdbDelay = Duration.zero,
+  List<Game>? steamGames,
+  List<IgdbGameData>? igdbGames,
   String databaseName = 'nextplay_test.db',
   bool resetDatabase = true,
   ApiKeyStorage? apiKeyStorage,
@@ -37,12 +41,12 @@ Future<AppDependencies> createTestDependencies({
     steamApiService: FakeSteamApiService(
       mode: steamMode,
       delay: steamDelay,
-      games: TestFixtures.games,
+      games: steamGames ?? TestFixtures.games,
     ),
     igdbGameService: FakeIgdbGameService(
       mode: igdbMode,
       delay: igdbDelay,
-      games: TestFixtures.igdbGames,
+      games: igdbGames ?? TestFixtures.igdbGames,
     ),
     gameDatabaseService: GameDatabaseService(databaseName: databaseName),
   );

@@ -100,6 +100,30 @@ extension GameExtension on Game {
     return 'https://cdn.akamai.steamstatic.com/steam/apps/$appId/library_600x900.jpg';
   }
 
+  /// 获取发现推荐卡片的竖版图片候选。
+  ///
+  /// 推荐卡片是 3:4 竖版布局，不能使用 Steam 的横版 header.jpg 兜底。
+  /// 优先使用高清 IGDB cover，失败后依次尝试 Steam 2x 和标准竖版库存图。
+  List<String> get recommendationPortraitImageUrls {
+    final urls = <String>[];
+    if (coverUrl != null && coverUrl!.isNotEmpty) {
+      urls.add(_withIgdbImageSize(coverUrl!, 'cover_big_2x'));
+    }
+    urls.add(
+      'https://cdn.akamai.steamstatic.com/steam/apps/$appId/library_600x900_2x.jpg',
+    );
+    urls.add(libraryImageUrl);
+    return urls;
+  }
+
+  String _withIgdbImageSize(String url, String size) {
+    final uri = Uri.tryParse(url);
+    if (uri?.host != 'images.igdb.com') {
+      return url;
+    }
+    return url.replaceFirst(RegExp(r'/t_[^/]+/'), '/t_$size/');
+  }
+
   /// 获取Steam商店页面URL
   String get steamStoreUrl => 'https://store.steampowered.com/app/$appId/';
 

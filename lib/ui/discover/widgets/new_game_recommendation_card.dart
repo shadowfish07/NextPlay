@@ -98,20 +98,35 @@ class _NewGameRecommendationCardState extends State<NewGameRecommendationCard> {
     );
   }
 
-  /// 构建封面图片
-  /// 使用与详情页相同的优先级策略: artwork_type=3 > artwork_type=2 > cover
+  /// 构建适合 3:4 推荐卡片的竖版图片。
+  ///
+  /// IGDB 高清 cover 加载失败后回退 Steam 竖版库存图，不使用横版 header。
   Widget _buildCoverImage() {
+    return _buildPortraitImage(0);
+  }
+
+  Widget _buildPortraitImage(int index) {
+    final imageUrls = widget.game.recommendationPortraitImageUrls;
+    if (index >= imageUrls.length) {
+      return _buildImagePlaceholder();
+    }
+
     return Image.network(
-      widget.game.detailBackgroundUrl,
+      imageUrls[index],
       fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => Container(
-        color: AppTheme.gameMetaBackground,
-        child: Center(
-          child: Icon(
-            Icons.videogame_asset,
-            size: 64,
-            color: AppTheme.accentColor.withValues(alpha: 0.5),
-          ),
+      errorBuilder: (context, error, stackTrace) =>
+          _buildPortraitImage(index + 1),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      color: AppTheme.gameMetaBackground,
+      child: Center(
+        child: Icon(
+          Icons.videogame_asset,
+          size: 64,
+          color: AppTheme.accentColor.withValues(alpha: 0.5),
         ),
       ),
     );
