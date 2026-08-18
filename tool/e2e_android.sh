@@ -135,10 +135,43 @@ adb -s "$device" shell pm clear "$package_name" >/dev/null
 adb -s "$device" shell am start -W \
   -n "$package_name/me.zqydev.nextplay.MainActivity" >"$artifact_dir/launch.txt"
 
+dismiss_pixel_launcher_anr() {
+  local ui_xml="$1"
+  local close_bounds
+  local left
+  local top
+  local right
+  local bottom
+
+  if ! rg -Fq "Pixel Launcher isn't responding" "$ui_xml"; then
+    return 1
+  fi
+
+  close_bounds="$(
+    sed 's/></>\
+</g' "$ui_xml" \
+      | sed -n '/resource-id="android:id\/aerr_close"/s/.*bounds="\[\([0-9][0-9]*\),\([0-9][0-9]*\)\]\[\([0-9][0-9]*\),\([0-9][0-9]*\)\]".*/\1 \2 \3 \4/p' \
+      | head -1
+  )"
+  if [[ -z "$close_bounds" ]]; then
+    return 1
+  fi
+
+  read -r left top right bottom <<<"$close_bounds"
+  echo "Dismissing Pixel Launcher ANR dialog before app verification."
+  adb -s "$device" shell input tap \
+    "$(((left + right) / 2))" "$(((top + bottom) / 2))"
+  sleep 1
+}
+
 launcher_ready=0
 for _ in {1..30}; do
   adb -s "$device" shell uiautomator dump /sdcard/nextplay-launch.xml >/dev/null 2>&1 || true
   adb -s "$device" pull /sdcard/nextplay-launch.xml "$artifact_dir/launcher-ui.xml" >/dev/null 2>&1 || true
+  if [[ -f "$artifact_dir/launcher-ui.xml" ]] \
+    && dismiss_pixel_launcher_anr "$artifact_dir/launcher-ui.xml"; then
+    continue
+  fi
   if [[ -f "$artifact_dir/launcher-ui.xml" ]] && rg -q '欢迎使用 NextPlay' "$artifact_dir/launcher-ui.xml"; then
     launcher_ready=1
     break
