@@ -125,15 +125,15 @@ void main() {
       repository: dependencies.onboardingRepository,
     );
 
-    viewModel.syncGameLibraryCommand.execute();
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+    await viewModel.syncGameLibraryCommand.executeWithFuture();
+    await Future<void>.delayed(Duration.zero);
     expect(viewModel.state.isLoading, isFalse);
     expect(viewModel.state.errorMessage, contains('凭据验证失败'));
 
     (dependencies.steamApiService as FakeSteamApiService).mode =
         FakeServiceMode.success;
-    viewModel.syncGameLibraryCommand.execute();
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await viewModel.syncGameLibraryCommand.executeWithFuture();
+    await Future<void>.delayed(Duration.zero);
     expect(viewModel.state.errorMessage, isEmpty);
     expect(viewModel.state.gameLibrary, hasLength(3));
   });
