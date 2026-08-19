@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nextplay/config/dependencies.dart';
 import 'package:nextplay/ui/core/app_keys.dart';
@@ -43,15 +44,30 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(AppKeys.libraryScreen), findsOneWidget);
     expect(find.byKey(AppKeys.libraryItem(620)), findsOneWidget);
-
     await tester.enterText(find.byKey(AppKeys.librarySearch), 'Portal');
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(AppKeys.libraryItem(620)), findsOneWidget);
     expect(find.byKey(AppKeys.libraryItem(570)), findsNothing);
 
+    await tester.enterText(find.byKey(AppKeys.librarySearch), '');
+    await tester.pump(const Duration(milliseconds: 300));
+
     await tester.tap(find.byKey(AppKeys.settingsDestination));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(AppKeys.settingsScreen), findsOneWidget);
+
+    final softwareSetting = find.byKey(AppKeys.settingsExcludeSoftware);
+    await tester.scrollUntilVisible(
+      softwareSetting,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await Scrollable.ensureVisible(
+      tester.element(softwareSetting),
+      alignment: 0.5,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.widget<SwitchListTile>(softwareSetting).value, isTrue);
 
     await disposeTestApp(tester);
   });

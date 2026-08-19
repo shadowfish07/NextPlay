@@ -46,13 +46,18 @@ enum FakeServiceMode { success, empty, failure }
 class FakeSteamApiService extends SteamApiService {
   FakeSteamApiService({
     this.mode = FakeServiceMode.success,
+    this.softwareCatalogMode = FakeServiceMode.success,
     this.delay = Duration.zero,
     List<Game>? games,
-  }) : games = games ?? const [];
+    Set<int>? softwareAppIds,
+  }) : games = games ?? const [],
+       softwareAppIds = softwareAppIds ?? const {};
 
   FakeServiceMode mode;
+  FakeServiceMode softwareCatalogMode;
   final Duration delay;
   final List<Game> games;
+  final Set<int> softwareAppIds;
 
   Future<void> _wait() async {
     if (delay > Duration.zero) await Future<void>.delayed(delay);
@@ -71,6 +76,20 @@ class FakeSteamApiService extends SteamApiService {
       FakeServiceMode.success => Success(List<Game>.from(games)),
       FakeServiceMode.empty => const Success(<Game>[]),
       FakeServiceMode.failure => const Failure('fixture Steam failure'),
+    };
+  }
+
+  @override
+  Future<Result<Set<int>, String>> getSoftwareAppIds({
+    required String apiKey,
+  }) async {
+    await _wait();
+    return switch (softwareCatalogMode) {
+      FakeServiceMode.success => Success(Set<int>.from(softwareAppIds)),
+      FakeServiceMode.empty => const Success(<int>{}),
+      FakeServiceMode.failure => const Failure(
+        'fixture software catalog failure',
+      ),
     };
   }
 

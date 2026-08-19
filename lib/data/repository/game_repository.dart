@@ -41,6 +41,7 @@ class GameRepository {
 
   /// 同步取消错误的标识常量
   static const String syncCancelledError = 'SYNC_CANCELLED';
+  static const String excludeSoftwarePreference = 'exclude_software';
 
   // 数据变更流
   final _gameLibraryController = StreamController<List<Game>>.broadcast();
@@ -76,18 +77,27 @@ class GameRepository {
 
   // Getters
   List<Game> get gameLibrary {
-    final games = _gameCache.values.toList();
+    final games = _visibleGames.toList();
     AppLogger.info('GameRepository.gameLibrary getter: ${games.length} games');
     return List.unmodifiable(games);
   }
 
   Map<int, GameStatus> get gameStatuses {
     final statuses = <int, GameStatus>{};
-    for (final game in _gameCache.values) {
+    for (final game in _visibleGames) {
       statuses[game.appId] = _getGameStatus(game.appId);
     }
     return Map.unmodifiable(statuses);
   }
+
+  bool get excludeSoftware => _prefs.getBool(excludeSoftwarePreference) ?? true;
+
+  int get softwareGamesCount =>
+      _gameCache.values.where((game) => game.isSoftware).length;
+
+  Iterable<Game> get _visibleGames => excludeSoftware
+      ? _gameCache.values.where((game) => !game.isSoftware)
+      : _gameCache.values;
 
   RecommendationStats get stats => _stats;
 
@@ -253,6 +263,7 @@ class GameRepository {
       hasAchievements: (steam['has_achievements'] as int? ?? 0) == 1,
       totalAchievements: steam['total_achievements'] as int? ?? 0,
       unlockedAchievements: steam['unlocked_achievements'] as int? ?? 0,
+      isSoftware: (steam['is_software'] as int? ?? 0) == 1,
       // IGDB 数据
       summary: igdb?['summary'] as String?,
       coverUrl: igdb?['cover_url'] as String?,
@@ -354,10 +365,7 @@ class GameRepository {
   Future<void> _notifyPlayQueueChanged() async {
     final queue = await _databaseService.getPlayQueue();
     if (_disposed) return;
-    final games = queue
-        .map((appId) => _gameCache[appId])
-        .whereType<Game>()
-        .toList();
+    final games = queue.map(getGameByAppId).whereType<Game>().toList();
     _playQueueController.add(games);
   }
 
@@ -475,7 +483,8 @@ class GameRepository {
         return Failure(errorMsg);
       }
 
-      final steamGames = steamResult.getOrNull()!;
+      final ownedGames = steamResult.getOrNull()!;
+      var steamGames = List<Game>.from(ownedGames);
       final totalGames = steamGames.length;
       AppLogger.info('Got $totalGames games from Steam');
 
@@ -487,6 +496,68 @@ class GameRepository {
           totalGames: totalGames,
         ),
       );
+
+      // Steam 的 owned-games 响应不包含内容类型。用官方软件目录一次性
+      // 标记拥有的软件项目，使设置开关能稳定影响所有本地视图。
+      final previousSoftwareAppIds = _gameCache.values
+          .where((game) => game.isSoftware)
+          .map((game) => game.appId)
+          .toSet();
+      final softwareCatalogResult = await _steamApiService.getSoftwareAppIds(
+        apiKey: apiKey,
+      );
+
+      if (isCancelled()) {
+        AppLogger.info(
+          'Sync task #$syncId cancelled after fetching software catalog',
+        );
+        _syncProgressController.add(
+          SyncProgress(
+            stage: SyncStage.cancelled,
+            progress: 0.0,
+            message: '同步已被新任务取消',
+          ),
+        );
+        return const Failure(syncCancelledError);
+      }
+
+      if (softwareCatalogResult.isSuccess()) {
+        final softwareAppIds = softwareCatalogResult.getOrNull()!;
+        steamGames = ownedGames
+            .map(
+              (game) => game.copyWith(
+                isSoftware: softwareAppIds.contains(game.appId),
+              ),
+            )
+            .toList();
+        AppLogger.info(
+          'Identified ${steamGames.where((game) => game.isSoftware).length} '
+          'software items in the owned library',
+        );
+      } else {
+        final softwareError =
+            softwareCatalogResult.exceptionOrNull() ?? 'Unknown error';
+        steamGames = ownedGames
+            .map(
+              (game) => game.copyWith(
+                isSoftware: previousSoftwareAppIds.contains(game.appId),
+              ),
+            )
+            .toList();
+        AppLogger.warning(
+          'Failed to refresh Steam software catalog; preserving known '
+          'classifications: $softwareError',
+        );
+        _syncProgressController.add(
+          SyncProgress(
+            stage: SyncStage.fetchingSteamLibrary,
+            progress: 0.15,
+            message: '软件分类获取失败，已沿用已有结果',
+            errorMessage: '软件分类获取失败: $softwareError',
+            totalGames: totalGames,
+          ),
+        );
+      }
 
       // 第二步：保存 Steam 数据到数据库
       final steamDataList = steamGames.map((game) {
@@ -500,6 +571,7 @@ class GameRepository {
           'has_achievements': game.hasAchievements ? 1 : 0,
           'total_achievements': game.totalAchievements,
           'unlocked_achievements': game.unlockedAchievements,
+          'is_software': game.isSoftware ? 1 : 0,
         };
       }).toList();
 
@@ -739,12 +811,15 @@ class GameRepository {
         SyncProgress(
           stage: SyncStage.completed,
           progress: 1.0,
-          message: '同步完成！共 ${_gameCache.length} 个游戏',
-          totalGames: _gameCache.length,
+          message: '同步完成！共 ${gameLibrary.length} 个游戏',
+          totalGames: gameLibrary.length,
         ),
       );
 
-      AppLogger.info('Game library sync completed: ${_gameCache.length} games');
+      AppLogger.info(
+        'Game library sync completed: ${gameLibrary.length} visible games, '
+        '$softwareGamesCount software items identified',
+      );
       return Success(gameLibrary);
     } catch (e, stackTrace) {
       final error = 'Game library sync error: $e';
@@ -805,7 +880,9 @@ class GameRepository {
 
   /// 根据 AppId 获取游戏
   Game? getGameByAppId(int appId) {
-    return _gameCache[appId];
+    final game = _gameCache[appId];
+    if (game == null || (excludeSoftware && game.isSoftware)) return null;
+    return game;
   }
 
   /// 获取游戏用户笔记
@@ -818,13 +895,13 @@ class GameRepository {
   /// 获取待玩队列
   Future<List<Game>> get playQueue async {
     final queue = await _databaseService.getPlayQueue();
-    return queue.map((appId) => _gameCache[appId]).whereType<Game>().toList();
+    return queue.map(getGameByAppId).whereType<Game>().toList();
   }
 
   /// 添加游戏到待玩队列
   Future<Result<void, String>> addToPlayQueue(int appId) async {
     try {
-      final game = _gameCache[appId];
+      final game = getGameByAppId(appId);
       if (game == null) {
         return const Failure('游戏不存在');
       }
@@ -882,7 +959,7 @@ class GameRepository {
     return details
         .map((item) {
           final appId = item['app_id'] as int;
-          final game = _gameCache[appId];
+          final game = getGameByAppId(appId);
           final addedAt = DateTime.fromMillisecondsSinceEpoch(
             item['added_at'] as int,
           );
@@ -945,7 +1022,7 @@ class GameRepository {
     int monthCount = 0;
     int twoWeeksMinutes = 0;
 
-    for (final game in _gameCache.values) {
+    for (final game in _visibleGames) {
       if (game.lastPlayed != null) {
         if (game.lastPlayed!.isAfter(todayStart)) todayCount++;
         if (game.lastPlayed!.isAfter(weekStart)) weekCount++;
@@ -968,7 +1045,7 @@ class GameRepository {
     final twoWeeksAgo = now.subtract(const Duration(days: 14));
 
     final games =
-        _gameCache.values
+        _visibleGames
             .where(
               (g) => g.lastPlayed != null && g.lastPlayed!.isAfter(twoWeeksAgo),
             )
@@ -980,9 +1057,8 @@ class GameRepository {
   /// 获取未玩游戏（用于推荐）
   List<Game> getUnplayedGames({int limit = 10}) {
     final random = Random();
-    final games =
-        _gameCache.values.where((g) => g.playtimeForever == 0).toList()
-          ..shuffle(random);
+    final games = _visibleGames.where((g) => g.playtimeForever == 0).toList()
+      ..shuffle(random);
     return games.take(limit).toList();
   }
 
@@ -994,11 +1070,11 @@ class GameRepository {
     int count = 4,
   }) async {
     try {
-      if (_gameCache.isEmpty) {
+      if (gameLibrary.isEmpty) {
         return const Failure('游戏库为空，请先同步');
       }
 
-      final games = _gameCache.values.toList();
+      final games = _visibleGames.toList();
       final random = Random();
       games.shuffle(random);
       final selected = games.take(count).toList();
@@ -1018,8 +1094,8 @@ class GameRepository {
             ? recommendations.first
             : null,
         alternatives: recommendations.skip(1).toList(),
-        totalGamesCount: _gameCache.length,
-        recommendableGamesCount: _gameCache.length,
+        totalGamesCount: gameLibrary.length,
+        recommendableGamesCount: gameLibrary.length,
         generatedAt: DateTime.now(),
       );
 
@@ -1036,11 +1112,31 @@ class GameRepository {
   /// 获取游戏库统计信息
   Map<String, int> getGameLibraryStats() {
     return {
-      'total': _gameCache.length,
-      'withPlaytime': _gameCache.values
-          .where((g) => g.playtimeForever > 0)
-          .length,
+      'total': gameLibrary.length,
+      'withPlaytime': _visibleGames.where((g) => g.playtimeForever > 0).length,
     };
+  }
+
+  /// 更新软件项目筛选，并向所有依赖游戏库的页面广播最新可见数据。
+  Future<Result<void, String>> setExcludeSoftware(bool exclude) async {
+    try {
+      await _prefs.setBool(excludeSoftwarePreference, exclude);
+      _currentRecommendations = null;
+      if (_disposed) return const Success(());
+
+      _gameLibraryController.add(gameLibrary);
+      _gameStatusController.add(gameStatuses);
+      await _notifyPlayQueueChanged();
+      AppLogger.info(
+        'Software exclusion ${exclude ? "enabled" : "disabled"}: '
+        '${gameLibrary.length} visible games',
+      );
+      return const Success(());
+    } catch (e, stackTrace) {
+      final error = 'Failed to update software exclusion: $e';
+      AppLogger.error(error, e, stackTrace);
+      return Failure(error);
+    }
   }
 
   /// 清理资源

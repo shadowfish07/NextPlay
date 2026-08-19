@@ -9,7 +9,7 @@ class GameDatabaseService {
     : _databaseName = databaseName;
 
   final String _databaseName;
-  static const int _databaseVersion = 3;
+  static const int _databaseVersion = 4;
 
   Database? _database;
 
@@ -49,6 +49,7 @@ class GameDatabaseService {
         has_achievements INTEGER DEFAULT 0,
         total_achievements INTEGER DEFAULT 0,
         unlocked_achievements INTEGER DEFAULT 0,
+        is_software INTEGER DEFAULT 0,
         updated_at INTEGER NOT NULL
       )
     ''');
@@ -135,6 +136,15 @@ class GameDatabaseService {
       AppLogger.info('Applying migration v2 -> v3');
       await db.execute('ALTER TABLE igdb_games ADD COLUMN screenshots TEXT');
       AppLogger.info('Migration v2 -> v3 completed');
+    }
+
+    // v3 -> v4: 保存 Steam 软件分类，用于全局内容筛选
+    if (oldVersion < 4) {
+      AppLogger.info('Applying migration v3 -> v4');
+      await db.execute(
+        'ALTER TABLE steam_games ADD COLUMN is_software INTEGER DEFAULT 0',
+      );
+      AppLogger.info('Migration v3 -> v4 completed');
     }
   }
 

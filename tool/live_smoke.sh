@@ -58,6 +58,23 @@ if [[ -n "${NEXTPLAY_STEAM_API_KEY:-}" && -n "${NEXTPLAY_STEAM_ID:-}" ]]; then
     --data-urlencode 'include_appinfo=true' >"$steam_file"
   rg -q '"response"[[:space:]]*:' "$steam_file"
   rg -q '"game_count"[[:space:]]*:' "$steam_file"
+
+  echo "Checking Steam software-catalog contract for 3DMark."
+  software_file="$smoke_tmp/steam-software.json"
+  curl --fail --silent --show-error \
+    --connect-timeout 5 --max-time "$timeout_seconds" \
+    --get 'https://api.steampowered.com/IStoreService/GetAppList/v1/' \
+    --data-urlencode "key=${NEXTPLAY_STEAM_API_KEY}" \
+    --data-urlencode 'include_games=false' \
+    --data-urlencode 'include_dlc=false' \
+    --data-urlencode 'include_software=true' \
+    --data-urlencode 'include_videos=false' \
+    --data-urlencode 'include_hardware=false' \
+    --data-urlencode 'max_results=50000' >"$software_file"
+  rg -q '"appid"[[:space:]]*:[[:space:]]*223850' "$software_file" || {
+    echo "Steam software catalog did not classify app 223850 (3DMark)." >&2
+    exit 1
+  }
 else
   echo "Steam live smoke skipped: set NEXTPLAY_STEAM_API_KEY and NEXTPLAY_STEAM_ID to opt in."
 fi

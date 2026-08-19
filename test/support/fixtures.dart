@@ -2,6 +2,8 @@ import 'package:nextplay/domain/models/game/game.dart';
 import 'package:nextplay/domain/models/game/igdb_game_data.dart';
 
 abstract final class TestFixtures {
+  static const softwareGame = Game(appId: 223850, name: '3DMark');
+
   static final games = <Game>[
     Game(
       appId: 570,

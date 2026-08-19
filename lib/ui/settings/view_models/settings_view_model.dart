@@ -30,6 +30,7 @@ class SettingsViewModel extends ChangeNotifier {
   late final Command<String, void> updateTimePreferenceCommand;
   late final Command<String, void> updateMoodPreferenceCommand;
   late final Command<String, void> toggleExcludedCategoryCommand;
+  late final Command<bool, void> updateExcludeSoftwareCommand;
   late final Command<String, void> updateIgdbLanguageCommand;
 
   // UI状态 - 仅保留UI专用的状态，减少重复缓存
@@ -56,6 +57,7 @@ class SettingsViewModel extends ChangeNotifier {
   String _moodPreference =
       'any'; // 'relax', 'challenge', 'think', 'social', 'any'
   List<String> _excludedCategories = []; // 排除的游戏类别
+  bool _excludeSoftware = true;
   String _igdbLanguage = 'en'; // IGDB 数据语言
 
   SettingsViewModel({
@@ -99,6 +101,8 @@ class SettingsViewModel extends ChangeNotifier {
   String get moodPreference => _moodPreference;
   List<String> get excludedCategories => List.unmodifiable(_excludedCategories);
   int get excludedCategoriesCount => _excludedCategories.length;
+  bool get excludeSoftware => _excludeSoftware;
+  int get softwareGamesCount => _gameRepository.softwareGamesCount;
   String get igdbLanguage => _igdbLanguage;
 
   void _initializeCommands() {
@@ -163,6 +167,11 @@ class SettingsViewModel extends ChangeNotifier {
       initialValue: null,
     );
 
+    updateExcludeSoftwareCommand = Command.createAsync<bool, void>(
+      _handleUpdateExcludeSoftware,
+      initialValue: null,
+    );
+
     updateIgdbLanguageCommand = Command.createAsync<String, void>(
       _handleUpdateIgdbLanguage,
       initialValue: null,
@@ -184,6 +193,8 @@ class SettingsViewModel extends ChangeNotifier {
         'excluded_categories',
       );
       _excludedCategories = excludedCategoriesJson ?? [];
+
+      _excludeSoftware = _gameRepository.excludeSoftware;
 
       // 加载 IGDB 语言设置
       _igdbLanguage = _prefs.getString('igdb_language') ?? 'en';
@@ -389,6 +400,7 @@ class SettingsViewModel extends ChangeNotifier {
 
       // 重置本地UI状态
       _isDarkTheme = false;
+      _excludeSoftware = true;
 
       AppLogger.info('All application data cleared');
       notifyListeners();
@@ -508,6 +520,22 @@ class SettingsViewModel extends ChangeNotifier {
     } catch (e, stackTrace) {
       AppLogger.error('Failed to toggle excluded category', e, stackTrace);
       _setError('Failed to update category preference');
+    }
+  }
+
+  Future<void> _handleUpdateExcludeSoftware(bool exclude) async {
+    try {
+      final result = await _gameRepository.setExcludeSoftware(exclude);
+      if (result.isError()) {
+        _setError(result.exceptionOrNull() ?? '软件筛选设置更新失败');
+        return;
+      }
+
+      _excludeSoftware = exclude;
+      notifyListeners();
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to update software exclusion', e, stackTrace);
+      _setError('软件筛选设置更新失败');
     }
   }
 

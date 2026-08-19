@@ -12,6 +12,83 @@ class SteamApiService {
     _dio.options.receiveTimeout = const Duration(seconds: 30);
   }
 
+  /// 获取 Steam 商店中归类为软件的 App ID。
+  ///
+  /// IStoreService 可以按商店内容类型筛选，单次上限 50,000 条；当前软件
+  /// 目录远低于该上限，同时保留分页处理以兼容目录增长。
+  Future<Result<Set<int>, String>> getSoftwareAppIds({
+    required String apiKey,
+  }) async {
+    final softwareAppIds = <int>{};
+    int? lastAppId;
+
+    try {
+      do {
+        final response = await _dio.get(
+          '$_baseUrl/IStoreService/GetAppList/v1/',
+          queryParameters: {
+            'key': apiKey,
+            'include_games': false,
+            'include_dlc': false,
+            'include_software': true,
+            'include_videos': false,
+            'include_hardware': false,
+            'max_results': 50000,
+            if (lastAppId != null) 'last_appid': lastAppId,
+          },
+        );
+
+        if (response.statusCode != 200) {
+          return Failure(
+            'Steam software catalog returned status code: '
+            '${response.statusCode}',
+          );
+        }
+
+        final responseData = response.data['response'] as Map<String, dynamic>?;
+        if (responseData == null) {
+          return const Failure('Steam software catalog response is invalid');
+        }
+
+        final apps = responseData['apps'] as List<dynamic>? ?? const [];
+        for (final app in apps) {
+          final appId = (app as Map<String, dynamic>)['appid'] as int?;
+          if (appId != null) softwareAppIds.add(appId);
+        }
+
+        final hasMoreResults =
+            responseData['have_more_results'] as bool? ?? false;
+        if (!hasMoreResults) break;
+
+        final nextLastAppId = responseData['last_appid'] as int?;
+        if (nextLastAppId == null || nextLastAppId == lastAppId) {
+          return const Failure(
+            'Steam software catalog pagination response is invalid',
+          );
+        }
+        lastAppId = nextLastAppId;
+      } while (true);
+
+      AppLogger.info('Fetched ${softwareAppIds.length} Steam software app IDs');
+      return Success(softwareAppIds);
+    } on DioException catch (e) {
+      final error = switch (e.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.receiveTimeout => 'Steam 软件分类请求超时',
+        DioExceptionType.badResponse =>
+          'Steam 软件分类请求失败: ${e.response?.statusCode}',
+        DioExceptionType.connectionError => 'Steam 软件分类网络连接错误',
+        _ => 'Steam 软件分类请求失败: ${e.message}',
+      };
+      AppLogger.error(error, e);
+      return Failure(error);
+    } catch (e, stackTrace) {
+      final error = '获取 Steam 软件分类时发生未知错误: $e';
+      AppLogger.error(error, e, stackTrace);
+      return Failure(error);
+    }
+  }
+
   /// 获取用户拥有的游戏列表（带重试机制）
   Future<Result<List<Game>, String>> getOwnedGames({
     required String apiKey,

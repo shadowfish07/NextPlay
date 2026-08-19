@@ -30,6 +30,7 @@ abstract final class AppKeys {
   static const settingsScreen = ValueKey('settings.screen');
   static const settingsError = ValueKey('settings.error');
   static const settingsSync = ValueKey('settings.sync');
+  static const settingsExcludeSoftware = ValueKey('settings.excludeSoftware');
   static const detailsScreen = ValueKey('details.screen');
   static const detailsLoading = ValueKey('details.loading');
   static const detailsError = ValueKey('details.error');

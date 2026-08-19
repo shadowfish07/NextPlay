@@ -243,6 +243,7 @@ class DiscoverViewModel extends ChangeNotifier {
     _gameLibrarySubscription = _gameRepository.gameLibraryStream.listen(
       (_) {
         AppLogger.info('Game library updated');
+        _cachedRecommendations = _gameRepository.getUnplayedGames(limit: 10);
         _updateState();
       },
       onError: (error) {
