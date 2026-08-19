@@ -1,6 +1,6 @@
 import { GameService } from "./service";
 import { SteamStoreMetadataService } from "./steam-store-service";
-import type { GamesRequest } from "./types";
+import type { GamesRequest, LocalizationsRequest } from "./types";
 
 // Load environment variables
 const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
@@ -105,6 +105,62 @@ const server = Bun.serve({
       }
     }
 
+    // Idempotent incremental endpoint. It only reads cached official metadata
+    // and enqueues missing or stale AppIDs; live Store calls happen in the
+    // globally paced background worker.
+    if (url.pathname === "/api/localizations" && req.method === "POST") {
+      try {
+        const body = (await req.json()) as {
+          steamIds?: unknown;
+          language?: unknown;
+        };
+        if (!body.steamIds || !Array.isArray(body.steamIds)) {
+          return new Response(
+            JSON.stringify({ error: "steamIds array is required" }),
+            { status: 400, headers },
+          );
+        }
+        if (body.steamIds.length === 0) {
+          return new Response(
+            JSON.stringify({ error: "steamIds array cannot be empty" }),
+            { status: 400, headers },
+          );
+        }
+        if (body.steamIds.length > 100) {
+          return new Response(
+            JSON.stringify({ error: "Maximum 100 Steam IDs per request" }),
+            { status: 400, headers },
+          );
+        }
+        if (
+          !body.steamIds.every(
+            (id: unknown) =>
+              typeof id === "number" && Number.isInteger(id) && id > 0,
+          )
+        ) {
+          return new Response(
+            JSON.stringify({ error: "All Steam IDs must be positive integers" }),
+            { status: 400, headers },
+          );
+        }
+
+        const request: LocalizationsRequest = {
+          steamIds: body.steamIds,
+          language: typeof body.language === "string" ? body.language : "en",
+        };
+        const response = await gameService.getLocalizations(request);
+        return new Response(JSON.stringify(response), { headers });
+      } catch (error) {
+        console.error("[Server] Localization error:", error);
+        const message =
+          error instanceof Error ? error.message : "Internal server error";
+        return new Response(JSON.stringify({ error: message }), {
+          status: 500,
+          headers,
+        });
+      }
+    }
+
     // 404 for other routes
     return new Response(JSON.stringify({ error: "Not found" }), {
       status: 404,
@@ -115,6 +171,7 @@ const server = Bun.serve({
 
 console.log(`Server running at http://localhost:${PORT}`);
 console.log(`Endpoint: POST http://localhost:${PORT}/api/games`);
+console.log(`Endpoint: POST http://localhost:${PORT}/api/localizations`);
 
 // Graceful shutdown
 process.on("SIGINT", () => {

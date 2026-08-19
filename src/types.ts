@@ -9,6 +9,39 @@ export interface GamesResponse {
   games: GameData[];
   notFound: number[];
   errors: ErrorData[];
+  localization?: LocalizationStatus;
+}
+
+export interface LocalizationsRequest {
+  steamIds: number[];
+  language?: string;
+}
+
+export interface OfficialLocalizationItem {
+  steamId: number;
+  name?: string;
+  summary?: string;
+  source: "steam_store";
+  stale: boolean;
+  fetchedAt: number;
+}
+
+export interface LocalizationStatus {
+  requested: number;
+  ready: number;
+  pending: number;
+  retrying: number;
+  notFound: number;
+  stale: number;
+  retryAfterSeconds?: number;
+}
+
+export interface LocalizationsResponse {
+  items: OfficialLocalizationItem[];
+  pending: number[];
+  retrying: number[];
+  notFound: number[];
+  status: LocalizationStatus;
 }
 
 export interface ErrorData {
@@ -152,7 +185,10 @@ export interface GameData {
   steamId: number;
   name: string;
   localizedName?: string;
+  localizedNameSource?: "steam_store";
   summary: string;
+  summarySource?: "steam_store";
+  localizationLanguage?: string;
   url: string;
   cover?: {
     url: string;

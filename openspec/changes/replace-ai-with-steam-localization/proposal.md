@@ -10,13 +10,18 @@ misname titles and cannot be presented as official localization.
 
 - Fetch localized application names and short descriptions from Steam's
   publisher-authored store metadata.
-- Keep IGDB metadata as the fallback when Steam has no usable localized store
-  response.
+- Separate official localization data from IGDB cache data and never cache a
+  transient fallback as if it were a successful Steam response.
+- Persist and deduplicate localization work in a server-side queue with global
+  request pacing, 429 backoff, and restart recovery.
+- Return cached localization immediately and expose an idempotent incremental
+  endpoint so clients can poll without blocking normal library sync.
 - Remove runtime AI translation from the games request path.
 - Invalidate cached AI-generated game metadata.
 
 ## Impact
 
 - Affected specs: `game-localization`
-- Affected code: `src/index.ts`, `src/service.ts`, `src/cache.ts`, runtime
-  localization tests, and API documentation
+- Affected code: `src/index.ts`, `src/service.ts`, `src/cache.ts`,
+  `src/steam-store-service.ts`, runtime localization tests, API documentation,
+  and the NextPlay synchronization client

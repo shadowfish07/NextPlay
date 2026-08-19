@@ -2,7 +2,12 @@ import { IGDBClient } from "./igdb-client";
 import { CacheManager } from "./cache";
 import { transformIGDBGame } from "./transformer";
 import type { GameLocalizer } from "./steam-store-service";
-import type { GamesRequest, GamesResponse, ErrorData } from "./types";
+import type {
+  GamesRequest,
+  GamesResponse,
+  LocalizationsRequest,
+  LocalizationsResponse,
+} from "./types";
 
 export class GameService {
   private igdbClient: IGDBClient;
@@ -54,7 +59,11 @@ export class GameService {
 
     if (uncachedIds.length === 0) {
       console.log("[Service] All games served from cache");
-      return response;
+      return this.mergeOfficialLocalization(
+        response,
+        uniqueSteamIds,
+        language,
+      );
     }
 
     console.log(`[Service] Fetching ${uncachedIds.length} games from IGDB`);
@@ -72,7 +81,11 @@ export class GameService {
           reason: `Failed to map Steam ID: ${error}`,
         });
       }
-      return response;
+      return this.mergeOfficialLocalization(
+        response,
+        uniqueSteamIds,
+        language,
+      );
     }
 
     // Identify not found IDs
@@ -85,7 +98,11 @@ export class GameService {
     // Step 3: Fetch game details from IGDB
     const igdbIds = Array.from(steamToIgdbMap.values());
     if (igdbIds.length === 0) {
-      return response;
+      return this.mergeOfficialLocalization(
+        response,
+        uniqueSteamIds,
+        language,
+      );
     }
 
     try {
@@ -114,23 +131,11 @@ export class GameService {
         }
       }
 
-      // Step 5: Prefer publisher-authored Steam Store localization, then cache
-      // the language-specific result. Missing store data falls back to IGDB.
-      const localizedGames = this.localizer
-        ? await this.localizer.localizeGames(
-            transformedGames.map((game) => game.data),
-            language,
-          )
-        : transformedGames.map((game) => game.data);
-      const identifiers = new Map(
-        transformedGames.map((game) => [game.steamId, game.igdbId]),
-      );
-
-      for (const gameData of localizedGames) {
-        const igdbId = identifiers.get(gameData.steamId);
-        if (igdbId === undefined) continue;
-        response.games.push(gameData);
-        this.cache.set(gameData.steamId, igdbId, language, gameData);
+      // Step 5: Cache IGDB base data separately. Official Store localization
+      // is merged from its own cache below and never written into this table.
+      for (const game of transformedGames) {
+        response.games.push(game.data);
+        this.cache.set(game.steamId, game.igdbId, language, game.data);
       }
     } catch (error) {
       // If fetching fails, mark all remaining as errors
@@ -142,10 +147,48 @@ export class GameService {
       }
     }
 
+    return this.mergeOfficialLocalization(response, uniqueSteamIds, language);
+  }
+
+  async getLocalizations(
+    request: LocalizationsRequest,
+  ): Promise<LocalizationsResponse> {
+    if (this.localizer) return this.localizer.getLocalizations(request);
+    const requested = new Set(request.steamIds).size;
+    return {
+      items: [],
+      pending: [],
+      retrying: [],
+      notFound: [],
+      status: {
+        requested,
+        ready: 0,
+        pending: 0,
+        retrying: 0,
+        notFound: 0,
+        stale: 0,
+      },
+    };
+  }
+
+  private async mergeOfficialLocalization(
+    response: GamesResponse,
+    requestedSteamIds: number[],
+    language: string,
+  ): Promise<GamesResponse> {
+    if (!this.localizer) return response;
+    const localized = await this.localizer.localizeGames(
+      response.games,
+      requestedSteamIds,
+      language,
+    );
+    response.games = localized.games;
+    response.localization = localized.status;
     return response;
   }
 
   close(): void {
+    this.localizer?.close();
     this.cache.close();
   }
 }

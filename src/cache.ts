@@ -4,7 +4,7 @@ import type { GameData, CachedGame } from "./types";
 // TTL 范围：3-7 天（毫秒）
 const MIN_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 const MAX_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const CACHE_FORMAT_VERSION = 3;
+const CACHE_FORMAT_VERSION = 4;
 
 function generateRandomTTL(): number {
   return MIN_TTL_MS + Math.random() * (MAX_TTL_MS - MIN_TTL_MS);
@@ -56,8 +56,9 @@ export class CacheManager {
       CREATE INDEX IF NOT EXISTS idx_expires_at ON games(expires_at)
     `);
 
-    // Version 2 may contain AI-generated titles and summaries. Never serve or
-    // retain those rows after switching to publisher-authored store metadata.
+    // Versions 2 and 3 may contain AI-generated or merged Store metadata.
+    // Version 4 stores IGDB base data only; official localization has its own
+    // stale-while-revalidate cache.
     this.db.run("DELETE FROM games WHERE cache_version != ?", [
       CACHE_FORMAT_VERSION,
     ]);

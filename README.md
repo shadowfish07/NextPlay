@@ -5,8 +5,8 @@ TypeScript + Bun server for querying IGDB game data using Steam IDs with persist
 ## Features
 
 - 🎮 Query game data from IGDB using Steam IDs
-- 💾 Language-specific SQLite caching with a 3-7 day TTL
-- ⚡ Fast responses via in-memory + disk cache
+- 💾 Separate SQLite caches for IGDB base data and official localization
+- ⚡ Non-blocking responses with durable background completion
 - 🔄 OAuth token management with auto-refresh
 - 📊 Partial success responses (found/notFound/errors)
 - 🌐 Publisher-authored Steam localization for game names and descriptions
@@ -135,7 +135,7 @@ pm2 save
 **Parameters:**
 
 - `steamIds` (required): Array of Steam app IDs (max 100)
-- `forceRefresh` (optional): Skip cache and fetch fresh data from IGDB and Steam
+- `forceRefresh` (optional): Skip the IGDB base-data cache
 - `language` (optional): Language code for names, descriptions, genres, and themes (default: `en`)
 
 ### Response
@@ -209,20 +209,62 @@ pm2 save
     }
   ],
   "notFound": [],
-  "errors": []
+  "errors": [],
+  "localization": {
+    "requested": 1,
+    "ready": 0,
+    "pending": 1,
+    "retrying": 0,
+    "notFound": 0,
+    "stale": 0
+  }
 }
 ```
 
 **Response Fields:**
 
 - `games`: Successfully fetched games (from cache or IGDB)
-  - `name`: Original game name (always in English)
-  - `localizedName`: Localized name (only present when found and different from `name`)
+  - `name`: Base IGDB game name
+  - `localizedName`: Steam publisher-authored localized name, when cached
+  - `localizedNameSource` / `summarySource`: `steam_store` when present
   - `screenshots`: Array of game screenshots
   - `artworks`: Array of official artworks (key art, concept art, logos, etc.)
   - `videos`: Array of game videos with YouTube links
 - `notFound`: Steam IDs with no IGDB mapping
 - `errors`: Steam IDs that failed to fetch (with reasons)
+- `localization`: Current server-side official-localization queue/cache counts
+
+### Incremental official localization
+
+`POST /api/localizations` is idempotent. It returns cached Steam Store metadata
+immediately and enqueues missing or stale AppIDs; it never waits for a live
+Store request.
+
+```bash
+curl -X POST http://localhost:3000/api/localizations \
+  -H "Content-Type: application/json" \
+  -d '{"steamIds": [730, 570, 440], "language": "zh-CN"}'
+```
+
+```json
+{
+  "items": [],
+  "pending": [730, 570, 440],
+  "retrying": [],
+  "notFound": [],
+  "status": {
+    "requested": 3,
+    "ready": 0,
+    "pending": 3,
+    "retrying": 0,
+    "notFound": 0,
+    "stale": 0
+  }
+}
+```
+
+Clients should apply `items`, stop polling fresh items and `notFound` IDs, and
+retry `pending`/`retrying` IDs after at least `retryAfterSeconds` when supplied.
 
 ### Artwork Types
 
@@ -298,22 +340,22 @@ Game names and descriptions are never translated by AI at request time.
 
 ### Game Name Localization
 
-Localized metadata is selected in this order:
+Only **Steam Store** publisher-authored application names and short descriptions
+are exposed as official localized text. When no Store metadata is cached, the
+service keeps the Steam library title on the client and leaves a non-English
+description empty; it does not present IGDB regional fields or generated text
+as official localization.
 
-1. **Steam Store** - publisher-authored localized application name and short
-   description for the requested language
-2. **IGDB game_localizations** - regional localized title fallback
-3. **IGDB alternative_names** - language-labelled alternative title fallback
-4. **IGDB source metadata** - original name and summary fallback
-
-Steam may return the publisher's English fallback when no localized store copy
-exists. The service preserves that source text and does not synthesize a
-translation. Store lookups use bounded concurrency, transient-error retries,
-and the 3-7 day language-specific cache.
+All live Store lookups run through one durable, deduplicated queue. One global
+worker starts at most two requests per second. HTTP 429 pauses the provider
+globally using `Retry-After` or exponential backoff. Successful localized data
+is cached for 30 days, publisher English fallbacks for 7 days, and negative
+responses for 24 hours. Stale success remains readable during refresh, while
+transient failures never overwrite content.
 
 The Valve-operated storefront app-details route currently accepts one AppID per
 request and is not documented as a supported Steamworks Web API. The service
-therefore treats Store failures as non-fatal and falls back to IGDB.
+therefore treats failures as non-fatal queue state, not as localized content.
 
 ### Generate Genre/Theme Translation Maps
 
