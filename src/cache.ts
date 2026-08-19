@@ -4,7 +4,7 @@ import type { GameData, CachedGame } from "./types";
 // TTL 范围：3-7 天（毫秒）
 const MIN_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 const MAX_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const CACHE_FORMAT_VERSION = 2;
+const CACHE_FORMAT_VERSION = 3;
 
 function generateRandomTTL(): number {
   return MIN_TTL_MS + Math.random() * (MAX_TTL_MS - MIN_TTL_MS);
@@ -20,12 +20,14 @@ export class CacheManager {
 
   private initDatabase(): void {
     // 检查是否需要迁移旧表
-    const tableInfo = this.db.query<{ name: string }, []>(
-      "PRAGMA table_info(games)"
-    ).all();
+    const tableInfo = this.db
+      .query<{ name: string }, []>("PRAGMA table_info(games)")
+      .all();
 
-    const hasLanguage = tableInfo.some(col => col.name === "language");
-    const hasCacheVersion = tableInfo.some(col => col.name === "cache_version");
+    const hasLanguage = tableInfo.some((col) => col.name === "language");
+    const hasCacheVersion = tableInfo.some(
+      (col) => col.name === "cache_version",
+    );
 
     if (tableInfo.length > 0 && (!hasLanguage || !hasCacheVersion)) {
       // 旧缓存不包含语言或翻译版本，删除重建以免继续返回英文描述。
@@ -54,13 +56,19 @@ export class CacheManager {
       CREATE INDEX IF NOT EXISTS idx_expires_at ON games(expires_at)
     `);
 
+    // Version 2 may contain AI-generated titles and summaries. Never serve or
+    // retain those rows after switching to publisher-authored store metadata.
+    this.db.run("DELETE FROM games WHERE cache_version != ?", [
+      CACHE_FORMAT_VERSION,
+    ]);
+
     console.log("[Cache] Database initialized");
   }
 
   get(steamId: number, language: string): GameData | null {
     const now = Date.now();
     const query = this.db.query<CachedGame, [number, string, number]>(
-      "SELECT * FROM games WHERE steam_id = ? AND language = ? AND cache_version = ?"
+      "SELECT * FROM games WHERE steam_id = ? AND language = ? AND cache_version = ?",
     );
     const result = query.get(steamId, language, CACHE_FORMAT_VERSION);
 
@@ -76,7 +84,10 @@ export class CacheManager {
         console.log(`[Cache] HIT for Steam ID ${steamId} (${language})`);
         return JSON.parse(result.data) as GameData;
       } catch (error) {
-        console.error(`[Cache] Failed to parse data for Steam ID ${steamId}:`, error);
+        console.error(
+          `[Cache] Failed to parse data for Steam ID ${steamId}:`,
+          error,
+        );
         return null;
       }
     }
@@ -86,15 +97,23 @@ export class CacheManager {
   }
 
   private delete(steamId: number, language: string): void {
-    this.db.run("DELETE FROM games WHERE steam_id = ? AND language = ?", [steamId, language]);
+    this.db.run("DELETE FROM games WHERE steam_id = ? AND language = ?", [
+      steamId,
+      language,
+    ]);
   }
 
-  set(steamId: number, igdbId: number, language: string, gameData: GameData): void {
+  set(
+    steamId: number,
+    igdbId: number,
+    language: string,
+    gameData: GameData,
+  ): void {
     const now = Date.now();
     const expiresAt = now + generateRandomTTL();
     const query = this.db.query(
       `INSERT OR REPLACE INTO games (steam_id, igdb_id, language, cache_version, data, cached_at, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
     );
 
     query.run(
@@ -113,9 +132,9 @@ export class CacheManager {
     if (steamIds.length === 0) return new Map();
 
     const now = Date.now();
-    const placeholders = steamIds.map(() => '?').join(',');
+    const placeholders = steamIds.map(() => "?").join(",");
     const query = this.db.query<CachedGame, [...number[], string, number]>(
-      `SELECT * FROM games WHERE steam_id IN (${placeholders}) AND language = ? AND cache_version = ?`
+      `SELECT * FROM games WHERE steam_id IN (${placeholders}) AND language = ? AND cache_version = ?`,
     );
     const results = query.all(...steamIds, language, CACHE_FORMAT_VERSION);
 
@@ -125,14 +144,20 @@ export class CacheManager {
     for (const result of results) {
       // 检查是否过期
       if (result.expires_at < now) {
-        expiredIds.push({ steamId: result.steam_id, language: result.language });
+        expiredIds.push({
+          steamId: result.steam_id,
+          language: result.language,
+        });
         continue;
       }
 
       try {
         map.set(result.steam_id, JSON.parse(result.data) as GameData);
       } catch (error) {
-        console.error(`[Cache] Failed to parse data for Steam ID ${result.steam_id}:`, error);
+        console.error(
+          `[Cache] Failed to parse data for Steam ID ${result.steam_id}:`,
+          error,
+        );
       }
     }
 

@@ -1,7 +1,7 @@
 import { IGDBClient } from "./igdb-client";
 import { CacheManager } from "./cache";
 import { transformIGDBGame } from "./transformer";
-import type { GameLocalizer } from "./translation-service";
+import type { GameLocalizer } from "./steam-store-service";
 import type { GamesRequest, GamesResponse, ErrorData } from "./types";
 
 export class GameService {
@@ -62,7 +62,8 @@ export class GameService {
     // Step 2: Map Steam IDs to IGDB IDs
     let steamToIgdbMap: Map<number, number>;
     try {
-      steamToIgdbMap = await this.igdbClient.getSteamToIGDBMappings(uncachedIds);
+      steamToIgdbMap =
+        await this.igdbClient.getSteamToIGDBMappings(uncachedIds);
     } catch (error) {
       // If mapping fails, mark all as errors
       for (const steamId of uncachedIds) {
@@ -113,9 +114,8 @@ export class GameService {
         }
       }
 
-      // Step 5: Fill gaps in localized names and descriptions, then cache the
-      // language-specific result. Official IGDB localized names remain
-      // authoritative inside the localizer.
+      // Step 5: Prefer publisher-authored Steam Store localization, then cache
+      // the language-specific result. Missing store data falls back to IGDB.
       const localizedGames = this.localizer
         ? await this.localizer.localizeGames(
             transformedGames.map((game) => game.data),

@@ -5,11 +5,11 @@ TypeScript + Bun server for querying IGDB game data using Steam IDs with persist
 ## Features
 
 - 🎮 Query game data from IGDB using Steam IDs
-- 💾 Persistent SQLite caching (permanent until force refresh)
+- 💾 Language-specific SQLite caching with a 3-7 day TTL
 - ⚡ Fast responses via in-memory + disk cache
 - 🔄 OAuth token management with auto-refresh
 - 📊 Partial success responses (found/notFound/errors)
-- 🌐 Multi-language support for game names, descriptions, genres and themes
+- 🌐 Publisher-authored Steam localization for game names and descriptions
 - 🚀 Built with Bun for optimal performance
 
 ## Prerequisites
@@ -133,9 +133,10 @@ pm2 save
 ```
 
 **Parameters:**
+
 - `steamIds` (required): Array of Steam app IDs (max 100)
-- `forceRefresh` (optional): Skip cache and fetch fresh data from IGDB
-- `language` (optional): Language code for game names/descriptions/genres/themes (default: `en`)
+- `forceRefresh` (optional): Skip cache and fetch fresh data from IGDB and Steam
+- `language` (optional): Language code for names, descriptions, genres, and themes (default: `en`)
 
 ### Response
 
@@ -145,8 +146,7 @@ pm2 save
     {
       "steamId": 730,
       "name": "Counter-Strike: Global Offensive",
-      "localizedName": "反恐精英：全球攻势",
-  "summary": "《反恐精英：全球攻势》是一款...",
+      "summary": "二十多年来，在全球数百万玩家的共同铸就下...",
       "url": "https://www.igdb.com/games/counter-strike-global-offensive",
       "cover": {
         "url": "https://images.igdb.com/igdb/image/upload/t_cover_big/...",
@@ -188,18 +188,10 @@ pm2 save
           "synopsis": "..."
         }
       ],
-      "platforms": [
-        { "name": "PC (Microsoft Windows)" }
-      ],
-      "game_modes": [
-        { "name": "Multiplayer" }
-      ],
-      "genres": [
-        { "name": "Shooter" }
-      ],
-      "themes": [
-        { "name": "Action" }
-      ],
+      "platforms": [{ "name": "PC (Microsoft Windows)" }],
+      "game_modes": [{ "name": "Multiplayer" }],
+      "genres": [{ "name": "Shooter" }],
+      "themes": [{ "name": "Action" }],
       "language_supports": [
         {
           "language": "English",
@@ -212,12 +204,8 @@ pm2 save
           "cover": { "url": "..." }
         }
       ],
-      "developers": [
-        { "name": "Valve Corporation" }
-      ],
-      "publishers": [
-        { "name": "Valve Corporation" }
-      ]
+      "developers": [{ "name": "Valve Corporation" }],
+      "publishers": [{ "name": "Valve Corporation" }]
     }
   ],
   "notFound": [],
@@ -226,6 +214,7 @@ pm2 save
 ```
 
 **Response Fields:**
+
 - `games`: Successfully fetched games (from cache or IGDB)
   - `name`: Original game name (always in English)
   - `localizedName`: Localized name (only present when found and different from `name`)
@@ -239,20 +228,23 @@ pm2 save
 
 The `artwork_type` field indicates the type of artwork:
 
-| ID | Name | Description |
-|----|------|-------------|
-| 1 | Artwork | General artwork |
-| 2 | Key art without logo | Key art without game logo |
-| 3 | Key art with logo | Key art with game logo |
-| 4 | Concept art | Concept artwork |
-| 5 | Game logo (white) | White version of game logo |
-| 6 | Game logo (black) | Black version of game logo |
-| 7 | Game logo (color) | Color version of game logo |
-| 8 | Infographic | Infographic image |
+| ID  | Name                 | Description                |
+| --- | -------------------- | -------------------------- |
+| 1   | Artwork              | General artwork            |
+| 2   | Key art without logo | Key art without game logo  |
+| 3   | Key art with logo    | Key art with game logo     |
+| 4   | Concept art          | Concept artwork            |
+| 5   | Game logo (white)    | White version of game logo |
+| 6   | Game logo (black)    | Black version of game logo |
+| 7   | Game logo (color)    | Color version of game logo |
+| 8   | Infographic          | Infographic image          |
 
 **Filter Key Art:**
+
 ```javascript
-const keyArts = game.artworks.filter(a => a.artwork_type === 2 || a.artwork_type === 3);
+const keyArts = game.artworks.filter(
+  (a) => a.artwork_type === 2 || a.artwork_type === 3,
+);
 ```
 
 ### Examples
@@ -290,41 +282,49 @@ curl http://localhost:3000/health
 ## Multi-language Support
 
 The service supports localized game names, descriptions, genres and themes.
+Game names and descriptions are never translated by AI at request time.
 
 ### Supported Languages
 
-| Code | Language | Game Names | Descriptions | Genres/Themes |
-|------|----------|------------|--------------|---------------|
-| `en` | English (default) | ✅ | ✅ | ✅ |
-| `zh-CN` | Simplified Chinese | ✅ | ✅ | ✅ |
-| `zh-TW` | Traditional Chinese | ✅ | ✅ | ❌ |
-| `zh` | Chinese | ✅ | ✅ | ❌ |
-| `ja` | Japanese | ✅ | ✅ | ❌ |
-| `ko` | Korean | ✅ | ✅ | ❌ |
-| `pt-BR` | Brazilian Portuguese | ✅ | ✅ | ❌ |
+| Code    | Language             | Steam Store code | Genres/Themes |
+| ------- | -------------------- | ---------------- | ------------- |
+| `en`    | English (default)    | not requested    | ✅            |
+| `zh-CN` | Simplified Chinese   | `schinese`       | ✅            |
+| `zh-TW` | Traditional Chinese  | `tchinese`       | ❌            |
+| `zh`    | Chinese              | `schinese`       | ❌            |
+| `ja`    | Japanese             | `japanese`       | ❌            |
+| `ko`    | Korean               | `koreana`        | ❌            |
+| `pt-BR` | Brazilian Portuguese | `brazilian`      | ❌            |
 
 ### Game Name Localization
 
-Game names are fetched from IGDB using two sources (in priority order):
+Localized metadata is selected in this order:
 
-1. **game_localizations** - Official localized names by region
-2. **alternative_names** - Alternative titles with language comments
+1. **Steam Store** - publisher-authored localized application name and short
+   description for the requested language
+2. **IGDB game_localizations** - regional localized title fallback
+3. **IGDB alternative_names** - language-labelled alternative title fallback
+4. **IGDB source metadata** - original name and summary fallback
 
-Official IGDB localized names are preferred. When IGDB does not provide one,
-the configured AI translation service supplies a commonly used localized title.
-Descriptions are translated by the same service. If translation is unavailable
-or fails, the endpoint degrades gracefully to the original IGDB metadata.
+Steam may return the publisher's English fallback when no localized store copy
+exists. The service preserves that source text and does not synthesize a
+translation. Store lookups use bounded concurrency, transient-error retries,
+and the 3-7 day language-specific cache.
 
-Runtime metadata translation requires `AI_API_KEY`, `AI_BASE_URL`, and
-`AI_MODEL`. Translated results are cached per language.
+The Valve-operated storefront app-details route currently accepts one AppID per
+request and is not documented as a supported Steamworks Web API. The service
+therefore treats Store failures as non-fatal and falls back to IGDB.
 
-### Generate Translations
+### Generate Genre/Theme Translation Maps
 
 To add or update genre/theme translations, use the translation generator script:
 
 ```bash
 bun run generate-translations --lang zh-CN,ja,ko
 ```
+
+This is an offline maintenance tool only. The runtime game metadata endpoint
+does not read these AI settings or call an AI provider.
 
 **Required Environment Variables:**
 
@@ -335,6 +335,7 @@ AI_MODEL=gpt-4o-mini
 ```
 
 The script will:
+
 1. Fetch all genres and themes from IGDB
 2. Translate them using AI
 3. Save to `src/i18n/genres.json` and `src/i18n/themes.json`
@@ -348,6 +349,7 @@ Run the test script:
 ```
 
 Tests cover:
+
 - Valid requests with known Steam IDs
 - Cache behavior
 - Force refresh
@@ -389,6 +391,7 @@ Tests cover:
 ```
 
 **Flow:**
+
 1. Client sends Steam IDs to `/api/games`
 2. Service checks SQLite cache
 3. For cache misses, queries IGDB:
@@ -424,6 +427,7 @@ Cache will be recreated on next request.
 IGDB free tier: **4 requests/second**
 
 The service implements:
+
 - Batch processing (10 Steam IDs per request)
 - 250ms delay between batches
 - Permanent caching to minimize API calls
@@ -431,15 +435,18 @@ The service implements:
 ## Troubleshooting
 
 **"Failed to get OAuth token"**
+
 - Verify `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` in `.env`
 - Check credentials at https://dev.twitch.tv/console
 
 **"IGDB API error: 429"**
+
 - Rate limit exceeded
 - Wait a few seconds and retry
 - Check for excessive forceRefresh usage
 
 **"No mapping found for Steam ID"**
+
 - Steam game not in IGDB database
 - Steam ID incorrect or game not released
 - Check Steam store page for correct app ID
@@ -452,6 +459,7 @@ igdb_service/
 │   ├── index.ts         # HTTP server + main entry
 │   ├── service.ts       # Game service orchestration
 │   ├── igdb-client.ts   # IGDB API client + OAuth
+│   ├── steam-store-service.ts # Publisher-authored localized metadata
 │   ├── cache.ts         # SQLite cache manager
 │   ├── transformer.ts   # Data transformation
 │   ├── types.ts         # TypeScript definitions

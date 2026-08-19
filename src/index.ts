@@ -1,5 +1,5 @@
 import { GameService } from "./service";
-import { GameTranslationService } from "./translation-service";
+import { SteamStoreMetadataService } from "./steam-store-service";
 import type { GamesRequest } from "./types";
 
 // Load environment variables
@@ -15,7 +15,7 @@ if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) {
 const gameService = new GameService(
   TWITCH_CLIENT_ID,
   TWITCH_CLIENT_SECRET,
-  GameTranslationService.fromEnvironment(),
+  new SteamStoreMetadataService(),
 );
 
 const server = Bun.serve({
@@ -44,27 +44,31 @@ const server = Bun.serve({
     // Main endpoint
     if (url.pathname === "/api/games" && req.method === "POST") {
       try {
-        const body = await req.json() as { steamIds?: unknown; forceRefresh?: unknown; language?: unknown };
+        const body = (await req.json()) as {
+          steamIds?: unknown;
+          forceRefresh?: unknown;
+          language?: unknown;
+        };
 
         // Validation
         if (!body.steamIds || !Array.isArray(body.steamIds)) {
           return new Response(
             JSON.stringify({ error: "steamIds array is required" }),
-            { status: 400, headers }
+            { status: 400, headers },
           );
         }
 
         if (body.steamIds.length === 0) {
           return new Response(
             JSON.stringify({ error: "steamIds array cannot be empty" }),
-            { status: 400, headers }
+            { status: 400, headers },
           );
         }
 
         if (body.steamIds.length > 100) {
           return new Response(
             JSON.stringify({ error: "Maximum 100 Steam IDs per request" }),
-            { status: 400, headers }
+            { status: 400, headers },
           );
         }
 
@@ -72,18 +76,19 @@ const server = Bun.serve({
         if (!body.steamIds.every((id: unknown) => typeof id === "number")) {
           return new Response(
             JSON.stringify({ error: "All Steam IDs must be numbers" }),
-            { status: 400, headers }
+            { status: 400, headers },
           );
         }
 
         const request: GamesRequest = {
           steamIds: body.steamIds,
-          forceRefresh: typeof body.forceRefresh === "boolean" ? body.forceRefresh : false,
+          forceRefresh:
+            typeof body.forceRefresh === "boolean" ? body.forceRefresh : false,
           language: typeof body.language === "string" ? body.language : "en",
         };
 
         console.log(
-          `[Server] Processing request for ${request.steamIds.length} games`
+          `[Server] Processing request for ${request.steamIds.length} games`,
         );
 
         const response = await gameService.getGames(request);
@@ -91,11 +96,12 @@ const server = Bun.serve({
         return new Response(JSON.stringify(response), { headers });
       } catch (error) {
         console.error("[Server] Error:", error);
-        const message = error instanceof Error ? error.message : "Internal server error";
-        return new Response(
-          JSON.stringify({ error: message }),
-          { status: 500, headers }
-        );
+        const message =
+          error instanceof Error ? error.message : "Internal server error";
+        return new Response(JSON.stringify({ error: message }), {
+          status: 500,
+          headers,
+        });
       }
     }
 
