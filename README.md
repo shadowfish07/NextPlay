@@ -9,7 +9,7 @@ TypeScript + Bun server for querying IGDB game data using Steam IDs with persist
 - ⚡ Fast responses via in-memory + disk cache
 - 🔄 OAuth token management with auto-refresh
 - 📊 Partial success responses (found/notFound/errors)
-- 🌐 Multi-language support for game names, genres and themes
+- 🌐 Multi-language support for game names, descriptions, genres and themes
 - 🚀 Built with Bun for optimal performance
 
 ## Prerequisites
@@ -135,7 +135,7 @@ pm2 save
 **Parameters:**
 - `steamIds` (required): Array of Steam app IDs (max 100)
 - `forceRefresh` (optional): Skip cache and fetch fresh data from IGDB
-- `language` (optional): Language code for game names/genres/themes (default: `en`)
+- `language` (optional): Language code for game names/descriptions/genres/themes (default: `en`)
 
 ### Response
 
@@ -146,7 +146,7 @@ pm2 save
       "steamId": 730,
       "name": "Counter-Strike: Global Offensive",
       "localizedName": "反恐精英：全球攻势",
-      "summary": "Counter-Strike: Global Offensive...",
+  "summary": "《反恐精英：全球攻势》是一款...",
       "url": "https://www.igdb.com/games/counter-strike-global-offensive",
       "cover": {
         "url": "https://images.igdb.com/igdb/image/upload/t_cover_big/...",
@@ -289,19 +289,19 @@ curl http://localhost:3000/health
 
 ## Multi-language Support
 
-The service supports localized game names, genres and themes.
+The service supports localized game names, descriptions, genres and themes.
 
 ### Supported Languages
 
-| Code | Language | Game Names | Genres/Themes |
-|------|----------|------------|---------------|
-| `en` | English (default) | ✅ | ✅ |
-| `zh-CN` | Simplified Chinese | ✅ | ✅ |
-| `zh-TW` | Traditional Chinese | ✅ | ❌ |
-| `zh` | Chinese | ✅ | ❌ |
-| `ja` | Japanese | ✅ | ❌ |
-| `ko` | Korean | ✅ | ❌ |
-| `pt-BR` | Brazilian Portuguese | ✅ | ❌ |
+| Code | Language | Game Names | Descriptions | Genres/Themes |
+|------|----------|------------|--------------|---------------|
+| `en` | English (default) | ✅ | ✅ | ✅ |
+| `zh-CN` | Simplified Chinese | ✅ | ✅ | ✅ |
+| `zh-TW` | Traditional Chinese | ✅ | ✅ | ❌ |
+| `zh` | Chinese | ✅ | ✅ | ❌ |
+| `ja` | Japanese | ✅ | ✅ | ❌ |
+| `ko` | Korean | ✅ | ✅ | ❌ |
+| `pt-BR` | Brazilian Portuguese | ✅ | ✅ | ❌ |
 
 ### Game Name Localization
 
@@ -310,9 +310,13 @@ Game names are fetched from IGDB using two sources (in priority order):
 1. **game_localizations** - Official localized names by region
 2. **alternative_names** - Alternative titles with language comments
 
-If no localized name is found, the original English name is returned.
+Official IGDB localized names are preferred. When IGDB does not provide one,
+the configured AI translation service supplies a commonly used localized title.
+Descriptions are translated by the same service. If translation is unavailable
+or fails, the endpoint degrades gracefully to the original IGDB metadata.
 
-> **Note:** IGDB's localized name coverage varies by game. Many games may not have Chinese or other language names available.
+Runtime metadata translation requires `AI_API_KEY`, `AI_BASE_URL`, and
+`AI_MODEL`. Translated results are cached per language.
 
 ### Generate Translations
 

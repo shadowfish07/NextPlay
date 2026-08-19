@@ -219,6 +219,7 @@ export interface CachedGame {
   steam_id: number;
   igdb_id: number;
   language: string;
+  cache_version: number;
   data: string; // JSON string
   cached_at: number;
   expires_at: number;

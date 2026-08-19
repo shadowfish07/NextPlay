@@ -4,6 +4,7 @@ import type { GameData, CachedGame } from "./types";
 // TTL 范围：3-7 天（毫秒）
 const MIN_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 const MAX_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const CACHE_FORMAT_VERSION = 2;
 
 function generateRandomTTL(): number {
   return MIN_TTL_MS + Math.random() * (MAX_TTL_MS - MIN_TTL_MS);
@@ -24,9 +25,10 @@ export class CacheManager {
     ).all();
 
     const hasLanguage = tableInfo.some(col => col.name === "language");
+    const hasCacheVersion = tableInfo.some(col => col.name === "cache_version");
 
-    if (tableInfo.length > 0 && !hasLanguage) {
-      // 旧表存在但没有 language 字段，删除重建
+    if (tableInfo.length > 0 && (!hasLanguage || !hasCacheVersion)) {
+      // 旧缓存不包含语言或翻译版本，删除重建以免继续返回英文描述。
       console.log("[Cache] Migrating old cache table...");
       this.db.run("DROP TABLE IF EXISTS games");
     }
@@ -36,6 +38,7 @@ export class CacheManager {
         steam_id INTEGER NOT NULL,
         igdb_id INTEGER NOT NULL,
         language TEXT NOT NULL,
+        cache_version INTEGER NOT NULL,
         data TEXT NOT NULL,
         cached_at INTEGER NOT NULL,
         expires_at INTEGER NOT NULL,
@@ -56,10 +59,10 @@ export class CacheManager {
 
   get(steamId: number, language: string): GameData | null {
     const now = Date.now();
-    const query = this.db.query<CachedGame, [number, string]>(
-      "SELECT * FROM games WHERE steam_id = ? AND language = ?"
+    const query = this.db.query<CachedGame, [number, string, number]>(
+      "SELECT * FROM games WHERE steam_id = ? AND language = ? AND cache_version = ?"
     );
-    const result = query.get(steamId, language);
+    const result = query.get(steamId, language, CACHE_FORMAT_VERSION);
 
     if (result) {
       // 检查是否过期
@@ -90,11 +93,19 @@ export class CacheManager {
     const now = Date.now();
     const expiresAt = now + generateRandomTTL();
     const query = this.db.query(
-      `INSERT OR REPLACE INTO games (steam_id, igdb_id, language, data, cached_at, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT OR REPLACE INTO games (steam_id, igdb_id, language, cache_version, data, cached_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     );
 
-    query.run(steamId, igdbId, language, JSON.stringify(gameData), now, expiresAt);
+    query.run(
+      steamId,
+      igdbId,
+      language,
+      CACHE_FORMAT_VERSION,
+      JSON.stringify(gameData),
+      now,
+      expiresAt,
+    );
     console.log(`[Cache] Stored Steam ID ${steamId} (${language})`);
   }
 
@@ -103,10 +114,10 @@ export class CacheManager {
 
     const now = Date.now();
     const placeholders = steamIds.map(() => '?').join(',');
-    const query = this.db.query<CachedGame, [...number[], string]>(
-      `SELECT * FROM games WHERE steam_id IN (${placeholders}) AND language = ?`
+    const query = this.db.query<CachedGame, [...number[], string, number]>(
+      `SELECT * FROM games WHERE steam_id IN (${placeholders}) AND language = ? AND cache_version = ?`
     );
-    const results = query.all(...steamIds, language);
+    const results = query.all(...steamIds, language, CACHE_FORMAT_VERSION);
 
     const map = new Map<number, GameData>();
     const expiredIds: Array<{ steamId: number; language: string }> = [];

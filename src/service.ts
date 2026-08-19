@@ -1,15 +1,22 @@
 import { IGDBClient } from "./igdb-client";
 import { CacheManager } from "./cache";
 import { transformIGDBGame } from "./transformer";
+import type { GameLocalizer } from "./translation-service";
 import type { GamesRequest, GamesResponse, ErrorData } from "./types";
 
 export class GameService {
   private igdbClient: IGDBClient;
   private cache: CacheManager;
+  private localizer?: GameLocalizer;
 
-  constructor(clientId: string, clientSecret: string) {
+  constructor(
+    clientId: string,
+    clientSecret: string,
+    localizer?: GameLocalizer,
+  ) {
     this.igdbClient = new IGDBClient(clientId, clientSecret);
     this.cache = new CacheManager();
+    this.localizer = localizer;
   }
 
   async getGames(request: GamesRequest): Promise<GamesResponse> {
@@ -86,20 +93,44 @@ export class GameService {
       // Create IGDB ID to game mapping
       const igdbGameMap = new Map(igdbGames.map((g) => [g.id, g]));
 
-      // Step 4: Transform and cache results
+      // Step 4: Transform results
+      const transformedGames: Array<{
+        steamId: number;
+        igdbId: number;
+        data: ReturnType<typeof transformIGDBGame>;
+      }> = [];
       for (const [steamId, igdbId] of steamToIgdbMap.entries()) {
         const igdbGame = igdbGameMap.get(igdbId);
 
         if (igdbGame) {
           const gameData = transformIGDBGame(igdbGame, steamId, language);
-          response.games.push(gameData);
-          this.cache.set(steamId, igdbId, language, gameData);
+          transformedGames.push({ steamId, igdbId, data: gameData });
         } else {
           response.errors.push({
             steamId,
             reason: "Game details not found in IGDB response",
           });
         }
+      }
+
+      // Step 5: Fill gaps in localized names and descriptions, then cache the
+      // language-specific result. Official IGDB localized names remain
+      // authoritative inside the localizer.
+      const localizedGames = this.localizer
+        ? await this.localizer.localizeGames(
+            transformedGames.map((game) => game.data),
+            language,
+          )
+        : transformedGames.map((game) => game.data);
+      const identifiers = new Map(
+        transformedGames.map((game) => [game.steamId, game.igdbId]),
+      );
+
+      for (const gameData of localizedGames) {
+        const igdbId = identifiers.get(gameData.steamId);
+        if (igdbId === undefined) continue;
+        response.games.push(gameData);
+        this.cache.set(gameData.steamId, igdbId, language, gameData);
       }
     } catch (error) {
       // If fetching fails, mark all remaining as errors

@@ -1,4 +1,5 @@
 import { GameService } from "./service";
+import { GameTranslationService } from "./translation-service";
 import type { GamesRequest } from "./types";
 
 // Load environment variables
@@ -11,7 +12,11 @@ if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) {
   process.exit(1);
 }
 
-const gameService = new GameService(TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET);
+const gameService = new GameService(
+  TWITCH_CLIENT_ID,
+  TWITCH_CLIENT_SECRET,
+  GameTranslationService.fromEnvironment(),
+);
 
 const server = Bun.serve({
   port: PORT,
