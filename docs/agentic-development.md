@@ -5,7 +5,7 @@ NextPlay exposes one deterministic path for each verification layer so Codex and
 ## Prerequisites
 
 - Flutter `3.35.1` and Dart from that Flutter SDK.
-- Java 17 and an Android SDK with `adb`, `emulator`, accepted licenses, and a dedicated Pixel emulator. Local default: `NextPlay_E2E_API_36` with a 12GB data partition.
+- Java 17 and an Android SDK with `adb`, `emulator`, accepted licenses, and a dedicated Pixel emulator. Local default: `Pixel_7_Pro_API_36`.
 - `curl` and `rg` for live contract checks.
 - A manually unlocked desktop session when Codex must inspect or click the Android emulator or configure ChatGPT desktop actions. macOS may require Accessibility and Screen Recording permission.
 
@@ -14,6 +14,12 @@ No verification command uses raw `flutter run`.
 ## Commands
 
 ```bash
+# Initialize this checkout. A linked worktree copies primary .env once.
+tool/worktree.sh setup
+
+# Inspect identity, credential provenance, and the shared Android lease.
+tool/worktree.sh status
+
 # Code generation, formatting, analysis, host tests, and coverage >= 15%
 tool/verify_fast.sh
 
@@ -28,11 +34,16 @@ tool/live_smoke.sh
 
 # Optional one-off override; exported values take precedence over .env
 NEXTPLAY_STEAM_API_KEY=... NEXTPLAY_STEAM_ID=... tool/live_smoke.sh
+
+# Explicitly refresh a linked worktree from the primary .env.
+tool/worktree.sh env:pull
 ```
 
-Local Codex actions automatically load `NEXTPLAY_*` assignments from the ignored repository-root `.env`. Copy `.env.example` to `.env`, fill `NEXTPLAY_STEAM_API_KEY` and `NEXTPLAY_STEAM_ID`, and keep the file local. The loader does not execute arbitrary shell content, exported variables override file values, and credential values are never echoed.
+Local Codex actions automatically load `NEXTPLAY_*` assignments from the ignored repository-root `.env`. The primary checkout owns the canonical local file. `tool/worktree.sh setup` copies the complete file into a linked worktree only when its local `.env` is absent, applies mode `0600`, and never writes it back. `tool/worktree.sh env:pull` is the explicit refresh path and creates an ignored local backup before replacement. The loader does not execute arbitrary shell content, exported variables override file values, and credential values are never echoed.
 
-`tool/e2e_android.sh` uses `NEXTPLAY_ANDROID_DEVICE` when explicitly set. Otherwise it reuses or starts only the named `NEXTPLAY_AVD`, so a daily-use emulator or physical device is not selected accidentally. It clears only `me.zqydev.nextplay.debug`, and it stops an emulator only when the script started that emulator. Evidence is written under ignored `.artifacts/e2e/<timestamp>/`.
+`tool/e2e_android.sh` acquires one lease under the shared Git common directory before touching Android state, so direct invocations and worktree wrappers cannot clear or reinstall the debug package concurrently. It uses `NEXTPLAY_ANDROID_DEVICE` when explicitly set and verifies that the serial belongs to `NEXTPLAY_AVD`; otherwise it reuses or starts only the named AVD. It clears only `me.zqydev.nextplay.debug`, stops an emulator only when the script started it, and releases the lease in its exit cleanup. Evidence is written under ignored `.artifacts/e2e/<timestamp>/`.
+
+SQLite, SharedPreferences, secure storage, installed APKs, and WebView state belong to the AVD rather than the Git checkout. They are intentionally ephemeral under deterministic E2E and are never copied between worktrees or pushed into the primary checkout. See [worktree development](worktree-development.md) for lifecycle and recovery details.
 
 ## Test architecture
 
@@ -74,7 +85,7 @@ Tests never automate a real Steam login. A human must take over for Steam authen
 
 ## Codex local environment
 
-In ChatGPT desktop, open the NextPlay project and configure its local environment from Settings. Use `flutter pub get` as the worktree setup script, then create actions whose scripts are exactly:
+In ChatGPT desktop, open the NextPlay project and configure its local environment from Settings. Use `tool/worktree.sh setup` as the worktree setup script, then create actions whose scripts are exactly:
 
 - `Fast verify` → `tool/verify_fast.sh`
 - `Android E2E` → `tool/e2e_android.sh`

@@ -1,0 +1,5 @@
+scripts:
+  setup: |
+    tool/worktree.sh setup
+  archive: |
+    tool/worktree.sh down

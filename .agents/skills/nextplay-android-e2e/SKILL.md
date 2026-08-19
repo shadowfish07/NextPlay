@@ -12,7 +12,8 @@ Use the repository-owned commands as the source of truth. Prefer Flutter test AP
 1. Work from the repository root and read `AGENTS.md`.
 2. Inspect `git status --short` before changing anything. Preserve unrelated user changes.
 3. Read `docs/agentic-development.md` when test architecture, credentials, selectors, or human handoff boundaries matter.
-4. Never print or commit `.env`, credentials, `.artifacts/`, signing material, local databases, screenshots, UI dumps, or logs.
+4. In a linked worktree, run `tool/worktree.sh setup` before other commands. It installs locked dependencies, generates required sources, and seeds the ignored `.env` without overwriting an existing copy.
+5. Never print or commit `.env`, credentials, `.artifacts/`, signing material, local databases, screenshots, UI dumps, or logs.
 
 ## Select the required gates
 
@@ -32,13 +33,23 @@ tool/verify_fast.sh
 tool/e2e_android.sh
 ```
 
+In a linked worktree, prefer the lifecycle wrapper so setup cannot be skipped:
+
+```bash
+tool/worktree.sh e2e
+```
+
+The wrapper and direct runner acquire the same lease under the Git common directory, so invoking `tool/e2e_android.sh` directly cannot bypass serialization.
+
 When selecting an already-running dedicated emulator, use:
 
 ```bash
 NEXTPLAY_ANDROID_DEVICE=emulator-5554 tool/e2e_android.sh
 ```
 
-Do not select an arbitrary physical or daily-use device. Without an explicit device, the runner reuses or starts only `NEXTPLAY_AVD` and clears only `me.zqydev.nextplay.debug`.
+Do not select an arbitrary physical or daily-use device. An explicit serial must report the configured `NEXTPLAY_AVD`; otherwise the runner fails closed. Without an explicit device, the runner reuses or starts only `NEXTPLAY_AVD` and clears only `me.zqydev.nextplay.debug`.
+
+All NextPlay worktrees share the one configured AVD. If another worktree owns it, wait for the shared lease or set a bounded `NEXTPLAY_ANDROID_LEASE_TIMEOUT_SECONDS`; never start a second arbitrary AVD to evade contention. Inspect ownership with `tool/worktree.sh status`. Use `tool/worktree.sh down` only for verified stale runtime state owned by the current worktree.
 
 Expect the Android runner to:
 
@@ -70,7 +81,7 @@ Use image inspection for `screenshot.png`. Read these files according to the sym
 
 Distinguish application failures from harness or emulator failures:
 
-- If the app is visible behind a Pixel Launcher ANR dialog, treat it as a system overlay. The runner should dismiss the known `android:id/aerr_close` dialog and then re-check NextPlay; do not weaken the NextPlay UI assertion.
+- If the app is visible behind a `Pixel Launcher isn't responding` or `System UI isn't responding` dialog, treat it as a known system overlay. The runner should dismiss its `android:id/aerr_close` control and then re-check NextPlay; do not weaken the NextPlay UI assertion.
 - If generated Freezed or JSON files are missing only in CI, remember that GitHub jobs have isolated checkouts. Generate code inside every job that compiles the app.
 - If a runner command such as `rg` is absent, install and version-check it in that CI job.
 - If a state test depends on a fixed delay, await the command or operation's completion future instead of increasing the sleep.
@@ -107,6 +118,7 @@ Before handing off:
 2. Confirm real Android build/install/launch behavior for runtime-relevant changes.
 3. Confirm the exact remote run is green when a push was part of the task.
 4. Check `git status --short` and distinguish this work from pre-existing user changes.
-5. Report the exercised behavior, CI run link, commit when applicable, and any untested or simulated boundary.
+5. Confirm the shared Android lease and owned runtime state were released; an emulator that predated the run should still be running.
+6. Report the exercised behavior, CI run link, commit when applicable, and any untested or simulated boundary.
 
 Never claim full Android closure from code review or host tests alone.

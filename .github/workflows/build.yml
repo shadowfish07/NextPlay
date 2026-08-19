@@ -26,7 +26,7 @@ jobs:
           cache: true
 
       - name: Get dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Fast verification and coverage gate
         run: tool/verify_fast.sh
@@ -61,7 +61,7 @@ jobs:
           cache: true
 
       - name: Get dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Generate code
         run: dart run build_runner build --delete-conflicting-outputs
@@ -85,8 +85,9 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_7_pro
+          avd-name: NextPlay_CI_API_35
           disable-animations: true
-          script: NEXTPLAY_ANDROID_DEVICE=emulator-5554 tool/e2e_android.sh
+          script: NEXTPLAY_AVD=NextPlay_CI_API_35 NEXTPLAY_ANDROID_DEVICE=emulator-5554 tool/e2e_android.sh
 
       - name: Upload Android evidence
         if: always()
@@ -121,7 +122,7 @@ jobs:
           cache: true
 
       - name: Get dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Generate code
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
