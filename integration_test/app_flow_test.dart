@@ -97,7 +97,7 @@ void main() {
       TestFixtures.softwareGame,
     ];
     final igdbGames = <IgdbGameData>[
-      ...TestFixtures.igdbGames,
+      ...TestFixtures.englishIgdbGames,
       const IgdbGameData(
         steamId: 738520,
         name: 'Breathedge',
@@ -107,10 +107,34 @@ void main() {
       const IgdbGameData(steamId: 646570, name: 'Slay the Spire'),
       const IgdbGameData(steamId: 367520, name: 'Hollow Knight'),
     ];
+    final simplifiedChineseIgdbGames = <IgdbGameData>[
+      ...TestFixtures.simplifiedChineseIgdbGames,
+      const IgdbGameData(
+        steamId: 738520,
+        name: 'Breathedge',
+        localizedName: '呼吸边缘',
+        summary: '在太空中生存并查明星际灾难的真相。',
+        coverUrl:
+            'https://images.igdb.com/igdb/image/upload/t_cover_big/co2wvo.jpg',
+      ),
+      const IgdbGameData(
+        steamId: 646570,
+        name: 'Slay the Spire',
+        localizedName: '杀戮尖塔',
+        summary: '组合卡牌与遗物，向不断变化的尖塔顶端进发。',
+      ),
+      const IgdbGameData(
+        steamId: 367520,
+        name: 'Hollow Knight',
+        localizedName: '空洞骑士',
+        summary: '在衰落的虫之王国中探索、战斗并发现古老的秘密。',
+      ),
+    ];
     final dependencies = await createTestDependencies(
       steamGames: steamGames,
       softwareAppIds: {TestFixtures.softwareGame.appId},
       igdbGames: igdbGames,
+      igdbGamesByLanguage: {'zh-CN': simplifiedChineseIgdbGames},
       databaseName: 'nextplay_android_e2e.db',
     );
 
@@ -218,6 +242,8 @@ void main() {
     await tester.tap(find.byKey(AppKeys.libraryItem(620)));
     await _waitFor(tester, find.byKey(AppKeys.detailsScreen));
     expect(find.byKey(AppKeys.detailsStatus), findsOneWidget);
+    expect(find.text('Portal 2'), findsWidgets);
+    expect(find.textContaining('fixture puzzle adventure'), findsOneWidget);
 
     expect(await tester.binding.handlePopRoute(), isTrue);
     await tester.pump(const Duration(milliseconds: 300));
@@ -227,6 +253,62 @@ void main() {
     await _tapAndWait(tester, AppKeys.settingsDestination);
     await _waitFor(tester, find.byKey(AppKeys.settingsScreen));
     expect(find.byKey(AppKeys.settingsSync), findsOneWidget);
+
+    final languageSetting = find.byKey(AppKeys.settingsLanguageChinese);
+    await tester.scrollUntilVisible(
+      languageSetting,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await Scrollable.ensureVisible(
+      tester.element(languageSetting),
+      alignment: 0.5,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(
+      find.descendant(of: languageSetting, matching: find.byType(InkWell)),
+    );
+    await _waitForLanguageSync(tester, languageSetting);
+
+    await _tapAndWait(tester, AppKeys.libraryDestination);
+    await _waitFor(tester, find.byKey(AppKeys.libraryScreen));
+    final localizedPortalItem = find.byKey(AppKeys.libraryItem(620));
+    await tester.scrollUntilVisible(
+      localizedPortalItem,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await Scrollable.ensureVisible(
+      tester.element(localizedPortalItem),
+      alignment: 0.5,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('传送门 2'), findsWidgets);
+    if (_captureVisualEvidence) {
+      await _holdForScreenshot(tester, 'localized-library');
+    }
+
+    await tester.tap(
+      find.descendant(of: localizedPortalItem, matching: find.byType(InkWell)),
+    );
+    await _waitFor(tester, find.byKey(AppKeys.detailsScreen));
+    expect(find.text('传送门 2'), findsWidgets);
+    final localizedSummary = find.textContaining('合作解谜体验');
+    await tester.scrollUntilVisible(
+      localizedSummary,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(localizedSummary, findsOneWidget);
+    if (_captureVisualEvidence) {
+      await _holdForScreenshot(tester, 'localized-details');
+    }
+
+    expect(await tester.binding.handlePopRoute(), isTrue);
+    await tester.pump(const Duration(milliseconds: 300));
+    await _waitFor(tester, find.byKey(AppKeys.libraryScreen));
+    await _tapAndWait(tester, AppKeys.settingsDestination);
+    await _waitFor(tester, find.byKey(AppKeys.settingsScreen));
 
     final softwareSetting = find.byKey(AppKeys.settingsExcludeSoftware);
     await tester.scrollUntilVisible(
@@ -367,4 +449,29 @@ Future<void> _waitForSoftwareSetting(
   }
   await tester.pump();
   expect(viewModel.excludeSoftware, expected);
+}
+
+Future<void> _waitForLanguageSync(
+  WidgetTester tester,
+  Finder languageSetting,
+) async {
+  final viewModel = Provider.of<SettingsViewModel>(
+    tester.element(languageSetting),
+    listen: false,
+  );
+  for (var attempt = 0; attempt < 200; attempt++) {
+    await tester.pump(const Duration(milliseconds: 10));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    if (!viewModel.updateIgdbLanguageCommand.isExecuting.value &&
+        !viewModel.isSyncing &&
+        viewModel.igdbLanguage == 'zh-CN') {
+      break;
+    }
+  }
+  await tester.pump();
+  expect(viewModel.igdbLanguage, 'zh-CN');
+  expect(viewModel.isSyncing, isFalse);
+  expect(viewModel.updateIgdbLanguageCommand.isExecuting.value, isFalse);
 }

@@ -155,11 +155,15 @@ class FakeIgdbGameService extends IgdbGameService {
     this.mode = FakeServiceMode.success,
     this.delay = Duration.zero,
     List<IgdbGameData>? games,
-  }) : games = games ?? const [];
+    Map<String, List<IgdbGameData>>? gamesByLanguage,
+  }) : games = games ?? const [],
+       gamesByLanguage = gamesByLanguage ?? const {};
 
   FakeServiceMode mode;
   final Duration delay;
   final List<IgdbGameData> games;
+  final Map<String, List<IgdbGameData>> gamesByLanguage;
+  String? lastLanguage;
 
   @override
   Future<Result<IgdbBatchResponse, String>> getBatchGameInfo(
@@ -168,6 +172,7 @@ class FakeIgdbGameService extends IgdbGameService {
     String language = 'en',
     void Function(int completed, int total)? onProgress,
   }) async {
+    lastLanguage = language;
     if (delay > Duration.zero) await Future<void>.delayed(delay);
     if (mode == FakeServiceMode.failure) {
       return const Failure('fixture IGDB failure');
@@ -183,7 +188,8 @@ class FakeIgdbGameService extends IgdbGameService {
       );
     }
 
-    final selected = games
+    final languageGames = gamesByLanguage[language] ?? games;
+    final selected = languageGames
         .where((game) => steamIds.contains(game.steamId))
         .toList();
     final foundIds = selected.map((game) => game.steamId).toSet();

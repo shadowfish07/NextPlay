@@ -26,6 +26,7 @@ Future<AppDependencies> createTestDependencies({
   List<Game>? steamGames,
   Set<int>? softwareAppIds,
   List<IgdbGameData>? igdbGames,
+  Map<String, List<IgdbGameData>>? igdbGamesByLanguage,
   String databaseName = 'nextplay_test.db',
   bool resetDatabase = true,
   ApiKeyStorage? apiKeyStorage,
@@ -54,6 +55,7 @@ Future<AppDependencies> createTestDependencies({
       mode: igdbMode,
       delay: igdbDelay,
       games: igdbGames ?? TestFixtures.igdbGames,
+      gamesByLanguage: igdbGamesByLanguage,
     ),
     gameDatabaseService: GameDatabaseService(databaseName: databaseName),
   );

@@ -272,35 +272,48 @@ echo "Using Android device: $device"
 adb -s "$device" shell pm clear "$package_name" >/dev/null 2>&1 || true
 adb -s "$device" uninstall "$package_name" >/dev/null 2>&1 || true
 
-capture_key_state_screenshot() {
-  local ready_path="app_flutter/e2e-screenshots/settings-update.ready"
-  local complete_path="app_flutter/e2e-screenshots/settings-update.done"
+capture_key_state_screenshots() {
+  local screenshot_name
+  local ready_path
+  local complete_path
+  local captured
   # This listener starts before Gradle builds and installs the integration APK,
   # so its window must also cover compilation and the preceding E2E flow.
   local deadline=$((SECONDS + 180))
 
-  while (( SECONDS < deadline )); do
-    if adb -s "$device" shell run-as "$package_name" test -f "$ready_path" \
-      >/dev/null 2>&1; then
-      sleep 0.3
-      adb -s "$device" exec-out screencap -p \
-        >"$artifact_dir/settings-update.png"
-      adb -s "$device" shell run-as "$package_name" touch "$complete_path" \
-        >/dev/null
-      echo "Captured key-state screenshot: $artifact_dir/settings-update.png"
-      return 0
-    fi
-    sleep 0.2
-  done
+  for screenshot_name in \
+    localized-library \
+    localized-details \
+    settings-update; do
+    captured=0
+    ready_path="app_flutter/e2e-screenshots/${screenshot_name}.ready"
+    complete_path="app_flutter/e2e-screenshots/${screenshot_name}.done"
+    while (( SECONDS < deadline )); do
+      if adb -s "$device" shell run-as "$package_name" test -f "$ready_path" \
+        >/dev/null 2>&1; then
+        sleep 0.3
+        adb -s "$device" exec-out screencap -p \
+          >"$artifact_dir/${screenshot_name}.png"
+        adb -s "$device" shell run-as "$package_name" touch "$complete_path" \
+          >/dev/null
+        echo "Captured key-state screenshot: $artifact_dir/${screenshot_name}.png"
+        captured=1
+        break
+      fi
+      sleep 0.2
+    done
 
-  echo "Timed out waiting for the settings-update screenshot request." >&2
-  return 1
+    if (( captured != 1 )); then
+      echo "Timed out waiting for the ${screenshot_name} screenshot request." >&2
+      return 1
+    fi
+  done
 }
 
 if (( capture_visual_evidence == 1 )); then
   capture_pid=""
   capture_status=0
-  capture_key_state_screenshot &
+  capture_key_state_screenshots &
   capture_pid=$!
   if flutter test integration_test/app_flow_test.dart \
     -d "$device" \

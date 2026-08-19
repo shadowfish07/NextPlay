@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../shared/settings_card.dart';
 import '../../view_models/settings_view_model.dart';
+import '../../../core/app_keys.dart';
 
 /// 语言设置卡片
 ///
@@ -30,7 +31,7 @@ class LanguageSettingsCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '设置从 IGDB 获取的游戏名称和分类的语言',
+            '设置游戏名称、描述和分类的显示语言',
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
@@ -50,19 +51,25 @@ class LanguageSettingsCard extends StatelessWidget {
       children: [
         Expanded(
           child: _LanguageOption(
+            key: AppKeys.settingsLanguageEnglish,
             label: 'English',
             value: 'en',
             isSelected: viewModel.igdbLanguage == 'en',
-            onTap: () => viewModel.updateIgdbLanguageCommand.execute('en'),
+            onTap: viewModel.isSyncing
+                ? null
+                : () => viewModel.updateIgdbLanguageCommand.execute('en'),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: _LanguageOption(
+            key: AppKeys.settingsLanguageChinese,
             label: '简体中文',
             value: 'zh-CN',
             isSelected: viewModel.igdbLanguage == 'zh-CN',
-            onTap: () => viewModel.updateIgdbLanguageCommand.execute('zh-CN'),
+            onTap: viewModel.isSyncing
+                ? null
+                : () => viewModel.updateIgdbLanguageCommand.execute('zh-CN'),
           ),
         ),
       ],
@@ -74,9 +81,10 @@ class _LanguageOption extends StatelessWidget {
   final String label;
   final String value;
   final bool isSelected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _LanguageOption({
+    super.key,
     required this.label,
     required this.value,
     required this.isSelected,

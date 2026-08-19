@@ -782,22 +782,20 @@ class SettingsViewModel extends ChangeNotifier {
 
   Future<void> _handleUpdateIgdbLanguage(String language) async {
     try {
-      if (_igdbLanguage == language) return;
+      if (_igdbLanguage != language) {
+        AppLogger.info('Updating IGDB language: $language');
 
-      AppLogger.info('Updating IGDB language: $language');
-
-      _igdbLanguage = language;
-      await _prefs.setString('igdb_language', language);
-
-      AppLogger.info('IGDB language updated, triggering sync');
-      notifyListeners();
+        _igdbLanguage = language;
+        await _prefs.setString('igdb_language', language);
+        notifyListeners();
+      } else {
+        AppLogger.info('Refreshing IGDB data for selected language: $language');
+      }
 
       // 自动触发游戏库同步以获取新语言的数据
-      // 直接调用 _handleSyncGameLibrary 而不是通过 Command
-      // 因为 Command 在执行中时会忽略新的 execute() 调用
       if (isSteamConnected) {
-        // 使用 unawaited 让同步异步执行，不阻塞语言切换
-        unawaited(_handleSyncGameLibrary());
+        AppLogger.info('IGDB language ready, syncing localized metadata');
+        await _handleSyncGameLibrary();
       }
     } catch (e, stackTrace) {
       AppLogger.error('Failed to update IGDB language', e, stackTrace);
