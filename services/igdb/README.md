@@ -2,6 +2,10 @@
 
 TypeScript + Bun server for querying IGDB game data using Steam IDs with persistent SQLite caching.
 
+This service is maintained inside the NextPlay monorepo at `services/igdb`.
+From the repository root, prefer `tool/service.sh verify|dev|deploy|status` so
+local development and PM2 always use the monorepo path.
+
 ## Features
 
 - 🎮 Query game data from IGDB using Steam IDs

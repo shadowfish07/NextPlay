@@ -8,7 +8,7 @@
     "test": "bun test",
     "build": "bun build src/index.ts --compile --outfile dist/igdb-service",
     "generate-translations": "bun scripts/generate-translations.ts",
-    "deploy": "bun run build && pm2 restart igdb-service",
+    "deploy": "bun run build && pm2 startOrReload ecosystem.config.cjs --update-env",
     "pm2:start": "pm2 start ecosystem.config.cjs",
     "pm2:stop": "pm2 stop igdb-service",
     "pm2:restart": "pm2 restart igdb-service",

@@ -18,6 +18,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Bun for metadata service
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.5"
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:

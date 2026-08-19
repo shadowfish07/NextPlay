@@ -5,6 +5,8 @@
 - Do not use raw `flutter run`. Use `tool/e2e_android.sh` for Android integration, installation, launcher checks, screenshots, UI hierarchy, and scoped logs.
 - Android E2E is serialized across all Git worktrees through one shared AVD lease. Inspect ownership with `tool/worktree.sh status`; use `tool/worktree.sh down` only to recover stale runtime state owned by the current worktree.
 - Before handing off a code change, run `tool/verify_fast.sh`. The command owns dependency resolution, code generation, formatting checks, `flutter analyze`, tests, and the coverage gate.
+- The Flutter app stays at the repository root; the Bun metadata service lives in `services/igdb`. Run it only through `tool/service.sh` from the repository root. `tool/verify_fast.sh` verifies both projects.
+- Keep service credentials only in ignored `services/igdb/.env` or the process environment. Never copy credentials into committed root configuration or print them. Use `tool/service.sh deploy` so PM2 runs the binary from the monorepo path.
 - Local automation configuration is loaded from the ignored repository-root `.env`; keep the committed `.env.example` current. Only `NEXTPLAY_*` assignments are accepted, and an explicitly exported environment variable overrides the file.
 - Use `tool/live_smoke.sh` only for explicit live-service verification. IGDB checks are credential-free; Steam checks are opt-in through `NEXTPLAY_STEAM_API_KEY` and `NEXTPLAY_STEAM_ID` from `.env` or the process environment and must never print either value.
 - Keep production composition in `AppDependencies.production()`. Tests and integration harnesses must inject fakes through `AppDependencies.create()`; test fixtures must never be selected from production `main()`.

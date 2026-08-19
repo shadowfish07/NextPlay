@@ -7,6 +7,7 @@ cd "$repo_root"
 source "$repo_root/tool/load_env.sh"
 nextplay_load_env "$repo_root"
 
+tool/service.sh verify
 flutter pub get --enforce-lockfile
 dart run build_runner build --delete-conflicting-outputs
 dart format --output=none --set-exit-if-changed lib test integration_test

@@ -2,7 +2,7 @@
 
 Agent/Codex development, verification, Android E2E, and live-service instructions are documented in [docs/agentic-development.md](docs/agentic-development.md).
 
-基于 Steam 游戏库的智能游戏推荐应用，帮助玩家从庞大的游戏库中找到下一款值得游玩的游戏。
+基于 Steam 游戏库的智能游戏推荐应用，帮助玩家从庞大的游戏库中找到下一款值得游玩的游戏。本仓库同时包含 Flutter 客户端和 Bun 元数据服务。
 
 ## 功能特性
 
@@ -32,6 +32,7 @@ Agent/Codex development, verification, Android E2E, and live-service instruction
 
 - Flutter SDK >= 3.9.0
 - Dart SDK >= 3.9.0
+- Bun 1.x（服务端与完整验证）
 
 ### 安装
 
@@ -42,48 +43,56 @@ git clone https://github.com/your-username/NextPlay.git
 cd NextPlay
 ```
 
-2. 安装依赖
+2. 初始化当前 checkout
 
 ```bash
-flutter pub get
+tool/worktree.sh setup
 ```
 
-3. 生成代码（freezed 模型等）
+3. 运行完整快速验证
 
 ```bash
-flutter pub run build_runner build
+tool/verify_fast.sh
 ```
 
-4. 运行应用
+4. 运行 Android 集成、安装与启动验证
 
 ```bash
-flutter run
+tool/e2e_android.sh
 ```
+
+服务端常用命令统一从仓库根目录运行：
+
+```bash
+tool/service.sh verify
+tool/service.sh dev
+tool/service.sh deploy
+tool/service.sh status
+```
+
+本地启动或部署前，将 `services/igdb/.env.example` 复制为忽略的
+`services/igdb/.env` 并填写 Twitch/IGDB 凭据。
 
 ## 项目结构
 
 ```
-lib/
-├── main.dart                 # 应用入口
-├── config/                   # 依赖注入配置
-├── data/                     # 数据层 (Repository & Service)
-├── domain/                   # 领域模型
-├── routing/                  # 路由配置
-├── ui/
-│   ├── core/                 # 通用 UI 组件
-│   ├── discover/             # 发现页 - 游戏推荐
-│   ├── library/              # 游戏库管理
-│   ├── game_details/         # 游戏详情
-│   ├── game_status/          # 游戏状态管理
-│   ├── settings/             # 设置页
-│   └── onboarding/           # 首次启动引导
-└── utils/                    # 工具类
+NextPlay/
+├── lib/                      # Flutter 客户端源码
+├── android/                  # Android 工程
+├── integration_test/         # Android 集成流程
+├── services/
+│   └── igdb/                 # IGDB + Steam 官方本地化 Bun 服务
+├── tool/                     # 单仓开发、验证、部署入口
+└── .github/workflows/        # 客户端与服务端 CI
 ```
+
+Flutter 暂时保留在仓库根目录，以保持 Gradle、Flutter、发布和 Orca
+worktree 路径兼容；新增服务统一放在 `services/` 下。
 
 ## API 依赖
 
 - **Steam Web API** - 获取用户游戏库（需用户提供 API Key）
-- **元数据服务** - [igdb_service](https://github.com/shadowfish07/igdb_service)
+- **元数据服务** - 仓库内 [`services/igdb`](services/igdb/README.md)
   提供 IGDB 基础资料，并通过服务端持久队列统一限速获取 Steam 发行商维护的
   官方标题与简介。App 只轮询服务端缓存并保存本地展示副本，不直接请求 Steam
   Store，也不会使用 AI 生成游戏标题或描述。

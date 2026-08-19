@@ -7,6 +7,7 @@ NextPlay exposes one deterministic path for each verification layer so Codex and
 - Flutter `3.35.1` and Dart from that Flutter SDK.
 - Java 17 and an Android SDK with `adb`, `emulator`, accepted licenses, and a dedicated Pixel emulator. Local default: `Pixel_7_Pro_API_36`.
 - `curl` and `rg` for live contract checks.
+- Bun 1.x for `services/igdb` tests and builds.
 - A manually unlocked desktop session when Codex must inspect or click the Android emulator or configure ChatGPT desktop actions. macOS may require Accessibility and Screen Recording permission.
 
 No verification command uses raw `flutter run`.
@@ -21,7 +22,14 @@ tool/worktree.sh setup
 tool/worktree.sh status
 
 # Code generation, formatting, analysis, host tests, and coverage >= 15%
+# This also installs, tests, and compiles services/igdb.
 tool/verify_fast.sh
+
+# Metadata service commands, always from the repository root
+tool/service.sh verify
+tool/service.sh dev
+tool/service.sh deploy
+tool/service.sh status
 
 # Deterministic fixture flow plus build/install/launcher assertion and evidence
 tool/e2e_android.sh
@@ -50,7 +58,12 @@ SQLite, SharedPreferences, secure storage, installed APKs, and WebView state bel
 
 ## Test architecture
 
-`AppDependencies.production()` is the only production entry point. It creates real SharedPreferences, platform secure storage, SQLite, Steam, and IGDB services, and awaits credential migration before rendering UI. Host and Android tests use `AppDependencies.create()` with fake service subclasses, isolated preferences, and a named test database. Fixture credentials are non-secret test strings and are reachable only through files under `test/` and `integration_test/`, neither of which production `main()` imports.
+`AppDependencies.production()` is the only Flutter production entry point. It creates real SharedPreferences, platform secure storage, SQLite, Steam, and metadata clients, and awaits credential migration before rendering UI. Host and Android tests use `AppDependencies.create()` with fake service subclasses, isolated preferences, and a named test database. Fixture credentials are non-secret test strings and are reachable only through files under `test/` and `integration_test/`, neither of which production `main()` imports.
+
+The production metadata service lives under `services/igdb`. Its SQLite cache,
+PM2 runtime, and `.env` stay local and ignored. Root command
+`tool/service.sh deploy` compiles and starts/reloads PM2 with the monorepo service
+directory as its explicit working directory.
 
 The deterministic suite covers:
 

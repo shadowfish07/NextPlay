@@ -226,6 +226,7 @@ run_setup() {
   record_identity
   refuse_active_e2e
   copy_primary_env 0
+  "$repo_root/tool/service.sh" install
   flutter pub get --enforce-lockfile
   dart run build_runner build --delete-conflicting-outputs
   if [[ ! -f "$setup_marker" ]]; then
@@ -326,7 +327,7 @@ usage() {
 Usage: tool/worktree.sh <command>
 
 Commands:
-  setup       Initialize this checkout and copy primary .env once.
+  setup       Initialize Flutter and service dependencies; copy primary .env once.
   status      Show worktree identity, env provenance, AVD, and lease state.
   e2e         Run the repository Android E2E under the shared AVD lease.
   down        Clean up only a stale Android runtime owned by this worktree.

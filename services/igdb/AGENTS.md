@@ -21,3 +21,5 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 <!-- OPENSPEC:END -->
 
 每次改变接口行为时，必须自检是否需要更新 README.md 的接口描述
+
+在 NextPlay 单仓中从仓库根目录运行 `tool/service.sh <command>`，不要依赖旧的独立仓库路径。服务端凭据只允许保存在忽略的 `services/igdb/.env` 或进程环境中。

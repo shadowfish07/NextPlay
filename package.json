@@ -7,7 +7,14 @@
     "node": ">=20.6.1"
   },
   "scripts": {
-    "semantic-release": "semantic-release"
+    "semantic-release": "semantic-release",
+    "service:install": "tool/service.sh install",
+    "service:verify": "tool/service.sh verify",
+    "service:test": "tool/service.sh test",
+    "service:build": "tool/service.sh build",
+    "service:dev": "tool/service.sh dev",
+    "service:deploy": "tool/service.sh deploy",
+    "service:status": "tool/service.sh status"
   },
   "repository": {
     "type": "git",
