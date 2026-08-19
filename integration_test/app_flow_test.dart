@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path/path.dart' as path;
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:nextplay/data/repository/onboarding/onboarding_repository.dart';
@@ -12,6 +13,7 @@ import 'package:nextplay/domain/models/game/game.dart';
 import 'package:nextplay/domain/models/game/igdb_game_data.dart';
 import 'package:nextplay/ui/core/app_keys.dart';
 import 'package:nextplay/ui/discover/widgets/new_game_recommendation_card.dart';
+import 'package:nextplay/ui/settings/view_models/settings_view_model.dart';
 
 import '../test/support/fixtures.dart';
 import '../test/support/test_app.dart';
@@ -91,6 +93,7 @@ void main() {
       const Game(appId: 738520, name: 'Breathedge'),
       const Game(appId: 646570, name: 'Slay the Spire'),
       const Game(appId: 367520, name: 'Hollow Knight'),
+      TestFixtures.softwareGame,
     ];
     final igdbGames = <IgdbGameData>[
       ...TestFixtures.igdbGames,
@@ -105,6 +108,7 @@ void main() {
     ];
     final dependencies = await createTestDependencies(
       steamGames: steamGames,
+      softwareAppIds: {TestFixtures.softwareGame.appId},
       igdbGames: igdbGames,
       databaseName: 'nextplay_android_e2e.db',
     );
@@ -200,6 +204,10 @@ void main() {
     await _tapAndWait(tester, AppKeys.libraryDestination);
     await _waitFor(tester, find.byKey(AppKeys.libraryScreen));
     expect(find.byKey(AppKeys.libraryItem(620)), findsOneWidget);
+    expect(
+      find.byKey(AppKeys.libraryItem(TestFixtures.softwareGame.appId)),
+      findsNothing,
+    );
 
     await tester.enterText(find.byKey(AppKeys.librarySearch), 'Portal');
     await tester.pump(const Duration(milliseconds: 300));
@@ -213,9 +221,62 @@ void main() {
     expect(await tester.binding.handlePopRoute(), isTrue);
     await tester.pump(const Duration(milliseconds: 300));
     await _waitFor(tester, find.byKey(AppKeys.libraryScreen));
+    await tester.enterText(find.byKey(AppKeys.librarySearch), '');
+    await tester.pump(const Duration(milliseconds: 300));
     await _tapAndWait(tester, AppKeys.settingsDestination);
     await _waitFor(tester, find.byKey(AppKeys.settingsScreen));
     expect(find.byKey(AppKeys.settingsSync), findsOneWidget);
+
+    final softwareSetting = find.byKey(AppKeys.settingsExcludeSoftware);
+    await tester.scrollUntilVisible(
+      softwareSetting,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await Scrollable.ensureVisible(
+      tester.element(softwareSetting),
+      alignment: 0.5,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.widget<SwitchListTile>(softwareSetting).value, isTrue);
+
+    await tester.tap(
+      find.descendant(of: softwareSetting, matching: find.byType(Switch)),
+    );
+    await _waitForSoftwareSetting(tester, softwareSetting, false);
+    expect(tester.widget<SwitchListTile>(softwareSetting).value, isFalse);
+
+    await _tapAndWait(tester, AppKeys.libraryDestination);
+    await _waitFor(tester, find.byKey(AppKeys.libraryScreen));
+    expect(
+      find.byKey(AppKeys.libraryItem(TestFixtures.softwareGame.appId)),
+      findsOneWidget,
+    );
+
+    await _tapAndWait(tester, AppKeys.settingsDestination);
+    await _waitFor(tester, find.byKey(AppKeys.settingsScreen));
+    await tester.scrollUntilVisible(
+      softwareSetting,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await Scrollable.ensureVisible(
+      tester.element(softwareSetting),
+      alignment: 0.5,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(
+      find.descendant(of: softwareSetting, matching: find.byType(Switch)),
+    );
+    await _waitForSoftwareSetting(tester, softwareSetting, true);
+    expect(tester.widget<SwitchListTile>(softwareSetting).value, isTrue);
+
+    await _tapAndWait(tester, AppKeys.libraryDestination);
+    await _waitFor(tester, find.byKey(AppKeys.libraryScreen));
+    expect(
+      find.byKey(AppKeys.libraryItem(TestFixtures.softwareGame.appId)),
+      findsNothing,
+    );
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 100));
@@ -241,4 +302,28 @@ Future<void> _waitFor(
     await tester.pump(const Duration(milliseconds: 100));
   }
   expect(finder, findsAtLeastNWidgets(1));
+}
+
+Future<void> _waitForSoftwareSetting(
+  WidgetTester tester,
+  Finder setting,
+  bool expected,
+) async {
+  await tester.pump();
+  final viewModel = Provider.of<SettingsViewModel>(
+    tester.element(setting),
+    listen: false,
+  );
+  for (var attempt = 0; attempt < 100; attempt++) {
+    await tester.pump(const Duration(milliseconds: 10));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    if (!viewModel.updateExcludeSoftwareCommand.isExecuting.value &&
+        viewModel.excludeSoftware == expected) {
+      break;
+    }
+  }
+  await tester.pump();
+  expect(viewModel.excludeSoftware, expected);
 }

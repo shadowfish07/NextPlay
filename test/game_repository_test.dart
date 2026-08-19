@@ -47,6 +47,95 @@ void main() {
     },
   );
 
+  test(
+    'software items are excluded by default and restored by the setting',
+    () async {
+      dependencies = await createTestDependencies(
+        steamGames: [...TestFixtures.games, TestFixtures.softwareGame],
+        softwareAppIds: {TestFixtures.softwareGame.appId},
+        databaseName: 'game_repository_software_filter.db',
+      );
+
+      final result = await dependencies.gameRepository.syncGameLibrary(
+        apiKey: TestFixtures.apiKey,
+        steamId: TestFixtures.steamId,
+      );
+
+      expect(result.isSuccess(), isTrue);
+      expect(dependencies.gameRepository.excludeSoftware, isTrue);
+      expect(dependencies.gameRepository.softwareGamesCount, 1);
+      expect(
+        dependencies.gameRepository.gameLibrary.map((game) => game.appId),
+        isNot(contains(TestFixtures.softwareGame.appId)),
+      );
+      expect(
+        dependencies.gameRepository.getUnplayedGames().map(
+          (game) => game.appId,
+        ),
+        isNot(contains(TestFixtures.softwareGame.appId)),
+      );
+      expect(
+        dependencies.gameRepository.getGameLibraryStats()['total'],
+        TestFixtures.games.length,
+      );
+
+      final settingResult = await dependencies.gameRepository
+          .setExcludeSoftware(false);
+
+      expect(settingResult.isSuccess(), isTrue);
+      expect(dependencies.gameRepository.excludeSoftware, isFalse);
+      expect(
+        dependencies.gameRepository.gameLibrary.map((game) => game.appId),
+        contains(TestFixtures.softwareGame.appId),
+      );
+      expect(
+        dependencies.sharedPreferences.getBool(
+          GameRepository.excludeSoftwarePreference,
+        ),
+        isFalse,
+      );
+    },
+  );
+
+  test('software catalog failure preserves known classifications', () async {
+    dependencies = await createTestDependencies(
+      steamGames: [...TestFixtures.games, TestFixtures.softwareGame],
+      softwareAppIds: {TestFixtures.softwareGame.appId},
+      databaseName: 'game_repository_software_catalog_failure.db',
+    );
+    await dependencies.gameRepository.syncGameLibrary(
+      apiKey: TestFixtures.apiKey,
+      steamId: TestFixtures.steamId,
+    );
+
+    final steamService = dependencies.steamApiService as FakeSteamApiService;
+    steamService.softwareCatalogMode = FakeServiceMode.failure;
+    final progress = <SyncProgress>[];
+    final subscription = dependencies.gameRepository.syncProgressStream.listen(
+      progress.add,
+    );
+
+    final result = await dependencies.gameRepository.syncGameLibrary(
+      apiKey: TestFixtures.apiKey,
+      steamId: TestFixtures.steamId,
+    );
+    await subscription.cancel();
+
+    expect(result.isSuccess(), isTrue);
+    expect(dependencies.gameRepository.softwareGamesCount, 1);
+    expect(
+      dependencies.gameRepository.gameLibrary.map((game) => game.appId),
+      isNot(contains(TestFixtures.softwareGame.appId)),
+    );
+    expect(
+      progress.any(
+        (event) =>
+            event.errorMessage?.contains('software catalog failure') ?? false,
+      ),
+      isTrue,
+    );
+  });
+
   test('Steam failure fails closed without replacing the library', () async {
     dependencies = await createTestDependencies(
       steamMode: FakeServiceMode.failure,

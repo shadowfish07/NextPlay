@@ -17,6 +17,7 @@ class Game with _$Game {
     @Default(false) bool hasAchievements,
     @Default(0) int totalAchievements,
     @Default(0) int unlockedAchievements,
+    @Default(false) bool isSoftware,
     // IGDB 数据
     String? summary,
     String? coverUrl,

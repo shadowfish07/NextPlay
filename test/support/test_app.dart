@@ -18,10 +18,12 @@ Future<AppDependencies> createTestDependencies({
   Map<String, Object> preferences = const {},
   SharedPreferences? preferencesInstance,
   FakeServiceMode steamMode = FakeServiceMode.success,
+  FakeServiceMode softwareCatalogMode = FakeServiceMode.success,
   FakeServiceMode igdbMode = FakeServiceMode.success,
   Duration steamDelay = Duration.zero,
   Duration igdbDelay = Duration.zero,
   List<Game>? steamGames,
+  Set<int>? softwareAppIds,
   List<IgdbGameData>? igdbGames,
   String databaseName = 'nextplay_test.db',
   bool resetDatabase = true,
@@ -40,8 +42,10 @@ Future<AppDependencies> createTestDependencies({
     apiKeyStorage: apiKeyStorage ?? FakeApiKeyStorage(),
     steamApiService: FakeSteamApiService(
       mode: steamMode,
+      softwareCatalogMode: softwareCatalogMode,
       delay: steamDelay,
       games: steamGames ?? TestFixtures.games,
+      softwareAppIds: softwareAppIds,
     ),
     igdbGameService: FakeIgdbGameService(
       mode: igdbMode,
