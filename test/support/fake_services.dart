@@ -1,10 +1,12 @@
 import 'package:result_dart/result_dart.dart';
 
 import 'package:nextplay/data/service/api_key_storage.dart';
+import 'package:nextplay/data/service/github_release_service.dart';
 import 'package:nextplay/data/service/igdb_game_service.dart';
 import 'package:nextplay/data/service/steam_api_service.dart';
 import 'package:nextplay/domain/models/game/game.dart';
 import 'package:nextplay/domain/models/game/igdb_game_data.dart';
+import 'package:nextplay/domain/models/update/app_update.dart';
 
 class FakeApiKeyStorage implements ApiKeyStorage {
   FakeApiKeyStorage({this.value});
@@ -38,6 +40,25 @@ class FakeApiKeyStorage implements ApiKeyStorage {
       throw StateError('Fake secure delete failure');
     }
     value = null;
+  }
+}
+
+class FakeReleaseService extends ReleaseService {
+  FakeReleaseService({this.update, this.failure});
+
+  final AppUpdate? update;
+  final String? failure;
+  int checkCount = 0;
+  String? lastCurrentVersion;
+
+  @override
+  Future<Result<UpdateCheckResult, String>> checkForUpdate({
+    required String currentVersion,
+  }) async {
+    checkCount += 1;
+    lastCurrentVersion = currentVersion;
+    if (failure != null) return Failure(failure!);
+    return Success(UpdateCheckResult(update: update));
   }
 }
 

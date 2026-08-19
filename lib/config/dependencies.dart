@@ -7,6 +7,7 @@ import '../data/repository/game_repository.dart';
 import '../data/repository/onboarding/onboarding_repository.dart';
 import '../data/service/api_key_storage.dart';
 import '../data/service/game_database_service.dart';
+import '../data/service/github_release_service.dart';
 import '../data/service/igdb_game_service.dart';
 import '../data/service/steam_api_service.dart';
 import '../data/service/steam_validation_service.dart';
@@ -28,6 +29,7 @@ class AppDependencies {
     required this.steamApiService,
     required this.igdbGameService,
     required this.gameDatabaseService,
+    required this.releaseService,
     required this.steamValidationService,
     required this.gameRepository,
     required this.onboardingRepository,
@@ -38,6 +40,7 @@ class AppDependencies {
   final SteamApiService steamApiService;
   final IgdbGameService igdbGameService;
   final GameDatabaseService gameDatabaseService;
+  final ReleaseService releaseService;
   final SteamValidationService steamValidationService;
   final GameRepository gameRepository;
   final OnboardingRepository onboardingRepository;
@@ -47,12 +50,14 @@ class AppDependencies {
     return create(
       sharedPreferences: prefs,
       apiKeyStorage: SecureApiKeyStorage(),
+      releaseService: GitHubReleaseService(),
     );
   }
 
   static Future<AppDependencies> create({
     required SharedPreferences sharedPreferences,
     required ApiKeyStorage apiKeyStorage,
+    required ReleaseService releaseService,
     SteamApiService? steamApiService,
     IgdbGameService? igdbGameService,
     GameDatabaseService? gameDatabaseService,
@@ -82,6 +87,7 @@ class AppDependencies {
       steamApiService: steam,
       igdbGameService: igdb,
       gameDatabaseService: database,
+      releaseService: releaseService,
       steamValidationService: validation,
       gameRepository: games,
       onboardingRepository: onboarding,
@@ -93,6 +99,7 @@ class AppDependencies {
     Provider<SteamApiService>.value(value: steamApiService),
     Provider<IgdbGameService>.value(value: igdbGameService),
     Provider<GameDatabaseService>.value(value: gameDatabaseService),
+    Provider<ReleaseService>.value(value: releaseService),
     Provider<SteamValidationService>.value(value: steamValidationService),
     Provider<OnboardingRepository>.value(value: onboardingRepository),
     Provider<GameRepository>.value(value: gameRepository),
@@ -110,6 +117,7 @@ class AppDependencies {
         onboardingRepository: onboardingRepository,
         gameRepository: gameRepository,
         steamValidationService: steamValidationService,
+        releaseService: releaseService,
         prefs: sharedPreferences,
       ),
     ),
@@ -122,6 +130,7 @@ class AppDependencies {
   Future<void> dispose() async {
     onboardingRepository.dispose();
     gameRepository.dispose();
+    releaseService.dispose();
     igdbGameService.dispose();
     await gameDatabaseService.close();
   }

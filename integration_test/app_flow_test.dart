@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -278,10 +279,50 @@ void main() {
       findsNothing,
     );
 
+    await _tapAndWait(tester, AppKeys.settingsDestination);
+    await _waitFor(tester, find.byKey(AppKeys.settingsScreen));
+    final settingsScroll = find.descendant(
+      of: find.byKey(AppKeys.settingsScreen),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.text('版本更新'),
+      500,
+      scrollable: settingsScroll,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(AppKeys.settingsUpdateCheck), findsOneWidget);
+    if (_captureVisualEvidence) {
+      await _holdForScreenshot(tester, 'settings-update');
+    }
+
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 100));
     await dependencies.dispose();
   });
+}
+
+Future<void> _holdForScreenshot(WidgetTester tester, String name) async {
+  await tester.pump();
+  final documentsDirectory = await getApplicationDocumentsDirectory();
+  final screenshotDirectory = Directory(
+    path.join(documentsDirectory.path, 'e2e-screenshots'),
+  );
+  await screenshotDirectory.create(recursive: true);
+  final readyFile = File(path.join(screenshotDirectory.path, '$name.ready'));
+  final completeFile = File(path.join(screenshotDirectory.path, '$name.done'));
+  await readyFile.writeAsString('ready', flush: true);
+
+  final deadline = DateTime.now().add(const Duration(seconds: 60));
+  while (!completeFile.existsSync() && DateTime.now().isBefore(deadline)) {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  }
+  if (!completeFile.existsSync()) {
+    throw StateError('Timed out waiting for the $name screenshot');
+  }
+
+  await readyFile.delete();
+  await completeFile.delete();
 }
 
 Future<void> _tapAndWait(WidgetTester tester, Key key) async {

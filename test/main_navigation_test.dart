@@ -69,6 +69,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(tester.widget<SwitchListTile>(softwareSetting).value, isTrue);
 
+    final settingsScroll = find.descendant(
+      of: find.byKey(AppKeys.settingsScreen),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.text('版本更新'),
+      500,
+      scrollable: settingsScroll,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(AppKeys.settingsUpdateCheck), findsOneWidget);
+
     await disposeTestApp(tester);
   });
 }

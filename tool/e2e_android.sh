@@ -14,6 +14,10 @@ lease_timeout="${NEXTPLAY_ANDROID_LEASE_TIMEOUT_SECONDS:-900}"
 started_emulator=0
 emulator_pid=""
 device="${NEXTPLAY_ANDROID_DEVICE:-}"
+capture_visual_evidence=0
+case "${NEXTPLAY_CAPTURE_VISUAL_EVIDENCE:-}" in
+  1|true|TRUE|yes|YES) capture_visual_evidence=1 ;;
+esac
 timestamp="$(date '+%Y%m%d-%H%M%S')"
 artifact_dir="$repo_root/.artifacts/e2e/$timestamp"
 mkdir -p "$artifact_dir"
@@ -267,7 +271,60 @@ printf '%s\n' "$device" >"$runtime_dir/device"
 echo "Using Android device: $device"
 adb -s "$device" shell pm clear "$package_name" >/dev/null 2>&1 || true
 adb -s "$device" uninstall "$package_name" >/dev/null 2>&1 || true
-flutter test integration_test/app_flow_test.dart -d "$device"
+
+capture_key_state_screenshot() {
+  local ready_path="app_flutter/e2e-screenshots/settings-update.ready"
+  local complete_path="app_flutter/e2e-screenshots/settings-update.done"
+  # This listener starts before Gradle builds and installs the integration APK,
+  # so its window must also cover compilation and the preceding E2E flow.
+  local deadline=$((SECONDS + 180))
+
+  while (( SECONDS < deadline )); do
+    if adb -s "$device" shell run-as "$package_name" test -f "$ready_path" \
+      >/dev/null 2>&1; then
+      sleep 0.3
+      adb -s "$device" exec-out screencap -p \
+        >"$artifact_dir/settings-update.png"
+      adb -s "$device" shell run-as "$package_name" touch "$complete_path" \
+        >/dev/null
+      echo "Captured key-state screenshot: $artifact_dir/settings-update.png"
+      return 0
+    fi
+    sleep 0.2
+  done
+
+  echo "Timed out waiting for the settings-update screenshot request." >&2
+  return 1
+}
+
+if (( capture_visual_evidence == 1 )); then
+  capture_pid=""
+  capture_status=0
+  capture_key_state_screenshot &
+  capture_pid=$!
+  if flutter test integration_test/app_flow_test.dart \
+    -d "$device" \
+    --dart-define=NEXTPLAY_CAPTURE_VISUAL_EVIDENCE=true; then
+    integration_test_status=0
+  else
+    integration_test_status=$?
+  fi
+  if (( integration_test_status != 0 )); then
+    kill "$capture_pid" >/dev/null 2>&1 || true
+    wait "$capture_pid" >/dev/null 2>&1 || true
+    exit "$integration_test_status"
+  fi
+  if wait "$capture_pid"; then
+    capture_status=0
+  else
+    capture_status=$?
+  fi
+  if (( capture_status != 0 )); then
+    exit 1
+  fi
+else
+  flutter test integration_test/app_flow_test.dart -d "$device"
+fi
 
 device_abi="$(adb -s "$device" shell getprop ro.product.cpu.abi | tr -d '\r')"
 case "$device_abi" in

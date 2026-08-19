@@ -58,6 +58,7 @@ Expect the Android runner to:
 3. Build an ABI-scoped debug APK, install it, clear app state, and launch the production entry point.
 4. Assert the onboarding UI with ADB/UI Automator and reject fatal Android runtime logs.
 5. Write evidence under `.artifacts/e2e/<timestamp>/` and stop only an emulator that it started.
+6. For every runtime, UI, navigation, or interaction change, identify the changed key states before running E2E and capture a named screenshot for each important state after the app reaches it. Keep these screenshots under `.artifacts/e2e/<timestamp>/` for user confirmation; the runner's generic final screenshot alone is not sufficient. Use ADB `screencap` or an equivalent repository-owned capture path, and label screenshots taken with injected fakes or other simulated boundaries.
 
 Treat success from the integration test and success from the standalone build/install/launch assertion as separate requirements.
 
@@ -78,6 +79,7 @@ Use image inspection for `screenshot.png`. Read these files according to the sym
 - `logcat.txt`: app-scoped crash and platform-plugin evidence.
 - `launch.txt`: Activity Manager launch result.
 - `emulator.log`: boot, graphics, and emulator failures when the runner started the AVD.
+- Named key-state screenshots: visual evidence for the changed screen or interaction, which must be reviewed and reported to the user.
 
 Distinguish application failures from harness or emulator failures:
 
@@ -120,5 +122,6 @@ Before handing off:
 4. Check `git status --short` and distinguish this work from pre-existing user changes.
 5. Confirm the shared Android lease and owned runtime state were released; an emulator that predated the run should still be running.
 6. Report the exercised behavior, CI run link, commit when applicable, and any untested or simulated boundary.
+7. For runtime/UI changes, report the named key-state screenshot paths and explicitly state which changed locations they confirm.
 
 Never claim full Android closure from code review or host tests alone.

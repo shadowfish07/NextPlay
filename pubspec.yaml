@@ -46,6 +46,7 @@ dependencies:
   shared_preferences: ^2.2.2           # 配置存储
   flutter_secure_storage: ^10.3.1      # API Key 安全存储
   path: ^1.9.0                         # 路径处理
+  path_provider: ^2.1.5                # E2E 截图文件路径
   
   # 网络请求
   dio: ^5.4.0                          # HTTP客户端

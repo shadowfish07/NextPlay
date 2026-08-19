@@ -7,6 +7,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:nextplay/config/dependencies.dart';
 import 'package:nextplay/data/service/api_key_storage.dart';
 import 'package:nextplay/data/service/game_database_service.dart';
+import 'package:nextplay/data/service/github_release_service.dart';
 import 'package:nextplay/domain/models/game/game.dart';
 import 'package:nextplay/domain/models/game/igdb_game_data.dart';
 import 'package:nextplay/main.dart';
@@ -28,6 +29,7 @@ Future<AppDependencies> createTestDependencies({
   String databaseName = 'nextplay_test.db',
   bool resetDatabase = true,
   ApiKeyStorage? apiKeyStorage,
+  ReleaseService? releaseService,
 }) async {
   if (preferencesInstance == null) {
     SharedPreferences.setMockInitialValues(preferences);
@@ -40,6 +42,7 @@ Future<AppDependencies> createTestDependencies({
   final dependencies = await AppDependencies.create(
     sharedPreferences: prefs,
     apiKeyStorage: apiKeyStorage ?? FakeApiKeyStorage(),
+    releaseService: releaseService ?? FakeReleaseService(),
     steamApiService: FakeSteamApiService(
       mode: steamMode,
       softwareCatalogMode: softwareCatalogMode,

@@ -26,6 +26,9 @@ tool/verify_fast.sh
 # Deterministic fixture flow plus build/install/launcher assertion and evidence
 tool/e2e_android.sh
 
+# Also retain named screenshots for changed Android UI states
+NEXTPLAY_CAPTURE_VISUAL_EVIDENCE=true tool/e2e_android.sh
+
 # Select an existing device when more than one is connected
 NEXTPLAY_ANDROID_DEVICE=emulator-5554 tool/e2e_android.sh
 
