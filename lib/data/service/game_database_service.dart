@@ -9,7 +9,7 @@ class GameDatabaseService {
     : _databaseName = databaseName;
 
   final String _databaseName;
-  static const int _databaseVersion = 4;
+  static const int _databaseVersion = 5;
 
   Database? _database;
 
@@ -60,7 +60,11 @@ class GameDatabaseService {
         steam_id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         localized_name TEXT,
+        localized_name_source TEXT,
         summary TEXT,
+        summary_source TEXT,
+        localization_language TEXT,
+        localization_updated_at INTEGER,
         cover_url TEXT,
         cover_width INTEGER,
         cover_height INTEGER,
@@ -145,6 +149,25 @@ class GameDatabaseService {
         'ALTER TABLE steam_games ADD COLUMN is_software INTEGER DEFAULT 0',
       );
       AppLogger.info('Migration v3 -> v4 completed');
+    }
+
+    // v4 -> v5: 官方本地化来源与语言。旧值可能来自已移除的 AI 或
+    // IGDB 区域字段，无法证明来源，因此升级时清除，等待 Steam 官方
+    // 数据重新填充。
+    if (oldVersion < 5) {
+      AppLogger.info('Applying migration v4 -> v5');
+      await db.execute(
+        'ALTER TABLE igdb_games ADD COLUMN localized_name_source TEXT',
+      );
+      await db.execute('ALTER TABLE igdb_games ADD COLUMN summary_source TEXT');
+      await db.execute(
+        'ALTER TABLE igdb_games ADD COLUMN localization_language TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE igdb_games ADD COLUMN localization_updated_at INTEGER',
+      );
+      await db.update('igdb_games', {'localized_name': null, 'summary': null});
+      AppLogger.info('Migration v4 -> v5 completed');
     }
   }
 
@@ -241,6 +264,74 @@ class GameDatabaseService {
     final db = await database;
     await db.delete('igdb_games');
     AppLogger.info('Cleared igdb_games table');
+  }
+
+  /// 将服务端已完成的 Steam 官方本地化写入本地展示副本。
+  Future<void> upsertOfficialLocalizations(
+    List<Map<String, dynamic>> localizations,
+  ) async {
+    if (localizations.isEmpty) return;
+    final db = await database;
+    final batch = db.batch();
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    for (final localization in localizations) {
+      batch.rawInsert(
+        '''
+        INSERT INTO igdb_games (
+          steam_id, name, localized_name, localized_name_source,
+          summary, summary_source, localization_language,
+          localization_updated_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(steam_id) DO UPDATE SET
+          localized_name = excluded.localized_name,
+          localized_name_source = excluded.localized_name_source,
+          summary = excluded.summary,
+          summary_source = excluded.summary_source,
+          localization_language = excluded.localization_language,
+          localization_updated_at = excluded.localization_updated_at,
+          updated_at = excluded.updated_at
+        ''',
+        [
+          localization['steam_id'],
+          localization['base_name'],
+          localization['localized_name'],
+          localization['localized_name_source'],
+          localization['summary'],
+          localization['summary_source'],
+          localization['language'],
+          now,
+          now,
+        ],
+      );
+    }
+
+    await batch.commit(noResult: true);
+    AppLogger.info('Upserted ${localizations.length} official localizations');
+  }
+
+  /// 官方明确没有该语言资料时，清除同语言的旧展示副本。
+  Future<void> clearOfficialLocalizations(
+    List<int> steamIds, {
+    required String language,
+  }) async {
+    if (steamIds.isEmpty) return;
+    final db = await database;
+    final placeholders = List.filled(steamIds.length, '?').join(',');
+    await db.rawUpdate(
+      '''
+      UPDATE igdb_games SET
+        localized_name = NULL,
+        localized_name_source = NULL,
+        summary = NULL,
+        summary_source = NULL,
+        localization_language = NULL,
+        localization_updated_at = NULL,
+        updated_at = ?
+      WHERE steam_id IN ($placeholders) AND localization_language = ?
+      ''',
+      [DateTime.now().millisecondsSinceEpoch, ...steamIds, language],
+    );
   }
 
   // ==================== User Game Data 操作 ====================

@@ -9,6 +9,7 @@ import '../../../data/service/app_info_service.dart';
 import '../../../data/service/github_release_service.dart';
 import '../../../data/service/steam_validation_service.dart';
 import '../../../domain/models/update/app_update.dart';
+import '../../../domain/models/game/sync_progress.dart';
 import '../../../utils/logger.dart';
 
 class SettingsViewModel extends ChangeNotifier {
@@ -68,7 +69,10 @@ class SettingsViewModel extends ChangeNotifier {
   int? _syncCurrentBatch;
   int? _syncTotalBatches;
   bool _wasSyncCancelled = false; // 跟踪当前任务是否被取消
+  OfficialLocalizationProgress _officialLocalizationProgress =
+      const OfficialLocalizationProgress.idle();
   StreamSubscription? _syncProgressSubscription;
+  StreamSubscription? _officialLocalizationProgressSubscription;
   StreamSubscription? _gameLibrarySubscription;
   StreamSubscription? _onboardingSubscription;
 
@@ -124,6 +128,8 @@ class SettingsViewModel extends ChangeNotifier {
   int? get syncTotalGames => _syncTotalGames;
   int? get syncCurrentBatch => _syncCurrentBatch;
   int? get syncTotalBatches => _syncTotalBatches;
+  OfficialLocalizationProgress get officialLocalizationProgress =>
+      _officialLocalizationProgress;
 
   // 偏好设置 Getters
   double get typeBalanceWeight => _typeBalanceWeight;
@@ -247,6 +253,15 @@ class SettingsViewModel extends ChangeNotifier {
         );
         notifyListeners();
       });
+
+      _officialLocalizationProgress =
+          _gameRepository.officialLocalizationProgress;
+      _officialLocalizationProgressSubscription = _gameRepository
+          .officialLocalizationProgressStream
+          .listen((progress) {
+            _officialLocalizationProgress = progress;
+            notifyListeners();
+          });
 
       _onboardingSubscription = _onboardingRepository.state.listen((_) {
         notifyListeners();
@@ -807,6 +822,7 @@ class SettingsViewModel extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _syncProgressSubscription?.cancel();
+    _officialLocalizationProgressSubscription?.cancel();
     _gameLibrarySubscription?.cancel();
     _onboardingSubscription?.cancel();
     super.dispose();

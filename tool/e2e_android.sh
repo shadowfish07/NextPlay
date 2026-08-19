@@ -279,9 +279,10 @@ capture_key_state_screenshots() {
   local captured
   # This listener starts before Gradle builds and installs the integration APK,
   # so its window must also cover compilation and the preceding E2E flow.
-  local deadline=$((SECONDS + 180))
+  local deadline=$((SECONDS + 240))
 
   for screenshot_name in \
+    official-localization-status \
     localized-library \
     localized-details \
     settings-update; do

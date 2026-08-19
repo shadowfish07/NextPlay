@@ -191,6 +191,17 @@ class FakeIgdbGameService extends IgdbGameService {
     final languageGames = gamesByLanguage[language] ?? games;
     final selected = languageGames
         .where((game) => steamIds.contains(game.steamId))
+        .map(
+          (game) => language.startsWith('en')
+              ? game
+              : game.copyWith(
+                  localizedNameSource: game.localizedName == null
+                      ? null
+                      : 'steam_store',
+                  summarySource: game.summary == null ? null : 'steam_store',
+                  localizationLanguage: language,
+                ),
+        )
         .toList();
     final foundIds = selected.map((game) => game.steamId).toSet();
     onProgress?.call(steamIds.length, steamIds.length);
@@ -199,6 +210,51 @@ class FakeIgdbGameService extends IgdbGameService {
         games: selected,
         notFound: steamIds.where((id) => !foundIds.contains(id)).toList(),
         errors: const [],
+      ),
+    );
+  }
+
+  @override
+  Future<Result<OfficialLocalizationResponse, String>> getOfficialLocalizations(
+    List<int> steamIds, {
+    required String language,
+  }) async {
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
+    if (mode == FakeServiceMode.failure) {
+      return const Failure('fixture official localization failure');
+    }
+
+    final languageGames = gamesByLanguage[language] ?? const <IgdbGameData>[];
+    final selected = languageGames
+        .where((game) => steamIds.contains(game.steamId))
+        .toList();
+    final foundIds = selected.map((game) => game.steamId).toSet();
+    final notFound = steamIds.where((id) => !foundIds.contains(id)).toList();
+    final items = selected
+        .map(
+          (game) => OfficialLocalizationItem(
+            steamId: game.steamId,
+            name: game.localizedName,
+            summary: game.summary,
+            stale: false,
+          ),
+        )
+        .toList();
+
+    return Success(
+      OfficialLocalizationResponse(
+        items: items,
+        pending: const [],
+        retrying: const [],
+        notFound: notFound,
+        status: OfficialLocalizationStatus(
+          requested: steamIds.length,
+          ready: items.length,
+          pending: 0,
+          retrying: 0,
+          notFound: notFound.length,
+          stale: 0,
+        ),
       ),
     );
   }

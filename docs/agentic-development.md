@@ -32,7 +32,7 @@ NEXTPLAY_CAPTURE_VISUAL_EVIDENCE=true tool/e2e_android.sh
 # Select an existing device when more than one is connected
 NEXTPLAY_ANDROID_DEVICE=emulator-5554 tool/e2e_android.sh
 
-# Local and public IGDB health plus Steam owned-games and software contracts
+# Local/public metadata and official-localization contracts, plus Steam checks
 tool/live_smoke.sh
 
 # Optional one-off override; exported values take precedence over .env
@@ -58,6 +58,7 @@ The deterministic suite covers:
 - onboarding commands and full dependency composition;
 - main navigation, library filtering, settings, and stable UI selectors;
 - software catalog persistence and the cross-app software exclusion setting;
+- official-localization polling, source persistence, and settings progress;
 - a device-level onboarding, fixture sync, recommendation, library, details, and settings flow.
 
 Live checks are separate. A deterministic failure means the application changed; a live failure may mean the local IGDB process, public route, Steam, or the network is unavailable.

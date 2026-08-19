@@ -270,6 +270,20 @@ void main() {
     );
     await _waitForLanguageSync(tester, languageSetting);
 
+    final officialLocalizationStatus = find.byKey(
+      AppKeys.settingsOfficialLocalization,
+    );
+    await _waitFor(tester, find.text('Steam 官方资料已同步'));
+    await Scrollable.ensureVisible(
+      tester.element(officialLocalizationStatus),
+      alignment: 0.5,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Steam 官方资料已同步'), findsOneWidget);
+    if (_captureVisualEvidence) {
+      await _holdForScreenshot(tester, 'official-localization-status');
+    }
+
     await _tapAndWait(tester, AppKeys.libraryDestination);
     await _waitFor(tester, find.byKey(AppKeys.libraryScreen));
     final localizedPortalItem = find.byKey(AppKeys.libraryItem(620));

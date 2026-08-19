@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nextplay/domain/models/game/sync_progress.dart';
 import 'package:nextplay/ui/settings/view_models/settings_view_model.dart';
 
 import 'support/fake_services.dart';
@@ -41,6 +42,22 @@ void main() {
       expect(portal?.localizedName, '传送门 2');
       expect(portal?.summary, contains('合作解谜'));
       expect(viewModel.isSyncing, isFalse);
+
+      for (var attempt = 0; attempt < 50; attempt++) {
+        if (viewModel.officialLocalizationProgress.stage ==
+            OfficialLocalizationStage.completed) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(
+        viewModel.officialLocalizationProgress.stage,
+        OfficialLocalizationStage.completed,
+      );
+      final persisted = await dependencies.gameDatabaseService.getIgdbGame(620);
+      expect(persisted?['localized_name_source'], 'steam_store');
+      expect(persisted?['summary_source'], 'steam_store');
+      expect(persisted?['localization_language'], 'zh-CN');
 
       viewModel.dispose();
       await dependencies.dispose();

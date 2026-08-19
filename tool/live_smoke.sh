@@ -22,6 +22,7 @@ check_igdb() {
   local base_url="$2"
   local health_file="$smoke_tmp/${label}-health.json"
   local games_file="$smoke_tmp/${label}-games.json"
+  local localizations_file="$smoke_tmp/${label}-localizations.json"
 
   echo "Checking IGDB ${label}: ${base_url}"
   curl --fail --silent --show-error \
@@ -40,6 +41,18 @@ check_igdb() {
   rg -q '"games"[[:space:]]*:' "$games_file"
   rg -q '"steamId"[[:space:]]*:[[:space:]]*570' "$games_file" || {
     echo "IGDB ${label} contract did not return Steam app 570." >&2
+    return 1
+  }
+
+  curl --fail --silent --show-error \
+    --connect-timeout 5 --max-time "$timeout_seconds" \
+    --header 'Content-Type: application/json' \
+    --data '{"steamIds":[620],"language":"zh-CN"}' \
+    "${base_url}/api/localizations" >"$localizations_file"
+  rg -q '"items"[[:space:]]*:' "$localizations_file"
+  rg -q '"status"[[:space:]]*:' "$localizations_file"
+  rg -q '"requested"[[:space:]]*:[[:space:]]*1' "$localizations_file" || {
+    echo "IGDB ${label} localization contract did not accept Steam app 620." >&2
     return 1
   }
 }

@@ -30,6 +30,9 @@ abstract final class AppKeys {
   static const settingsScreen = ValueKey('settings.screen');
   static const settingsError = ValueKey('settings.error');
   static const settingsSync = ValueKey('settings.sync');
+  static const settingsOfficialLocalization = ValueKey(
+    'settings.officialLocalization',
+  );
   static const settingsLanguageEnglish = ValueKey('settings.language.en');
   static const settingsLanguageChinese = ValueKey('settings.language.zh-CN');
   static const settingsExcludeSoftware = ValueKey('settings.excludeSoftware');

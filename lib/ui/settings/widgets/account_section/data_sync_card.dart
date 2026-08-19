@@ -109,6 +109,62 @@ class DataSyncCard extends StatelessWidget {
             ],
           ],
 
+          if (viewModel.officialLocalizationProgress.isVisible &&
+              !viewModel.igdbLanguage.startsWith('en')) ...[
+            const SizedBox(height: 16),
+            Container(
+              key: AppKeys.settingsOfficialLocalization,
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        viewModel.officialLocalizationProgress.isCompleted
+                            ? Icons.verified_outlined
+                            : viewModel.officialLocalizationProgress.isActive
+                            ? Icons.cloud_sync_outlined
+                            : Icons.schedule_outlined,
+                        size: 18,
+                        color: colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          viewModel.officialLocalizationProgress.message,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: viewModel.officialLocalizationProgress.progress,
+                    backgroundColor: colorScheme.surfaceContainerLow,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '已处理 '
+                    '${viewModel.officialLocalizationProgress.completed} / '
+                    '${viewModel.officialLocalizationProgress.total}'
+                    '${viewModel.officialLocalizationProgress.retrying > 0 ? '，限速等待 ${viewModel.officialLocalizationProgress.retrying}' : ''}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           // 错误信息
           if (viewModel.errorMessage.isNotEmpty && !viewModel.isSyncing) ...[
             const SizedBox(height: 12),

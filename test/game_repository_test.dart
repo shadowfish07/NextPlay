@@ -38,7 +38,11 @@ void main() {
       expect(dependencies.gameRepository.gameLibrary, hasLength(3));
       expect(
         dependencies.gameRepository.getGameByAppId(620)?.localizedName,
-        '传送门 2',
+        isNull,
+      );
+      expect(
+        dependencies.gameRepository.getGameByAppId(620)?.summary,
+        'A fixture puzzle adventure.',
       );
       expect(
         dependencies.gameRepository.gameStatuses[570],

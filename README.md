@@ -83,7 +83,10 @@ lib/
 ## API 依赖
 
 - **Steam Web API** - 获取用户游戏库（需用户提供 API Key）
-- **IGDB API** - 本项目依赖[这个封装的 IGDB API](https://github.com/shadowfish07/igdb_service)提供游戏元数据服务
+- **元数据服务** - [igdb_service](https://github.com/shadowfish07/igdb_service)
+  提供 IGDB 基础资料，并通过服务端持久队列统一限速获取 Steam 发行商维护的
+  官方标题与简介。App 只轮询服务端缓存并保存本地展示副本，不直接请求 Steam
+  Store，也不会使用 AI 生成游戏标题或描述。
 
 ## 许可证
 

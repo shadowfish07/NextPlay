@@ -17,6 +17,48 @@ class IgdbGameService {
 
   static const int _maxIdsPerRequest = 100;
 
+  /// 查询已缓存的 Steam 官方本地化，并为缺失项登记后台任务。
+  ///
+  /// 此接口本身不等待 Steam Store；服务端会统一限速处理队列。
+  Future<Result<OfficialLocalizationResponse, String>> getOfficialLocalizations(
+    List<int> steamIds, {
+    required String language,
+  }) async {
+    if (steamIds.isEmpty) {
+      return Success(OfficialLocalizationResponse.empty());
+    }
+    if (steamIds.length > _maxIdsPerRequest) {
+      return const Failure('Maximum 100 Steam IDs per request');
+    }
+
+    try {
+      final response = await _dio.post(
+        '/api/localizations',
+        data: {'steamIds': steamIds, 'language': language},
+        options: Options(receiveTimeout: const Duration(seconds: 15)),
+      );
+      if (response.statusCode != 200) {
+        return Failure(
+          'HTTP ${response.statusCode}: Failed to fetch official localization',
+        );
+      }
+      return Success(
+        OfficialLocalizationResponse.fromJson(
+          response.data as Map<String, dynamic>,
+        ),
+      );
+    } on DioException catch (e) {
+      AppLogger.warning(
+        'Official localization request failed: ${e.response?.statusCode} '
+        '${e.message}',
+      );
+      return Failure('Network error: ${e.message}');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error fetching official localizations', e, stackTrace);
+      return Failure('Error: $e');
+    }
+  }
+
   /// 批量获取游戏信息（自动分批，每批最多100个）
   Future<Result<IgdbBatchResponse, String>> getBatchGameInfo(
     List<int> steamIds, {
@@ -224,7 +266,10 @@ class IgdbGameService {
       steamId: json['steamId'] as int,
       name: json['name'] as String? ?? '',
       localizedName: json['localizedName'] as String?,
+      localizedNameSource: json['localizedNameSource'] as String?,
       summary: json['summary'] as String?,
+      summarySource: json['summarySource'] as String?,
+      localizationLanguage: json['localizationLanguage'] as String?,
       coverUrl: coverUrl,
       coverWidth: coverWidth,
       coverHeight: coverHeight,
@@ -319,4 +364,110 @@ class IgdbError {
   final String reason;
 
   IgdbError({required this.steamId, required this.reason});
+}
+
+class OfficialLocalizationItem {
+  const OfficialLocalizationItem({
+    required this.steamId,
+    required this.stale,
+    this.name,
+    this.summary,
+  });
+
+  final int steamId;
+  final String? name;
+  final String? summary;
+  final bool stale;
+
+  factory OfficialLocalizationItem.fromJson(Map<String, dynamic> json) {
+    return OfficialLocalizationItem(
+      steamId: json['steamId'] as int,
+      name: json['name'] as String?,
+      summary: json['summary'] as String?,
+      stale: json['stale'] as bool? ?? false,
+    );
+  }
+}
+
+class OfficialLocalizationStatus {
+  const OfficialLocalizationStatus({
+    required this.requested,
+    required this.ready,
+    required this.pending,
+    required this.retrying,
+    required this.notFound,
+    required this.stale,
+    this.retryAfterSeconds,
+  });
+
+  final int requested;
+  final int ready;
+  final int pending;
+  final int retrying;
+  final int notFound;
+  final int stale;
+  final int? retryAfterSeconds;
+
+  factory OfficialLocalizationStatus.fromJson(Map<String, dynamic> json) {
+    return OfficialLocalizationStatus(
+      requested: json['requested'] as int? ?? 0,
+      ready: json['ready'] as int? ?? 0,
+      pending: json['pending'] as int? ?? 0,
+      retrying: json['retrying'] as int? ?? 0,
+      notFound: json['notFound'] as int? ?? 0,
+      stale: json['stale'] as int? ?? 0,
+      retryAfterSeconds: json['retryAfterSeconds'] as int?,
+    );
+  }
+}
+
+class OfficialLocalizationResponse {
+  const OfficialLocalizationResponse({
+    required this.items,
+    required this.pending,
+    required this.retrying,
+    required this.notFound,
+    required this.status,
+  });
+
+  final List<OfficialLocalizationItem> items;
+  final List<int> pending;
+  final List<int> retrying;
+  final List<int> notFound;
+  final OfficialLocalizationStatus status;
+
+  factory OfficialLocalizationResponse.empty() {
+    return const OfficialLocalizationResponse(
+      items: [],
+      pending: [],
+      retrying: [],
+      notFound: [],
+      status: OfficialLocalizationStatus(
+        requested: 0,
+        ready: 0,
+        pending: 0,
+        retrying: 0,
+        notFound: 0,
+        stale: 0,
+      ),
+    );
+  }
+
+  factory OfficialLocalizationResponse.fromJson(Map<String, dynamic> json) {
+    final statusJson = json['status'] as Map<String, dynamic>? ?? const {};
+    return OfficialLocalizationResponse(
+      items: (json['items'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(OfficialLocalizationItem.fromJson)
+          .toList(),
+      pending: (json['pending'] as List? ?? const []).whereType<int>().toList(),
+      retrying: (json['retrying'] as List? ?? const [])
+          .whereType<int>()
+          .toList(),
+      notFound: (json['notFound'] as List? ?? const [])
+          .whereType<int>()
+          .toList(),
+      status: OfficialLocalizationStatus.fromJson(statusJson),
+    );
+  }
 }

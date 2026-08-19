@@ -62,3 +62,42 @@ extension SyncStageExtension on SyncStage {
     }
   }
 }
+
+/// Steam 官方标题与描述的后台补全进度。
+class OfficialLocalizationProgress {
+  const OfficialLocalizationProgress({
+    required this.stage,
+    required this.total,
+    required this.completed,
+    required this.pending,
+    required this.retrying,
+    required this.notFound,
+    required this.message,
+  });
+
+  const OfficialLocalizationProgress.idle()
+    : stage = OfficialLocalizationStage.idle,
+      total = 0,
+      completed = 0,
+      pending = 0,
+      retrying = 0,
+      notFound = 0,
+      message = '';
+
+  final OfficialLocalizationStage stage;
+  final int total;
+  final int completed;
+  final int pending;
+  final int retrying;
+  final int notFound;
+  final String message;
+
+  bool get isActive =>
+      stage == OfficialLocalizationStage.syncing ||
+      stage == OfficialLocalizationStage.waiting;
+  bool get isVisible => stage != OfficialLocalizationStage.idle && total > 0;
+  bool get isCompleted => stage == OfficialLocalizationStage.completed;
+  double get progress => total == 0 ? 0 : completed / total;
+}
+
+enum OfficialLocalizationStage { idle, syncing, waiting, completed, paused }

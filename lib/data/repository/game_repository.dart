@@ -38,6 +38,10 @@ class GameRepository {
 
   // 同步任务控制
   int _currentSyncId = 0;
+  int _currentLocalizationSyncId = 0;
+
+  static const _officialLocalizationPollInterval = Duration(seconds: 5);
+  static const _officialLocalizationMaxDuration = Duration(minutes: 10);
 
   /// 同步取消错误的标识常量
   static const String syncCancelledError = 'SYNC_CANCELLED';
@@ -51,6 +55,10 @@ class GameRepository {
       StreamController<RecommendationResult>.broadcast();
   final _playQueueController = StreamController<List<Game>>.broadcast();
   final _syncProgressController = StreamController<SyncProgress>.broadcast();
+  final _officialLocalizationProgressController =
+      StreamController<OfficialLocalizationProgress>.broadcast();
+  OfficialLocalizationProgress _officialLocalizationProgress =
+      const OfficialLocalizationProgress.idle();
   bool _disposed = false;
   late final Future<void> ready;
 
@@ -74,6 +82,10 @@ class GameRepository {
       _recommendationController.stream;
   Stream<List<Game>> get playQueueStream => _playQueueController.stream;
   Stream<SyncProgress> get syncProgressStream => _syncProgressController.stream;
+  Stream<OfficialLocalizationProgress> get officialLocalizationProgressStream =>
+      _officialLocalizationProgressController.stream;
+  OfficialLocalizationProgress get officialLocalizationProgress =>
+      _officialLocalizationProgress;
 
   // Getters
   List<Game> get gameLibrary {
@@ -111,7 +123,9 @@ class GameRepository {
   RecommendationResult? get currentRecommendations => _currentRecommendations;
 
   /// 从数据库加载数据到内存缓存
-  Future<void> _loadFromDatabase() async {
+  Future<void> _loadFromDatabase({
+    bool startOfficialLocalization = true,
+  }) async {
     try {
       AppLogger.info('Loading game data from database...');
 
@@ -155,6 +169,18 @@ class GameRepository {
       _gameLibraryController.add(gameLibrary);
       _gameStatusController.add(gameStatuses);
       await _notifyPlayQueueChanged();
+
+      final language = _prefs.getString('igdb_language') ?? 'en';
+      if (startOfficialLocalization &&
+          !language.startsWith('en') &&
+          steamGames.isNotEmpty) {
+        unawaited(
+          syncOfficialLocalizations(
+            steamGames.map((game) => game['app_id'] as int).toList(),
+            language: language,
+          ),
+        );
+      }
     } catch (e, stackTrace) {
       AppLogger.error('Error loading from database', e, stackTrace);
     }
@@ -252,10 +278,18 @@ class GameRepository {
       (m) => m.toLowerCase().contains('single'),
     );
 
+    final language = _prefs.getString('igdb_language') ?? 'en';
+    final hasOfficialLocalization =
+        igdb?['localization_language'] == language &&
+        (igdb?['localized_name_source'] == 'steam_store' ||
+            igdb?['summary_source'] == 'steam_store');
+
     return Game(
       appId: appId,
       name: igdb?['name'] as String? ?? steam['name'] as String? ?? '',
-      localizedName: igdb?['localized_name'] as String?,
+      localizedName: hasOfficialLocalization
+          ? (igdb?['localized_name'] as String?)
+          : null,
       // Steam 数据
       playtimeForever: steam['playtime_forever'] as int? ?? 0,
       playtimeLastTwoWeeks: steam['playtime_last_two_weeks'] as int? ?? 0,
@@ -265,7 +299,9 @@ class GameRepository {
       unlockedAchievements: steam['unlocked_achievements'] as int? ?? 0,
       isSoftware: (steam['is_software'] as int? ?? 0) == 1,
       // IGDB 数据
-      summary: igdb?['summary'] as String?,
+      summary: language.startsWith('en') || hasOfficialLocalization
+          ? (igdb?['summary'] as String?)
+          : null,
       coverUrl: igdb?['cover_url'] as String?,
       coverWidth: igdb?['cover_width'] as int?,
       coverHeight: igdb?['cover_height'] as int?,
@@ -602,6 +638,7 @@ class GameRepository {
 
       // 第三步：批量获取 IGDB 数据（带进度回调）
       final steamIds = steamGames.map((g) => g.appId).toList();
+      final language = _prefs.getString('igdb_language') ?? 'en';
 
       _syncProgressController.add(
         SyncProgress(
@@ -614,7 +651,7 @@ class GameRepository {
 
       final igdbResult = await _igdbGameService.getBatchGameInfo(
         steamIds,
-        language: _prefs.getString('igdb_language') ?? 'en',
+        language: language,
         onProgress: (completed, total) {
           // 在进度回调中也检查取消状态，避免继续发送进度更新
           if (isCancelled()) return;
@@ -671,7 +708,13 @@ class GameRepository {
             'steam_id': game.steamId,
             'name': game.name,
             'localized_name': game.localizedName,
+            'localized_name_source': game.localizedNameSource,
             'summary': game.summary,
+            'summary_source': game.summarySource,
+            'localization_language': game.localizationLanguage,
+            'localization_updated_at': game.localizationLanguage == null
+                ? null
+                : DateTime.now().millisecondsSinceEpoch,
             'cover_url': game.coverUrl,
             'cover_width': game.coverWidth,
             'cover_height': game.coverHeight,
@@ -799,7 +842,7 @@ class GameRepository {
       }
 
       // 第五步：重新加载内存缓存
-      await _loadFromDatabase();
+      await _loadFromDatabase(startOfficialLocalization: false);
 
       // 保存同步时间
       await _prefs.setString(
@@ -820,6 +863,9 @@ class GameRepository {
         'Game library sync completed: ${gameLibrary.length} visible games, '
         '$softwareGamesCount software items identified',
       );
+      if (!language.startsWith('en')) {
+        unawaited(syncOfficialLocalizations(steamIds, language: language));
+      }
       return Success(gameLibrary);
     } catch (e, stackTrace) {
       final error = 'Game library sync error: $e';
@@ -833,6 +879,176 @@ class GameRepository {
       );
       return Failure(error);
     }
+  }
+
+  /// 从服务端缓存增量拉取 Steam 官方本地化。
+  ///
+  /// 正常游戏库同步不会等待这里完成；重复调用会取消旧轮询并复用服务端
+  /// 去重队列。十分钟仍未完成时暂停，下次启动或手动同步自动续跑。
+  Future<void> syncOfficialLocalizations(
+    List<int> steamIds, {
+    required String language,
+  }) async {
+    final localizationSyncId = ++_currentLocalizationSyncId;
+    bool isCancelled() =>
+        _disposed || _currentLocalizationSyncId != localizationSyncId;
+
+    final remaining = steamIds.toSet();
+    final total = remaining.length;
+    if (total == 0 || language.startsWith('en')) {
+      _emitOfficialLocalizationProgress(
+        const OfficialLocalizationProgress.idle(),
+      );
+      return;
+    }
+
+    final deadline = DateTime.now().add(_officialLocalizationMaxDuration);
+    var notFoundCount = 0;
+    _emitOfficialLocalizationProgress(
+      OfficialLocalizationProgress(
+        stage: OfficialLocalizationStage.syncing,
+        total: total,
+        completed: 0,
+        pending: total,
+        retrying: 0,
+        notFound: 0,
+        message: '正在准备 Steam 官方中文资料...',
+      ),
+    );
+
+    while (remaining.isNotEmpty && DateTime.now().isBefore(deadline)) {
+      if (isCancelled()) return;
+      final currentIds = remaining.toList();
+      var pendingCount = 0;
+      var retryingCount = 0;
+      var longestRetryAfter = 0;
+      var requestFailed = false;
+      var databaseChanged = false;
+
+      for (var offset = 0; offset < currentIds.length; offset += 100) {
+        if (isCancelled()) return;
+        final end = min(offset + 100, currentIds.length);
+        final batch = currentIds.sublist(offset, end);
+        final result = await _igdbGameService.getOfficialLocalizations(
+          batch,
+          language: language,
+        );
+        if (isCancelled()) return;
+
+        if (result.isError()) {
+          requestFailed = true;
+          pendingCount += batch.length;
+          AppLogger.warning(
+            'Official localization poll failed: ${result.exceptionOrNull()}',
+          );
+          continue;
+        }
+
+        final response = result.getOrNull()!;
+        final localizations = response.items
+            .map(
+              (item) => {
+                'steam_id': item.steamId,
+                'base_name': _gameCache[item.steamId]?.name ?? item.name ?? '',
+                'localized_name': item.name,
+                'localized_name_source': item.name == null
+                    ? null
+                    : 'steam_store',
+                'summary': item.summary,
+                'summary_source': item.summary == null ? null : 'steam_store',
+                'language': language,
+              },
+            )
+            .toList();
+        if (localizations.isNotEmpty) {
+          await _databaseService.upsertOfficialLocalizations(localizations);
+          databaseChanged = true;
+        }
+
+        for (final item in response.items) {
+          if (!item.stale) remaining.remove(item.steamId);
+        }
+        if (response.notFound.isNotEmpty) {
+          await _databaseService.clearOfficialLocalizations(
+            response.notFound,
+            language: language,
+          );
+          remaining.removeAll(response.notFound);
+          notFoundCount += response.notFound.length;
+          databaseChanged = true;
+        }
+
+        pendingCount += response.status.pending;
+        retryingCount += response.status.retrying;
+        longestRetryAfter = max(
+          longestRetryAfter,
+          response.status.retryAfterSeconds ?? 0,
+        );
+      }
+
+      if (databaseChanged) {
+        await _loadFromDatabase(startOfficialLocalization: false);
+      }
+      if (isCancelled()) return;
+
+      final completed = total - remaining.length;
+      if (remaining.isEmpty) {
+        _emitOfficialLocalizationProgress(
+          OfficialLocalizationProgress(
+            stage: OfficialLocalizationStage.completed,
+            total: total,
+            completed: completed,
+            pending: 0,
+            retrying: 0,
+            notFound: notFoundCount,
+            message: 'Steam 官方资料已同步',
+          ),
+        );
+        return;
+      }
+
+      _emitOfficialLocalizationProgress(
+        OfficialLocalizationProgress(
+          stage: OfficialLocalizationStage.waiting,
+          total: total,
+          completed: completed,
+          pending: max(pendingCount, remaining.length - retryingCount),
+          retrying: retryingCount,
+          notFound: notFoundCount,
+          message: requestFailed ? '网络暂时不可用，稍后继续获取官方资料' : '后台正在获取 Steam 官方资料',
+        ),
+      );
+
+      final retryDelay = Duration(
+        seconds: max(
+          _officialLocalizationPollInterval.inSeconds,
+          longestRetryAfter,
+        ),
+      );
+      await Future<void>.delayed(retryDelay);
+    }
+
+    if (!isCancelled()) {
+      _emitOfficialLocalizationProgress(
+        OfficialLocalizationProgress(
+          stage: OfficialLocalizationStage.paused,
+          total: total,
+          completed: total - remaining.length,
+          pending: remaining.length,
+          retrying: 0,
+          notFound: notFoundCount,
+          message: '部分官方资料仍在排队，下次启动或同步时继续',
+        ),
+      );
+    }
+  }
+
+  void _emitOfficialLocalizationProgress(
+    OfficialLocalizationProgress progress,
+  ) {
+    if (_disposed) return;
+    _officialLocalizationProgress = progress;
+    _officialLocalizationProgressController.add(progress);
   }
 
   /// 更新游戏状态
@@ -1149,5 +1365,7 @@ class GameRepository {
     _recommendationController.close();
     _playQueueController.close();
     _syncProgressController.close();
+    _currentLocalizationSyncId++;
+    _officialLocalizationProgressController.close();
   }
 }
