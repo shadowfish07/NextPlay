@@ -1,0 +1,28 @@
+{
+  "name": "igdb-steam-service",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "start": "bun src/index.ts",
+    "test": "bun test",
+    "build": "bun build src/index.ts --compile --outfile dist/igdb-service",
+    "generate-translations": "bun scripts/generate-translations.ts",
+    "deploy": "bun run build && pm2 restart igdb-service",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop igdb-service",
+    "pm2:restart": "pm2 restart igdb-service",
+    "pm2:logs": "pm2 logs igdb-service",
+    "pm2:status": "pm2 status"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.9",
+    "@ai-sdk/openai": "^3.0.7",
+    "@ai-sdk/openai-compatible": "^2.0.4",
+    "ai": "^6.0.24",
+    "bun": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
