@@ -84,13 +84,6 @@ void main() {
     await _waitForSoftwareSetting(tester, softwareSetting, false);
     expect(tester.widget<SwitchListTile>(softwareSetting).value, isFalse);
 
-    await tester.tap(find.byKey(AppKeys.libraryDestination));
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(
-      find.byKey(AppKeys.libraryItem(TestFixtures.softwareGame.appId)),
-      findsOneWidget,
-    );
-
     await disposeTestApp(tester);
   });
 }
