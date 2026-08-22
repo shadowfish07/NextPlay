@@ -347,6 +347,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.0.0"
+  flutter_release_updater:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: "v0.1.0"
+      resolved-ref: "5af987be6cde6b6a346a6eef750a64ad6da2bc9c"
+      url: "https://github.com/shadowfish07/flutter_release_updater.git"
+    source: git
+    version: "0.1.0"
   flutter_secure_storage:
     dependency: "direct main"
     description:

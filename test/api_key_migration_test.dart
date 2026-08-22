@@ -177,7 +177,7 @@ void main() {
         onboardingRepository: dependencies.onboardingRepository,
         gameRepository: dependencies.gameRepository,
         steamValidationService: dependencies.steamValidationService,
-        releaseService: dependencies.releaseService,
+        releaseUpdater: dependencies.releaseUpdater,
         prefs: dependencies.sharedPreferences,
       );
 

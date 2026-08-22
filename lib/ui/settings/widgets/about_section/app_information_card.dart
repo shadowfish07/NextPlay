@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_release_updater/flutter_release_updater.dart';
 import 'package:provider/provider.dart';
+
 import '../shared/settings_card.dart';
 import '../../view_models/settings_view_model.dart';
 import '../../../core/app_keys.dart';
-import '../../../../domain/models/update/app_update.dart';
 
 /// 应用信息卡片（简化版）
 ///
@@ -87,7 +88,7 @@ class _UpdateSection extends StatelessWidget {
             message: '正在检查 GitHub 更新...',
             showProgress: true,
           )
-        else if (viewModel.updateCheckStatus == UpdateCheckStatus.failed)
+        else if (viewModel.updateCheckStatus == UpdateStatus.failed)
           _FailedUpdateCheck(viewModel: viewModel)
         else
           _UpToDateStatus(viewModel: viewModel),
@@ -106,6 +107,17 @@ class _AvailableUpdate extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final status = viewModel.updateCheckStatus;
+    final isDownloading = status == UpdateStatus.downloading;
+    final permissionRequired = status == UpdateStatus.permissionRequired;
+    final installerOpened = status == UpdateStatus.installerOpened;
+    final downloadFailed = status == UpdateStatus.failed;
+    final buttonLabel = switch (status) {
+      UpdateStatus.permissionRequired => '继续安装',
+      UpdateStatus.installerOpened => '重新打开安装器',
+      UpdateStatus.failed => '重试下载',
+      _ => '下载并安装',
+    };
     return Container(
       key: AppKeys.settingsUpdate,
       width: double.infinity,
@@ -154,14 +166,62 @@ class _AvailableUpdate extends StatelessWidget {
               ),
             ),
           ],
+          if (isDownloading) ...[
+            const SizedBox(height: 12),
+            LinearProgressIndicator(value: viewModel.updateDownloadProgress),
+            const SizedBox(height: 6),
+            Text(
+              viewModel.updateDownloadProgress == null
+                  ? '正在下载并校验 APK...'
+                  : '正在下载 ${(viewModel.updateDownloadProgress! * 100).round()}%',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ] else if (permissionRequired) ...[
+            const SizedBox(height: 12),
+            Text(
+              '请在系统设置中允许 NextPlay 安装未知应用，返回后点“继续安装”。',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ] else if (installerOpened) ...[
+            const SizedBox(height: 12),
+            Text(
+              '已打开系统安装器，请按系统提示完成更新。',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ] else if (downloadFailed) ...[
+            const SizedBox(height: 12),
+            Text(
+              viewModel.updateErrorMessage.isEmpty
+                  ? '下载或安装更新失败'
+                  : viewModel.updateErrorMessage,
+              key: AppKeys.settingsUpdateError,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.error,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerRight,
             child: FilledButton.icon(
               key: AppKeys.settingsUpdateOpen,
-              onPressed: () => viewModel.openUpdateCommand.execute(),
-              icon: const Icon(Icons.open_in_new),
-              label: const Text('打开 Release'),
+              onPressed: viewModel.isUpdateBusy
+                  ? null
+                  : () => viewModel.installUpdateCommand.execute(),
+              icon: Icon(
+                permissionRequired
+                    ? Icons.settings
+                    : installerOpened
+                    ? Icons.open_in_new
+                    : Icons.download,
+              ),
+              label: Text(buttonLabel),
             ),
           ),
         ],

@@ -1,12 +1,12 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_release_updater/flutter_release_updater.dart';
 import 'package:result_dart/result_dart.dart';
 
 import 'package:nextplay/data/service/api_key_storage.dart';
-import 'package:nextplay/data/service/github_release_service.dart';
 import 'package:nextplay/data/service/igdb_game_service.dart';
 import 'package:nextplay/data/service/steam_api_service.dart';
 import 'package:nextplay/domain/models/game/game.dart';
 import 'package:nextplay/domain/models/game/igdb_game_data.dart';
-import 'package:nextplay/domain/models/update/app_update.dart';
 
 class FakeApiKeyStorage implements ApiKeyStorage {
   FakeApiKeyStorage({this.value});
@@ -43,22 +43,74 @@ class FakeApiKeyStorage implements ApiKeyStorage {
   }
 }
 
-class FakeReleaseService extends ReleaseService {
-  FakeReleaseService({this.update, this.failure});
-
-  final AppUpdate? update;
-  final String? failure;
-  int checkCount = 0;
-  String? lastCurrentVersion;
+class FakeReleaseUpdater extends ChangeNotifier implements ReleaseUpdater {
+  FakeReleaseUpdater({
+    this.installedVersion = '1.5.0',
+    this.status = UpdateStatus.upToDate,
+    this.availableUpdate,
+    this.errorMessage = '',
+    this.downloadProgress,
+    this.nextInstallStatus = UpdateStatus.installerOpened,
+  });
 
   @override
-  Future<Result<UpdateCheckResult, String>> checkForUpdate({
-    required String currentVersion,
-  }) async {
+  String installedVersion;
+
+  @override
+  UpdateStatus status;
+
+  @override
+  AppUpdate? availableUpdate;
+
+  @override
+  DateTime? lastCheckAt;
+
+  @override
+  String errorMessage;
+
+  @override
+  double? downloadProgress;
+
+  UpdateStatus nextInstallStatus;
+  int startCount = 0;
+  int checkCount = 0;
+  int installCount = 0;
+
+  @override
+  bool get isBusy =>
+      status == UpdateStatus.checking || status == UpdateStatus.downloading;
+
+  @override
+  Future<void> start() async {
+    startCount += 1;
+  }
+
+  @override
+  Future<void> checkIfDue() => checkNow();
+
+  @override
+  Future<void> checkNow() async {
     checkCount += 1;
-    lastCurrentVersion = currentVersion;
-    if (failure != null) return Failure(failure!);
-    return Success(UpdateCheckResult(update: update));
+    lastCheckAt = DateTime.now();
+    status = availableUpdate == null
+        ? UpdateStatus.upToDate
+        : UpdateStatus.available;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> downloadAndInstall() async {
+    if (availableUpdate == null || isBusy) return;
+    installCount += 1;
+    status = nextInstallStatus;
+    notifyListeners();
+  }
+
+  void publishUpdate(AppUpdate update) {
+    availableUpdate = update;
+    status = UpdateStatus.available;
+    errorMessage = '';
+    notifyListeners();
   }
 }
 

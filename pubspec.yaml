@@ -30,6 +30,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_release_updater:
+    git:
+      url: https://github.com/shadowfish07/flutter_release_updater.git
+      ref: v0.1.0
 
   # 核心架构依赖
   provider: ^6.1.1                     # 依赖注入

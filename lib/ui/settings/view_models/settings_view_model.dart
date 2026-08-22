@@ -1,14 +1,14 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_command/flutter_command.dart';
+import 'package:flutter_release_updater/flutter_release_updater.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import '../../../data/repository/onboarding/onboarding_repository.dart';
 import '../../../data/repository/game_repository.dart';
 import '../../../data/service/app_info_service.dart';
-import '../../../data/service/github_release_service.dart';
 import '../../../data/service/steam_validation_service.dart';
-import '../../../domain/models/update/app_update.dart';
 import '../../../domain/models/game/sync_progress.dart';
 import '../../../utils/logger.dart';
 
@@ -16,7 +16,7 @@ class SettingsViewModel extends ChangeNotifier {
   final OnboardingRepository _onboardingRepository;
   final GameRepository _gameRepository;
   final SteamValidationService _steamValidationService;
-  final ReleaseService _releaseService;
+  final ReleaseUpdater _releaseUpdater;
   final SharedPreferences _prefs;
   bool _disposed = false;
 
@@ -30,7 +30,7 @@ class SettingsViewModel extends ChangeNotifier {
   late final Command<void, void> clearAllDataCommand;
   late final Command<void, String> getVersionCommand;
   late final Command<void, void> checkForUpdateCommand;
-  late final Command<void, void> openUpdateCommand;
+  late final Command<void, void> installUpdateCommand;
 
   // Commands - 新增偏好设置（占位实现）
   late final Command<double, void> updateTypeBalanceCommand;
@@ -46,21 +46,6 @@ class SettingsViewModel extends ChangeNotifier {
   String _errorMessage = '';
   bool _isDarkTheme = false; // UI状态，可以缓存
   String _appVersion = ''; // 缓存版本信息用于显示
-  String _currentVersion = '';
-  UpdateCheckStatus _updateCheckStatus = UpdateCheckStatus.idle;
-  bool _isCheckingForUpdate = false;
-  AppUpdate? _availableUpdate;
-  String _updateErrorMessage = '';
-  DateTime? _lastUpdateCheckAt;
-  Future<void>? _versionInitializationFuture;
-
-  static const _lastUpdateCheckAtPreference = 'last_update_check_at';
-  static const _cachedUpdateVersionPreference = 'cached_update_version';
-  static const _cachedUpdateTitlePreference = 'cached_update_title';
-  static const _cachedUpdateNotesPreference = 'cached_update_notes';
-  static const _cachedUpdateUrlPreference = 'cached_update_url';
-  static const _cachedUpdateApkUrlPreference = 'cached_update_apk_url';
-  static const _updateCheckInterval = Duration(hours: 6);
 
   // 同步进度状态
   double _syncProgress = 0.0;
@@ -89,13 +74,14 @@ class SettingsViewModel extends ChangeNotifier {
     required OnboardingRepository onboardingRepository,
     required GameRepository gameRepository,
     required SteamValidationService steamValidationService,
-    required ReleaseService releaseService,
+    required ReleaseUpdater releaseUpdater,
     required SharedPreferences prefs,
   }) : _onboardingRepository = onboardingRepository,
        _gameRepository = gameRepository,
        _steamValidationService = steamValidationService,
-       _releaseService = releaseService,
+       _releaseUpdater = releaseUpdater,
        _prefs = prefs {
+    _releaseUpdater.addListener(_handleReleaseUpdaterChanged);
     _initializeCommands();
     _loadSettings();
   }
@@ -110,13 +96,15 @@ class SettingsViewModel extends ChangeNotifier {
   bool get isDarkTheme => _isDarkTheme;
   int get gameCount => _gameRepository.gameLibrary.length;
   String get appVersion => _appVersion; // 版本信息getter
-  UpdateCheckStatus get updateCheckStatus => _updateCheckStatus;
-  AppUpdate? get availableUpdate => _availableUpdate;
+  UpdateStatus get updateCheckStatus => _releaseUpdater.status;
+  AppUpdate? get availableUpdate => _releaseUpdater.availableUpdate;
   bool get isCheckingForUpdate =>
-      _updateCheckStatus == UpdateCheckStatus.checking;
-  bool get isUpdateAvailable => _availableUpdate != null;
-  String get updateErrorMessage => _updateErrorMessage;
-  DateTime? get lastUpdateCheckAt => _lastUpdateCheckAt;
+      _releaseUpdater.status == UpdateStatus.checking;
+  bool get isUpdateAvailable => _releaseUpdater.availableUpdate != null;
+  bool get isUpdateBusy => _releaseUpdater.isBusy;
+  double? get updateDownloadProgress => _releaseUpdater.downloadProgress;
+  String get updateErrorMessage => _releaseUpdater.errorMessage;
+  DateTime? get lastUpdateCheckAt => _releaseUpdater.lastCheckAt;
   DateTime? get lastSyncTime {
     final syncTimeString = _prefs.getString('last_sync_time');
     return syncTimeString != null ? DateTime.tryParse(syncTimeString) : null;
@@ -186,7 +174,9 @@ class SettingsViewModel extends ChangeNotifier {
       _handleManualCheckForUpdate,
     );
 
-    openUpdateCommand = Command.createAsyncNoParamNoResult(_handleOpenUpdate);
+    installUpdateCommand = Command.createAsyncNoParamNoResult(
+      _handleInstallUpdate,
+    );
 
     // 初始化偏好设置 Commands（占位）
     updateTypeBalanceCommand = Command.createAsync<double, void>(
@@ -241,10 +231,8 @@ class SettingsViewModel extends ChangeNotifier {
       // 加载 IGDB 语言设置
       _igdbLanguage = _prefs.getString('igdb_language') ?? 'en';
 
-      _restoreUpdateState();
-
-      // 初始化时获取版本信息并自动检查更新。检查失败不会阻断主流程。
-      _versionInitializationFuture = _initializeVersionAndUpdate();
+      // 更新器由应用依赖根启动；这里仅加载用于展示的完整版本号。
+      unawaited(_handleGetVersion());
 
       // 监听游戏库变化，当数据库加载完成时更新UI
       _gameLibrarySubscription = _gameRepository.gameLibraryStream.listen((_) {
@@ -275,40 +263,6 @@ class SettingsViewModel extends ChangeNotifier {
       AppLogger.error('Failed to load settings', e, stackTrace);
       _errorMessage = 'Failed to load settings';
       notifyListeners();
-    }
-  }
-
-  void _restoreUpdateState() {
-    final lastCheckValue = _prefs.getString(_lastUpdateCheckAtPreference);
-    _lastUpdateCheckAt = lastCheckValue == null
-        ? null
-        : DateTime.tryParse(lastCheckValue);
-
-    final version = _prefs.getString(_cachedUpdateVersionPreference);
-    final title = _prefs.getString(_cachedUpdateTitlePreference);
-    final notes = _prefs.getString(_cachedUpdateNotesPreference);
-    final releaseUrl = _prefs.getString(_cachedUpdateUrlPreference);
-    if (version == null ||
-        title == null ||
-        notes == null ||
-        releaseUrl == null) {
-      return;
-    }
-
-    _availableUpdate = AppUpdate(
-      version: version,
-      title: title,
-      releaseNotes: notes,
-      releaseUrl: releaseUrl,
-      apkUrl: _prefs.getString(_cachedUpdateApkUrlPreference),
-    );
-    _updateCheckStatus = UpdateCheckStatus.available;
-  }
-
-  Future<void> _initializeVersionAndUpdate() async {
-    await _handleGetVersion();
-    if (!_disposed) {
-      await _checkForUpdateIfNeeded();
     }
   }
 
@@ -488,10 +442,6 @@ class SettingsViewModel extends ChangeNotifier {
       // 重置本地UI状态
       _isDarkTheme = false;
       _excludeSoftware = true;
-      _availableUpdate = null;
-      _updateCheckStatus = UpdateCheckStatus.idle;
-      _updateErrorMessage = '';
-      _lastUpdateCheckAt = null;
 
       AppLogger.info('All application data cleared');
       notifyListeners();
@@ -506,9 +456,8 @@ class SettingsViewModel extends ChangeNotifier {
       AppLogger.info('Getting app version info');
 
       final result = await AppInfoService.getPackageInfo();
-      return result.fold(
+      return await result.fold(
         (success) {
-          _currentVersion = success.version;
           _appVersion = 'v${success.version} (${success.buildNumber})';
           AppLogger.info('App version retrieved: $_appVersion');
           notifyListeners();
@@ -516,7 +465,6 @@ class SettingsViewModel extends ChangeNotifier {
         },
         (failure) {
           AppLogger.error('Failed to get app version', failure);
-          _currentVersion = '';
           _appVersion = 'Unknown';
           notifyListeners();
           return 'Unknown';
@@ -524,7 +472,6 @@ class SettingsViewModel extends ChangeNotifier {
       );
     } catch (e, stackTrace) {
       AppLogger.error('Failed to get app version', e, stackTrace);
-      _currentVersion = '';
       _appVersion = 'Unknown';
       notifyListeners();
       return 'Unknown';
@@ -532,165 +479,17 @@ class SettingsViewModel extends ChangeNotifier {
   }
 
   Future<void> _handleManualCheckForUpdate() async {
-    await _versionInitializationFuture;
-    if (_currentVersion.isEmpty) return;
-    await _checkForUpdate(force: true);
+    AppLogger.info('Checking GitHub releases for an application update');
+    await _releaseUpdater.checkNow();
   }
 
-  Future<void> _checkForUpdateIfNeeded() async {
-    if (_currentVersion.isEmpty || _disposed) return;
-
-    if (_availableUpdate != null) {
-      try {
-        if (!VersionComparator.isNewer(
-          _availableUpdate!.version,
-          _currentVersion,
-        )) {
-          _availableUpdate = null;
-          _updateCheckStatus = UpdateCheckStatus.upToDate;
-          await _clearCachedUpdate();
-        }
-      } on FormatException {
-        _availableUpdate = null;
-        _updateCheckStatus = UpdateCheckStatus.upToDate;
-        await _clearCachedUpdate();
-      }
-    }
-
-    final lastCheck = _lastUpdateCheckAt;
-    if (lastCheck != null &&
-        DateTime.now().difference(lastCheck) < _updateCheckInterval) {
-      if (_updateCheckStatus != UpdateCheckStatus.available) {
-        _updateCheckStatus = UpdateCheckStatus.upToDate;
-        notifyListeners();
-      }
-      return;
-    }
-
-    await _checkForUpdate(force: false);
+  Future<void> _handleInstallUpdate() async {
+    AppLogger.info('Downloading and opening the application update installer');
+    await _releaseUpdater.downloadAndInstall();
   }
 
-  Future<void> _checkForUpdate({required bool force}) async {
-    if (_disposed || _isCheckingForUpdate || _currentVersion.isEmpty) return;
-    if (!force) {
-      final lastCheck = _lastUpdateCheckAt;
-      if (lastCheck != null &&
-          DateTime.now().difference(lastCheck) < _updateCheckInterval) {
-        return;
-      }
-    }
-
-    _isCheckingForUpdate = true;
-    _updateCheckStatus = UpdateCheckStatus.checking;
-    _updateErrorMessage = '';
+  void _handleReleaseUpdaterChanged() {
     notifyListeners();
-
-    try {
-      AppLogger.info('Checking GitHub releases for an application update');
-      final result = await _releaseService.checkForUpdate(
-        currentVersion: _currentVersion,
-      );
-      UpdateCheckResult? checkResult;
-      String? errorMessage;
-      result.fold(
-        (success) => checkResult = success,
-        (failure) => errorMessage = failure,
-      );
-
-      if (_disposed) return;
-
-      if (checkResult != null) {
-        _lastUpdateCheckAt = DateTime.now();
-        _availableUpdate = checkResult!.update;
-        _updateCheckStatus = checkResult!.hasUpdate
-            ? UpdateCheckStatus.available
-            : UpdateCheckStatus.upToDate;
-        _updateErrorMessage = '';
-        await _persistUpdateState();
-        AppLogger.info(
-          checkResult!.hasUpdate
-              ? 'GitHub update available: ${checkResult!.update!.version}'
-              : 'GitHub release is up to date',
-        );
-      } else {
-        _updateCheckStatus = UpdateCheckStatus.failed;
-        _updateErrorMessage = errorMessage ?? '暂时无法检查更新';
-        AppLogger.warning('GitHub update check failed: $_updateErrorMessage');
-      }
-    } catch (error, stackTrace) {
-      if (!_disposed) {
-        _updateCheckStatus = UpdateCheckStatus.failed;
-        _updateErrorMessage = '暂时无法检查更新';
-        AppLogger.error('Unexpected update check failure', error, stackTrace);
-      }
-    } finally {
-      _isCheckingForUpdate = false;
-      if (!_disposed) notifyListeners();
-    }
-  }
-
-  Future<void> _persistUpdateState() async {
-    try {
-      final update = _availableUpdate;
-      await _prefs.setString(
-        _lastUpdateCheckAtPreference,
-        _lastUpdateCheckAt!.toIso8601String(),
-      );
-      if (update == null) {
-        await _clearCachedUpdate();
-        return;
-      }
-
-      await _prefs.setString(_cachedUpdateVersionPreference, update.version);
-      await _prefs.setString(_cachedUpdateTitlePreference, update.title);
-      await _prefs.setString(_cachedUpdateNotesPreference, update.releaseNotes);
-      await _prefs.setString(_cachedUpdateUrlPreference, update.releaseUrl);
-      if (update.apkUrl == null) {
-        await _prefs.remove(_cachedUpdateApkUrlPreference);
-      } else {
-        await _prefs.setString(_cachedUpdateApkUrlPreference, update.apkUrl!);
-      }
-    } catch (error, stackTrace) {
-      // A cache write must never turn a successful network check into a UI
-      // failure. The next application launch can simply check again.
-      AppLogger.warning('Failed to persist update check state: $error');
-      AppLogger.error('Update cache persistence details', error, stackTrace);
-    }
-  }
-
-  Future<void> _clearCachedUpdate() async {
-    await _prefs.remove(_cachedUpdateVersionPreference);
-    await _prefs.remove(_cachedUpdateTitlePreference);
-    await _prefs.remove(_cachedUpdateNotesPreference);
-    await _prefs.remove(_cachedUpdateUrlPreference);
-    await _prefs.remove(_cachedUpdateApkUrlPreference);
-  }
-
-  Future<void> _handleOpenUpdate() async {
-    final update = _availableUpdate;
-    if (update == null) return;
-
-    try {
-      final uri = Uri.tryParse(update.releaseUrl);
-      if (uri == null || !uri.hasScheme) {
-        _updateErrorMessage = '更新页面地址无效';
-        notifyListeners();
-        return;
-      }
-
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched && !_disposed) {
-        _updateErrorMessage = '无法打开 GitHub 更新页面';
-        notifyListeners();
-      }
-    } catch (error, stackTrace) {
-      AppLogger.error('Failed to open GitHub release page', error, stackTrace);
-      _updateErrorMessage = '打开更新页面失败';
-      notifyListeners();
-    }
   }
 
   void _setError(String error) {
@@ -820,6 +619,7 @@ class SettingsViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    _releaseUpdater.removeListener(_handleReleaseUpdaterChanged);
     _disposed = true;
     _syncProgressSubscription?.cancel();
     _officialLocalizationProgressSubscription?.cancel();
