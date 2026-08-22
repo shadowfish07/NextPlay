@@ -351,11 +351,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "v0.1.0"
-      resolved-ref: "5af987be6cde6b6a346a6eef750a64ad6da2bc9c"
+      ref: "v0.1.2"
+      resolved-ref: "69589aa92bcb74aaefa55e91808a798c2aa53698"
       url: "https://github.com/shadowfish07/flutter_release_updater.git"
     source: git
-    version: "0.1.0"
+    version: "0.1.2"
   flutter_secure_storage:
     dependency: "direct main"
     description:
