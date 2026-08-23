@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nextplay/config/dependencies.dart';
 import 'package:nextplay/data/repository/game_repository.dart';
 import 'package:nextplay/domain/models/game/game_status.dart';
+import 'package:nextplay/domain/models/game/igdb_game_data.dart';
 import 'package:nextplay/domain/models/game/sync_progress.dart';
 
 import 'support/fake_services.dart';
@@ -185,6 +186,99 @@ void main() {
         dependencies.gameRepository.getGameByAppId(570)?.localizedName,
         isNull,
       );
+    },
+  );
+
+  test(
+    'getGameLibraryStats reports per-status counts used by the library filters',
+    () async {
+      // 将 Dota 2 的最近游玩时间设为当前时间前一天，确保最近游玩统计
+      // 始终有真实数据可断言（避免固定日期滑出 14 天窗口后退化为 0==0）
+      final steamGames = TestFixtures.games
+          .map(
+            (game) => game.appId == 570
+                ? game.copyWith(
+                    lastPlayed: DateTime.now().subtract(
+                      const Duration(days: 1),
+                    ),
+                  )
+                : game,
+          )
+          .toList();
+
+      dependencies = await createTestDependencies(
+        databaseName: 'game_repository_stats.db',
+        steamGames: steamGames,
+      );
+
+      await dependencies.gameRepository.syncGameLibrary(
+        apiKey: TestFixtures.apiKey,
+        steamId: TestFixtures.steamId,
+      );
+
+      // 同步后：570/413150 有游玩时长自动为 playing，620 无时长保持 notStarted
+      // 手动调整为不同状态，模拟用户在筛选页看到的分布
+      await dependencies.gameRepository.updateGameStatus(
+        570,
+        const GameStatus.paused(),
+      );
+      await dependencies.gameRepository.updateGameStatus(
+        620,
+        const GameStatus.completed(),
+      );
+      await dependencies.gameRepository.updateGameStatus(
+        413150,
+        const GameStatus.abandoned(),
+      );
+
+      final stats = dependencies.gameRepository.getGameLibraryStats();
+
+      expect(stats['total'], 3);
+      expect(stats['notStarted'], 0);
+      expect(stats['playing'], 0);
+      expect(stats['completed'], 1);
+      expect(stats['abandoned'], 1);
+      expect(stats['paused'], 1);
+      expect(stats['withPlaytime'], 2);
+
+      // Dota 2 (570) 的 IGDB 游戏模式为 Multiplayer
+      expect(stats['multiplayer'], 1);
+
+      // 近两周内玩过的游戏数量（与 getRecentlyPlayedGames 的窗口一致）
+      final now = DateTime.now();
+      final expectedRecentlyPlayed = steamGames
+          .where(
+            (game) =>
+                game.lastPlayed != null &&
+                game.lastPlayed!.isAfter(
+                  now.subtract(const Duration(days: 14)),
+                ),
+          )
+          .length;
+      expect(expectedRecentlyPlayed, greaterThan(0));
+      expect(stats['recentlyPlayed'], expectedRecentlyPlayed);
+    },
+  );
+
+  test(
+    'localized Chinese multiplayer mode counts toward library multiplayer stats',
+    () async {
+      // Dota 2 使用中文 IGDB 模式名，确保 isMultiplayer 判定不依赖英文关键词
+      dependencies = await createTestDependencies(
+        databaseName: 'game_repository_stats_cn.db',
+        igdbGames: [
+          const IgdbGameData(steamId: 570, name: 'Dota 2', gameModes: ['多人游戏']),
+          ...TestFixtures.igdbGames.sublist(1),
+        ],
+      );
+
+      await dependencies.gameRepository.syncGameLibrary(
+        apiKey: TestFixtures.apiKey,
+        steamId: TestFixtures.steamId,
+      );
+
+      final stats = dependencies.gameRepository.getGameLibraryStats();
+      expect(stats['multiplayer'], 1);
     },
   );
 

@@ -44,6 +44,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(AppKeys.libraryScreen), findsOneWidget);
     expect(find.byKey(AppKeys.libraryItem(620)), findsOneWidget);
+    // 筛选 tag 显示真实数量：同步后 570/413150 有时长自动为「游玩中」，620 为「未开始」
+    expect(find.text('未开始 (1)'), findsOneWidget);
+    expect(find.text('游玩中 (2)'), findsOneWidget);
     await tester.enterText(find.byKey(AppKeys.librarySearch), 'Portal');
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(AppKeys.libraryItem(620)), findsOneWidget);
