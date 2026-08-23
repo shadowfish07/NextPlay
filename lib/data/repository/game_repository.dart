@@ -268,15 +268,18 @@ class GameRepository {
       publishers = _parseJsonList(igdb['publishers'] as String?);
     }
 
-    // 判断多人/单人游戏
-    final isMultiplayer = gameModes.any(
-      (m) =>
-          m.toLowerCase().contains('multiplayer') ||
-          m.toLowerCase().contains('co-op'),
-    );
-    final isSinglePlayer = gameModes.any(
-      (m) => m.toLowerCase().contains('single'),
-    );
+    // 判断多人/单人游戏：IGDB 模式名会随语言本地化，需同时匹配中英文标识
+    final isMultiplayer = gameModes.any((m) {
+      final mode = m.toLowerCase();
+      return mode.contains('multiplayer') ||
+          mode.contains('co-op') ||
+          mode.contains('多人') ||
+          mode.contains('合作');
+    });
+    final isSinglePlayer = gameModes.any((m) {
+      final mode = m.toLowerCase();
+      return mode.contains('single') || mode.contains('单人');
+    });
 
     final language = _prefs.getString('igdb_language') ?? 'en';
     final hasOfficialLocalization =
@@ -1327,9 +1330,39 @@ class GameRepository {
 
   /// 获取游戏库统计信息
   Map<String, int> getGameLibraryStats() {
+    var notStarted = 0;
+    var playing = 0;
+    var completed = 0;
+    var abandoned = 0;
+    var paused = 0;
+
+    for (final game in _visibleGames) {
+      _getGameStatus(game.appId).when(
+        notStarted: () => notStarted++,
+        playing: () => playing++,
+        completed: () => completed++,
+        abandoned: () => abandoned++,
+        paused: () => paused++,
+      );
+    }
+
+    final now = DateTime.now();
+    final twoWeeksAgo = now.subtract(const Duration(days: 14));
+
     return {
       'total': gameLibrary.length,
+      'notStarted': notStarted,
+      'playing': playing,
+      'completed': completed,
+      'abandoned': abandoned,
+      'paused': paused,
+      'multiplayer': _visibleGames.where((g) => g.isMultiplayer).length,
       'withPlaytime': _visibleGames.where((g) => g.playtimeForever > 0).length,
+      'recentlyPlayed': _visibleGames
+          .where(
+            (g) => g.lastPlayed != null && g.lastPlayed!.isAfter(twoWeeksAgo),
+          )
+          .length,
     };
   }
 

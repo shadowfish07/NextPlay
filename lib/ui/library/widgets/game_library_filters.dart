@@ -418,7 +418,7 @@ class _GameLibraryFiltersState extends State<GameLibraryFilters>
       playing: () => widget.libraryStats.playing,
       completed: () => widget.libraryStats.completed,
       abandoned: () => widget.libraryStats.abandoned,
-      paused: () => 0, // 暂停状态暂时返回0，待统计数据添加此字段
+      paused: () => widget.libraryStats.paused,
     );
   }
 }

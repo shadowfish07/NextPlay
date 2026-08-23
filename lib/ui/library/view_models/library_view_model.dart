@@ -80,6 +80,7 @@ class LibraryViewModel extends ChangeNotifier {
       playing: stats['playing'] ?? 0,
       completed: stats['completed'] ?? 0,
       abandoned: stats['abandoned'] ?? 0,
+      paused: stats['paused'] ?? 0,
       multiplayer: stats['multiplayer'] ?? 0,
       withPlaytime: stats['withPlaytime'] ?? 0,
       recentlyPlayed: stats['recentlyPlayed'] ?? 0,
@@ -442,6 +443,7 @@ class LibraryStats {
   final int playing;
   final int completed;
   final int abandoned;
+  final int paused;
   final int multiplayer;
   final int withPlaytime;
   final int recentlyPlayed;
@@ -452,6 +454,7 @@ class LibraryStats {
     required this.playing,
     required this.completed,
     required this.abandoned,
+    required this.paused,
     required this.multiplayer,
     required this.withPlaytime,
     required this.recentlyPlayed,
