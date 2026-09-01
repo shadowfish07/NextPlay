@@ -45,8 +45,14 @@ Copy the following checklist to track progress when implementing a new widget te
 - [ ] **Step 5: Simulate interactions.** Execute gestures or inputs (e.g., `await tester.tap(buttonFinder)`).
 - [ ] **Step 6: Rebuild the tree.** Call `await tester.pump()` or `await tester.pumpAndSettle()` to process state changes.
 - [ ] **Step 7: Verify updated state.** Use `expect()` to validate the UI after the interaction.
-- [ ] **Step 8: Run and validate.** Execute `flutter test test/your_test_file_test.dart`.
-- [ ] **Step 9: Feedback Loop.** Review test output -> identify failing matchers -> adjust widget logic or test assertions -> re-run until passing.
+- [ ] **Step 8: Run and validate.** Execute
+      `flutter test test/your_test_file_test.dart`, then
+      `tool/verify_fast.sh` in NextPlay. If the associated production change
+      affects UI or navigation, also run `tool/e2e_android.sh` (or
+      `tool/worktree.sh e2e` from a linked worktree).
+- [ ] **Step 9: Feedback Loop.** Review test output -> identify failing matchers
+      -> adjust widget logic or test assertions -> re-run every affected gate
+      until passing.
 
 ## Interaction & State Management
 
@@ -60,7 +66,23 @@ Apply the following conditional logic based on the type of interaction or state 
     1. Trigger the action (e.g., `await tester.drag(finder, Offset(500, 0))`).
     2. Call `await tester.pumpAndSettle()` to repeatedly pump frames until no more frames are scheduled (animation completes).
 *   **If testing text input:** Call `await tester.enterText(textFieldFinder, 'Input string')`.
-*   **If testing items in a dynamic or long list:** Call `await tester.scrollUntilVisible(itemFinder, 500.0, scrollable: listFinder)` to ensure the target widget is rendered before interacting with it.
+*   **If testing items in a dynamic or long list:** Find the exact list widget,
+    then find its descendant `Scrollable` and assert both finders match one
+    widget before passing the `Scrollable` finder to `scrollUntilVisible`:
+    ```dart
+    final listFinder = find.byType(ListView);
+    expect(listFinder, findsOneWidget);
+    final scrollableFinder = find.descendant(
+      of: listFinder,
+      matching: find.byType(Scrollable),
+    );
+    expect(scrollableFinder, findsOneWidget);
+    await tester.scrollUntilVisible(
+      itemFinder,
+      500,
+      scrollable: scrollableFinder,
+    );
+    ```
 
 ## Examples
 

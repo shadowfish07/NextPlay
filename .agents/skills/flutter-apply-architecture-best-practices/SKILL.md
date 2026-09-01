@@ -65,8 +65,14 @@ Follow this sequential workflow when adding a new feature to the application. Co
 - [ ] **Step 5: Implement the ViewModel.** Create the ViewModel extending `ChangeNotifier`. Inject required Repositories/Use Cases. Expose immutable state and command methods.
 - [ ] **Step 6: Implement the View.** Create the UI widget. Use `ListenableBuilder` or `AnimatedBuilder` to listen to ViewModel changes.
 - [ ] **Step 7: Inject Dependencies.** Register the new Service, Repository, and ViewModel in the dependency injection container (e.g., `provider` or `get_it`).
-- [ ] **Step 8: Run Validator.** Execute unit tests for the ViewModel and Repository.
-  - *Feedback Loop:* Run tests -> Review failures -> Fix logic -> Re-run until passing.
+- [ ] **Step 8: Run Repository Gates.** Execute focused unit tests for the
+      ViewModel and Repository, then run `tool/verify_fast.sh`.
+  - *If the feature changes UI or navigation:* Also run
+    `tool/e2e_android.sh` (or `tool/worktree.sh e2e` from a linked worktree).
+  - *If the feature changes an externally exercised IGDB, Steam, or other live
+    contract:* Also run the relevant `tool/live_smoke.sh` check.
+  - *Feedback Loop:* Run required gates -> Review failures -> Fix logic ->
+    Re-run every affected gate until passing.
 
 ## Examples
 

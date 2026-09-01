@@ -42,7 +42,12 @@ Isolate the system under test using the generated mock objects. Use `package:tes
 
 - **Stubbing:** Configure mock behavior before interacting with the system under test.
   - Use `when(mock.method()).thenReturn(value)` for synchronous methods.
-  - **CRITICAL:** Always use `thenAnswer((_) async => value)` for methods returning a `Future` or `Stream`. Never use `thenReturn` for asynchronous returns.
+  - For a `Future<T>`, use `thenAnswer((_) async => value)`.
+  - For a `Stream<T>`, return a stream from the callback, such as
+    `thenAnswer((_) => Stream.value(value))`; use an `async*` callback when the
+    stub must emit multiple events. An `async` callback returns a `Future`, not
+    a `Stream`.
+  - Never use `thenReturn` for asynchronous `Future` or `Stream` results.
 - **Verification:** Assert that the system under test interacted with the mock object correctly.
   - Use `verify(mock.method()).called(1)` to check exact invocation counts.
   - Use argument matchers like `any`, `anyNamed`, or `captureAny` for flexible verification.
@@ -61,7 +66,8 @@ Use the following checklist to implement and verify mocked unit tests.
 - [ ] 7. Stub required behaviors using `when()`.
 - [ ] 8. Execute the target method.
 - [ ] 9. Verify interactions using `verify()` and assert outcomes using `expect()`.
-- [ ] 10. Run the test suite using `dart test`.
+- [ ] 10. Run the targeted suite using `dart test` for pure Dart or
+      `flutter test` for Flutter, then run `tool/verify_fast.sh` in NextPlay.
 
 ### Feedback Loop: Test Failures
 If tests fail or `build_runner` encounters errors:
@@ -69,7 +75,9 @@ If tests fail or `build_runner` encounters errors:
 2. **Review errors:** Check for missing stubs, mismatched argument matchers, or syntax errors in the generated files.
 3. **Fix:**
    - If a mock method throws an unexpected null error, ensure you used `@GenerateNiceMocks`.
-   - If an async stub throws an `ArgumentError`, change `thenReturn` to `thenAnswer`.
+   - If an asynchronous stub has a return-type error, use `thenAnswer` and
+     return the declared shape: an `async` callback for `Future<T>`, or
+     `Stream.value`/`async*` for `Stream<T>`.
    - If `build_runner` fails, ensure the `.mocks.dart` import matches the file name exactly.
 4. Repeat until all tests pass.
 
@@ -91,7 +99,7 @@ class ApiService {
     final uri = Uri.parse(urlString);
     final response = await client.get(uri);
 
-    if (response.statusCode == 200) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body)['data'];
     } else {
       throw Exception('Failed to load data');
