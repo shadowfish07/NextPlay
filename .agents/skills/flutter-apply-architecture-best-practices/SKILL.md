@@ -87,9 +87,11 @@ class UserRepository {
   final ApiClient _apiClient;
   final _userCache = <String, User>{};
 
-  Future<User> getUser(String id) async {
-    final cachedUser = _userCache[id];
-    if (cachedUser != null) return cachedUser;
+  Future<User> getUser(String id, {bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cachedUser = _userCache[id];
+      if (cachedUser != null) return cachedUser;
+    }
 
     final apiModel = await _apiClient.fetchUser(id);
     final user = User(id: apiModel.id, name: apiModel.fullName);
@@ -118,13 +120,16 @@ class ProfileViewModel extends ChangeNotifier {
   Object? _error;
   Object? get error => _error;
 
-  Future<void> loadProfile(String id) async {
+  Future<void> loadProfile(String id, {bool forceRefresh = false}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      _user = await _userRepository.getUser(id);
+      _user = await _userRepository.getUser(
+        id,
+        forceRefresh: forceRefresh,
+      );
     } on Exception catch (error) {
       _user = null;
       _error = error;
@@ -164,7 +169,7 @@ class ProfileView extends StatelessWidget {
             Text(user.name),
             ElevatedButton(
               onPressed: () async {
-                await viewModel.loadProfile(user.id);
+                await viewModel.loadProfile(user.id, forceRefresh: true);
               },
               child: const Text('Refresh'),
             ),

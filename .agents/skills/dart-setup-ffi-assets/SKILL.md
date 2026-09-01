@@ -281,10 +281,61 @@ const version = '1.0.0';
 const requestTimeout = Duration(seconds: 20);
 const bodyIdleTimeout = Duration(seconds: 30);
 const totalDownloadTimeout = Duration(minutes: 2);
+const maxRedirects = 5;
+const allowedDownloadHosts = {
+  'github.com',
+  'release-assets.githubusercontent.com',
+};
 
 Uri downloadUri(String target) => Uri.parse(
   'https://github.com/my-org/my-native-repo/releases/download/$version/$target',
 );
+
+void validateDownloadUri(Uri uri) {
+  if (uri.scheme != 'https' ||
+      !allowedDownloadHosts.contains(uri.host.toLowerCase())) {
+    throw ArgumentError('Refusing untrusted download target: $uri');
+  }
+}
+
+bool isRedirect(int statusCode) => switch (statusCode) {
+  HttpStatus.movedPermanently ||
+  HttpStatus.found ||
+  HttpStatus.seeOther ||
+  HttpStatus.temporaryRedirect ||
+  HttpStatus.permanentRedirect => true,
+  _ => false,
+};
+
+Future<HttpClientResponse> openValidatedDownload(
+  HttpClient client,
+  Uri initialUri,
+) async {
+  var currentUri = initialUri;
+
+  for (var redirectCount = 0;
+      redirectCount <= maxRedirects;
+      redirectCount++) {
+    validateDownloadUri(currentUri);
+    final request = await client.getUrl(currentUri).timeout(requestTimeout);
+    request.followRedirects = false;
+    final response = await request.close().timeout(requestTimeout);
+
+    if (!isRedirect(response.statusCode)) return response;
+
+    final location = response.headers.value(HttpHeaders.locationHeader);
+    await response.drain<void>().timeout(bodyIdleTimeout);
+    if (location == null) {
+      throw ArgumentError('Redirect from $currentUri has no Location header');
+    }
+    if (redirectCount == maxRedirects) {
+      throw ArgumentError('Too many redirects while downloading $initialUri');
+    }
+    currentUri = currentUri.resolve(location);
+  }
+
+  throw StateError('Unreachable redirect state');
+}
 
 Future<File> downloadAsset(
   OS targetOS,
@@ -294,17 +345,12 @@ Future<File> downloadAsset(
   final fileName = targetOS.dylibFileName('native_add_${targetOS.name}_${targetArchitecture.name}');
   final uri = downloadUri(fileName);
 
-  if (uri.scheme != 'https' || uri.host != 'github.com') {
-    throw ArgumentError('Refusing untrusted download host: $uri');
-  }
-
   final client = HttpClient()
     ..connectionTimeout = requestTimeout
     ..findProxy = HttpClient.findProxyFromEnvironment;
   File? targetFile;
   try {
-    final request = await client.getUrl(uri).timeout(requestTimeout);
-    final response = await request.close().timeout(requestTimeout);
+    final response = await openValidatedDownload(client, uri);
 
     if (response.statusCode != HttpStatus.ok) {
       throw ArgumentError(

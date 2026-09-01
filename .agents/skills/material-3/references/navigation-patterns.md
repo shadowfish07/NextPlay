@@ -242,17 +242,29 @@ Overlays content with a scrim. Used on smaller screens or when content space is 
 <button type="button" id="menu-btn" aria-controls="nav-drawer" aria-expanded="false">
   Menu
 </button>
-<aside class="md3-nav-drawer" id="nav-drawer" hidden>
-  <nav aria-label="Primary"><!-- Native navigation links --></nav>
-</aside>
+<dialog class="md3-nav-drawer" id="nav-drawer" aria-labelledby="drawer-title">
+  <h2 id="drawer-title">Navigation</h2>
+  <nav aria-label="Primary">
+    <a href="/" aria-current="page">Home</a>
+    <a href="/search">Search</a>
+  </nav>
+  <button type="button" id="close-menu">Close</button>
+</dialog>
 
 <script>
   const menuButton = document.getElementById('menu-btn');
   const drawer = document.getElementById('nav-drawer');
+  const closeButton = document.getElementById('close-menu');
+
   menuButton.addEventListener('click', () => {
-    const willOpen = drawer.hidden;
-    drawer.hidden = !willOpen;
-    menuButton.setAttribute('aria-expanded', String(willOpen));
+    drawer.showModal();
+    menuButton.setAttribute('aria-expanded', 'true');
+    drawer.querySelector('a, button').focus();
+  });
+  closeButton.addEventListener('click', () => drawer.close());
+  drawer.addEventListener('close', () => {
+    menuButton.setAttribute('aria-expanded', 'false');
+    menuButton.focus();
   });
 </script>
 ```
@@ -322,7 +334,7 @@ Overlays content with a scrim. Used on smaller screens or when content space is 
 .md3-top-app-bar__title {
   flex: 1;
   padding: 0 12px;
-  font: var(--md-sys-typescale-title-large);
+  font: var(--app-typescale-title-large);
   margin: 0;
 }
 
@@ -353,7 +365,7 @@ window.addEventListener('scroll', () => {
 
 ```html
 <!-- Primary tabs -->
-<md-tabs>
+<md-tabs aria-label="Travel categories">
   <md-primary-tab active>
     <md-icon slot="icon">flight</md-icon>
     Flights
@@ -363,7 +375,7 @@ window.addEventListener('scroll', () => {
 </md-tabs>
 
 <!-- Secondary tabs (nested under primary) -->
-<md-tabs>
+<md-tabs aria-label="Travel details">
   <md-secondary-tab active>Overview</md-secondary-tab>
   <md-secondary-tab>Reviews</md-secondary-tab>
   <md-secondary-tab>Photos</md-secondary-tab>
@@ -374,7 +386,7 @@ window.addEventListener('scroll', () => {
 
 ```html
 <section class="tab-group">
-  <md-tabs id="my-tabs">
+  <md-tabs id="my-tabs" aria-label="Content sections">
     <md-primary-tab id="tab-1" aria-controls="panel-1" active>Tab 1</md-primary-tab>
     <md-primary-tab id="tab-2" aria-controls="panel-2">Tab 2</md-primary-tab>
   </md-tabs>

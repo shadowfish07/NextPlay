@@ -305,8 +305,8 @@ Two types:
 <!-- Outlined card -->
 <div class="md3-card md3-card--outlined">
   <div class="md3-card__content">
-    <h3 style="font: var(--md-sys-typescale-title-medium)">Title</h3>
-    <p style="font: var(--md-sys-typescale-body-medium); color: var(--md-sys-color-on-surface-variant)">
+    <h3 style="font: var(--app-typescale-title-medium)">Title</h3>
+    <p style="font: var(--app-typescale-body-medium); color: var(--md-sys-color-on-surface-variant)">
       Supporting text
     </p>
   </div>
@@ -637,7 +637,7 @@ OutlinedTextField(
 ```html
 <header class="md3-top-app-bar md3-top-app-bar--small">
   <md-icon-button aria-label="Menu"><md-icon>menu</md-icon></md-icon-button>
-  <span class="md3-top-app-bar__title" style="font: var(--md-sys-typescale-title-large)">
+  <span class="md3-top-app-bar__title" style="font: var(--app-typescale-title-large)">
     Page Title
   </span>
   <md-icon-button aria-label="Search"><md-icon>search</md-icon></md-icon-button>

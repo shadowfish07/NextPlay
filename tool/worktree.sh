@@ -74,7 +74,8 @@ ensure_ai_rules_link() {
   local primary_rules="$primary_root/.ai/rules"
   local rules_source
 
-  if [[ -r "$local_rules/verification/index.md" ]]; then
+  if [[ -f "$local_rules/verification/index.md" \
+    && -r "$local_rules/verification/index.md" ]]; then
     return
   fi
 
@@ -83,9 +84,12 @@ ensure_ai_rules_link() {
     return
   fi
 
-  if [[ "$repo_root" != "$primary_root" && -L "$primary_rules" ]]; then
-    rules_source="$(readlink "$primary_rules")"
-    if [[ "$rules_source" == /* && -r "$rules_source/verification/index.md" ]]; then
+  if [[ "$repo_root" != "$primary_root" \
+    && -d "$primary_rules" \
+    && -f "$primary_rules/verification/index.md" \
+    && -r "$primary_rules/verification/index.md" ]]; then
+    rules_source="$(cd "$primary_rules" && pwd -P)"
+    if [[ -n "$rules_source" ]]; then
       mkdir -p "$repo_root/.ai"
       ln -s "$rules_source" "$local_rules"
       echo "Linked shared AI rules from the primary checkout."

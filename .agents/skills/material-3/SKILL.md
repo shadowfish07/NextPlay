@@ -290,9 +290,32 @@ Apply a custom theme by setting CSS custom properties on `:root` or any ancestor
   --md-sys-typescale-body-large-size: 1rem;
   --md-sys-typescale-body-large-weight: 400;
   --md-sys-typescale-body-large-line-height: 1.5rem;
-  --md-sys-typescale-title-large: 400 1.375rem/1.75rem 'Roboto Flex', sans-serif;
-  --md-sys-typescale-title-medium: 500 1rem/1.5rem 'Roboto Flex', sans-serif;
-  --md-sys-typescale-body-medium: 400 0.875rem/1.25rem 'Roboto Flex', sans-serif;
+  --md-sys-typescale-title-large-font: 'Roboto Flex', sans-serif;
+  --md-sys-typescale-title-large-size: 1.375rem;
+  --md-sys-typescale-title-large-weight: 400;
+  --md-sys-typescale-title-large-line-height: 1.75rem;
+  --md-sys-typescale-title-medium-font: 'Roboto Flex', sans-serif;
+  --md-sys-typescale-title-medium-size: 1rem;
+  --md-sys-typescale-title-medium-weight: 500;
+  --md-sys-typescale-title-medium-line-height: 1.5rem;
+  --md-sys-typescale-body-medium-font: 'Roboto Flex', sans-serif;
+  --md-sys-typescale-body-medium-size: 0.875rem;
+  --md-sys-typescale-body-medium-weight: 400;
+  --md-sys-typescale-body-medium-line-height: 1.25rem;
+
+  /* App-owned shorthands assembled from official Material tokens. */
+  --app-typescale-title-large: var(--md-sys-typescale-title-large-weight)
+    var(--md-sys-typescale-title-large-size) /
+    var(--md-sys-typescale-title-large-line-height)
+    var(--md-sys-typescale-title-large-font);
+  --app-typescale-title-medium: var(--md-sys-typescale-title-medium-weight)
+    var(--md-sys-typescale-title-medium-size) /
+    var(--md-sys-typescale-title-medium-line-height)
+    var(--md-sys-typescale-title-medium-font);
+  --app-typescale-body-medium: var(--md-sys-typescale-body-medium-weight)
+    var(--md-sys-typescale-body-medium-size) /
+    var(--md-sys-typescale-body-medium-line-height)
+    var(--md-sys-typescale-body-medium-font);
 
   /* Shape */
   --md-sys-shape-corner-full: 9999px;
@@ -358,7 +381,7 @@ Standard MD3 app with responsive navigation + top app bar + content area:
   </nav>
   <main class="md3-content">
     <header class="md3-top-app-bar">
-      <h1 class="md3-top-app-bar__title" style="font: var(--md-sys-typescale-title-large)">
+      <h1 class="md3-top-app-bar__title" style="font: var(--app-typescale-title-large)">
         Page Title
       </h1>
     </header>
@@ -429,8 +452,8 @@ Standard MD3 app with responsive navigation + top app bar + content area:
   <div class="md3-card md3-card--outlined">
     <img src="image.jpg" alt="Description" class="md3-card__media">
     <div class="md3-card__content">
-      <h3 style="font: var(--md-sys-typescale-title-medium)">Card Title</h3>
-      <p style="font: var(--md-sys-typescale-body-medium); color: var(--md-sys-color-on-surface-variant)">
+      <h3 style="font: var(--app-typescale-title-medium)">Card Title</h3>
+      <p style="font: var(--app-typescale-body-medium); color: var(--md-sys-color-on-surface-variant)">
         Supporting text for this card.
       </p>
     </div>

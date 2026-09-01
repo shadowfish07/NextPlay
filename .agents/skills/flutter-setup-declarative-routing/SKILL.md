@@ -147,10 +147,13 @@ Configure the native platforms to intercept specific URLs and route them into th
 
 ### Validation Loop
 Run validator -> review errors -> fix.
-- **Android**: Test using ADB.
-  ```bash
-  adb shell 'am start -a android.intent.action.VIEW -c android.intent.category.BROWSABLE -d "https://yourdomain.com/details/123"' com.yourcompany.yourapp
-  ```
+- **Android**: Run platform-intent validation through the repository-owned,
+  device-selecting Android runner. In NextPlay, add the deep-link URL as a
+  dedicated scenario inside the leased section of `tool/e2e_android.sh`, use
+  its selected `adb -s "$device"` target, and execute the runner with
+  `tool/e2e_android.sh` (or `tool/worktree.sh e2e` from a linked worktree).
+  Never issue an unscoped `adb shell` command beside the runner because the
+  shared AVD may belong to another worktree.
 - **iOS**: Test using `xcrun` on a booted simulator.
   ```bash
   xcrun simctl openurl booted https://yourdomain.com/details/123

@@ -25,6 +25,11 @@ the legacy Flutter Driver VM service extension in a production entry point.
    flutter pub add 'dev:integration_test:{"sdk":"flutter"}'
    flutter pub add 'dev:flutter_test:{"sdk":"flutter"}'
    ```
+   If the project keeps the optional performance driver example from this
+   skill, also declare its direct SDK dependency:
+   ```bash
+   flutter pub add 'dev:flutter_driver:{"sdk":"flutter"}'
+   ```
 2. Reuse the app's existing entry point and inject deterministic dependencies
    through `AppDependencies.create()` when a test needs fakes. Never select
    fixtures from production `main()`.

@@ -489,9 +489,10 @@ import 'package:dual_screen/dual_screen.dart';
 
 Widget build(BuildContext context) {
   final displayFeatures = MediaQuery.of(context).displayFeatures;
-  final hinge = displayFeatures.whereType<DisplayFeature>().where(
+  final hinges = displayFeatures.whereType<DisplayFeature>().where(
     (f) => f.type == DisplayFeatureType.hinge || f.type == DisplayFeatureType.fold,
-  ).firstOrNull;
+  ).toList();
+  final hinge = hinges.isEmpty ? null : hinges.first;
 
   if (hinge != null) {
     // Foldable device — split at the hinge
