@@ -15,3 +15,24 @@
 - After every code change, proactively run a real local build and tests appropriate to the change before handing it off. Static inspection, source diffs, or analysis alone are not sufficient. When runtime behavior changes, verify it in the actual target runtime, compare relevant before-and-after behavior, and clearly disclose any simulated or unexercised part of the flow.
 - A change is complete only when fast verification passes. UI or navigation changes additionally require the Android E2E runner. External-contract changes additionally require the relevant live smoke check.
 - Preserve `.artifacts/` and `.env` as ignored local state. Do not commit screenshots, UI dumps, logs, API keys, Steam IDs, signing material, or local databases.
+
+<!-- ai-rules:routing:start -->
+## Shared rule routing
+
+共享规则根目录为 `.ai/rules/`。不要扫描或全量读取该目录。
+
+开始任务前，根据当前任务涉及的文件和目标读取下表中匹配的入口。若同时匹配多行，
+读取所有对应入口；随后只按各入口 `index.md` 的指引继续按需读取。
+
+| 范围或触发条件 | 首先读取 |
+|---|---|
+| 修改仓库自有代码、测试、构建配置、验收脚本或发布流程 | `.ai/rules/verification/index.md` |
+| `pubspec.yaml`、`lib/**`、`test/**`、`integration_test/**` 或 Flutter 构建 | `.ai/rules/flutter/index.md` |
+| `android/**`、Gradle、APK、模拟器、真机或 `tool/e2e_android.sh` | `.ai/rules/android/index.md` |
+| 用户可见 UI、交互或导航 | `.ai/rules/ui-acceptance/index.md` |
+| Git、PR、提交、分支、交付或 worktree 操作 | `.ai/rules/git/index.md` |
+
+如果 `.ai/rules` 不存在或路由目标不可读，先说明共享规则未加载，再继续遵守本文件中
+提交到项目的约定。项目规则以及更靠近工作文件的 `AGENTS.md` 优先于共享规则；其他
+冲突不要自行猜测，应向用户报告。
+<!-- ai-rules:routing:end -->

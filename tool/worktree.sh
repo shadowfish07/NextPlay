@@ -69,6 +69,37 @@ record_identity() {
   write_identity_file primary-root "$primary_root"
 }
 
+ensure_ai_rules_link() {
+  local local_rules="$repo_root/.ai/rules"
+  local primary_rules="$primary_root/.ai/rules"
+  local rules_source
+
+  if [[ -f "$local_rules/verification/index.md" \
+    && -r "$local_rules/verification/index.md" ]]; then
+    return
+  fi
+
+  if [[ -e "$local_rules" || -L "$local_rules" ]]; then
+    echo "Warning: ${local_rules} exists but shared AI rules are unreadable; preserving it unchanged." >&2
+    return
+  fi
+
+  if [[ "$repo_root" != "$primary_root" \
+    && -d "$primary_rules" \
+    && -f "$primary_rules/verification/index.md" \
+    && -r "$primary_rules/verification/index.md" ]]; then
+    if rules_source="$(cd "$primary_rules" 2>/dev/null && pwd -P)" \
+      && [[ -n "$rules_source" ]]; then
+      mkdir -p "$repo_root/.ai"
+      ln -s "$rules_source" "$local_rules"
+      echo "Linked shared AI rules from the primary checkout."
+      return
+    fi
+  fi
+
+  echo "Warning: shared AI rules are unavailable; initialize .ai/rules in the primary checkout before creating linked worktrees." >&2
+}
+
 env_mode() {
   local path="$1"
   if stat -f '%Lp' "$path" >/dev/null 2>&1; then
@@ -224,6 +255,7 @@ stop_orphaned_owned_emulator() {
 
 run_setup() {
   record_identity
+  ensure_ai_rules_link
   refuse_active_e2e
   copy_primary_env 0
   "$repo_root/tool/service.sh" install

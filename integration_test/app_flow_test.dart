@@ -228,18 +228,38 @@ void main() {
 
     await _tapAndWait(tester, AppKeys.libraryDestination);
     await _waitFor(tester, find.byKey(AppKeys.libraryScreen));
-    expect(find.byKey(AppKeys.libraryItem(620)), findsOneWidget);
+    final libraryScroll = find.descendant(
+      of: find.byKey(AppKeys.libraryScreen),
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable && widget.axisDirection == AxisDirection.down,
+        description: 'vertical library scrollable',
+      ),
+    );
+    final portalItem = find.byKey(AppKeys.libraryItem(620));
+    await tester.scrollUntilVisible(portalItem, 300, scrollable: libraryScroll);
+    expect(portalItem, findsOneWidget);
     expect(
       find.byKey(AppKeys.libraryItem(TestFixtures.softwareGame.appId)),
       findsNothing,
     );
 
-    await tester.enterText(find.byKey(AppKeys.librarySearch), 'Portal');
+    final librarySearch = find.byKey(AppKeys.librarySearch);
+    await tester.scrollUntilVisible(
+      librarySearch,
+      -300,
+      scrollable: libraryScroll,
+    );
+    await tester.enterText(librarySearch, 'Portal');
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byKey(AppKeys.libraryItem(620)), findsOneWidget);
+    await Scrollable.ensureVisible(tester.element(portalItem), alignment: 0.5);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(portalItem, findsOneWidget);
     expect(find.byKey(AppKeys.libraryItem(570)), findsNothing);
 
-    await tester.tap(find.byKey(AppKeys.libraryItem(620)));
+    await tester.tap(
+      find.descendant(of: portalItem, matching: find.byType(InkWell)),
+    );
     await _waitFor(tester, find.byKey(AppKeys.detailsScreen));
     expect(find.byKey(AppKeys.detailsStatus), findsOneWidget);
     expect(find.text('Portal 2'), findsWidgets);
