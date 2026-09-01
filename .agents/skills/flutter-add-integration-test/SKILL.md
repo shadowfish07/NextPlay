@@ -30,9 +30,10 @@ the legacy Flutter Driver VM service extension in a production entry point.
    ```bash
    flutter pub add 'dev:flutter_driver:{"sdk":"flutter"}'
    ```
-2. Reuse the app's existing entry point and inject deterministic dependencies
-   through `AppDependencies.create()` when a test needs fakes. Never select
-   fixtures from production `main()`.
+2. Reuse the app widget, but create a dedicated test or exploration entry point
+   that injects deterministic dependencies through `AppDependencies.create()`
+   with fakes. Never launch production `lib/main.dart` or select fixtures from
+   production `main()` for automated exploration.
 3. Define or reuse automation-facing selectors in
    `lib/ui/core/app_keys.dart`, then pass those `AppKeys` members to widgets.
    Existing key strings are compatibility contracts; do not create parallel
@@ -40,11 +41,16 @@ the legacy Flutter Driver VM service extension in a production entry point.
 
 ## Interactive Exploration via MCP
 
-Use the Dart/Flutter MCP server tools to interactively explore and manipulate the application state before writing static tests.
+Use the Dart/Flutter MCP server tools to interactively explore and manipulate
+the application state before writing static tests. Before launching anything,
+create a dedicated exploration target (for example,
+`integration_test/exploration_main.dart`) whose complete dependency graph is
+wired with fakes through `AppDependencies.create()`.
 
-- **Launch**: Execute `launch_app` with the existing `lib/main.dart` target. Use
-  a dedicated target only after creating it and wiring test-only dependencies
-  without changing production composition.
+- **Launch**: Execute `launch_app` with the dedicated deterministic exploration
+  target. In NextPlay, never use production `lib/main.dart` for MCP exploration,
+  because it calls `AppDependencies.production()` and may reach real services
+  or persistent credentials.
 - **Inspect**: Execute `get_widget_tree` to discover available `Key`s, `Text` nodes, and widget `Type`s.
 - **Interact**: Execute `tap`, `enter_text`, and `scroll` to simulate user flows.
 - **Wait**: Always execute `waitFor` or verify state with `get_health` when navigating or triggering animations.
@@ -102,7 +108,9 @@ Copy and follow this checklist to implement and verify integration tests.
   - [ ] Inject deterministic dependencies through `AppDependencies.create()`.
   - [ ] Assign or reuse `AppKeys` members for target widgets.
 - [ ] **Task Progress: Exploration**
-  - [ ] Run `launch_app` via MCP.
+  - [ ] Create a dedicated exploration target wired entirely with fakes through
+        `AppDependencies.create()`.
+  - [ ] Run `launch_app` via MCP against that target, never `lib/main.dart`.
   - [ ] Map the widget tree using `get_widget_tree`.
   - [ ] Validate interaction paths using MCP tools (`tap`, `enter_text`).
 - [ ] **Task Progress: Authoring**
@@ -122,15 +130,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:my_app/ui/core/app_keys.dart';
-import 'package:my_app/main.dart';
+
+import 'test_app.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   group('End-to-end test', () {
     testWidgets('advance through onboarding', (tester) async {
-      // Load app widget.
-      await tester.pumpWidget(const MyApp());
+      // This helper calls AppDependencies.create() with a complete fake graph.
+      final app = await createDeterministicTestApp();
+      await tester.pumpWidget(app);
 
       // Use selectors defined by the application, not copied key strings.
       final nextButton = find.byKey(AppKeys.onboardingNext);

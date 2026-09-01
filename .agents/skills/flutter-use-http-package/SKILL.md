@@ -43,9 +43,14 @@ Execute HTTP operations and map responses to strongly typed Dart objects.
 *   **URIs:** Always parse URL strings using `Uri.parse('your_url')`.
 *   **Headers:** Inject authorization and content-type headers via the `headers` parameter map. Use `HttpHeaders.authorizationHeader` for auth tokens.
 *   **Payloads:** For POST and PUT requests, encode the body using `jsonEncode()` from `dart:convert`.
-*   **Status Validation:** Evaluate `response.statusCode`. Treat `200 OK` (GET/PUT/DELETE) and `201 CREATED` (POST) as success.
+*   **Status Validation:** Evaluate `response.statusCode`. Treat the full `200`–`299` range as HTTP success, then apply the endpoint's separate response-body contract.
 *   **Error Handling:** Throw explicit exceptions for non-success status codes. Never return `null` on failure, as this prevents `FutureBuilder` from triggering its error state and causes infinite loading indicators.
-*   **Deserialization:** Parse the raw string using `jsonDecode(response.body)` and map it to a custom Dart object using a factory constructor (e.g., `fromJson`).
+*   **Deserialization:** Only parse when the endpoint promises a response body.
+    Successful responses such as `204 No Content` and `205 Reset Content` have
+    no body; return `void` or another body-free domain result instead. When a
+    body is required, reject an unexpectedly empty body before calling
+    `jsonDecode(response.body)` and map valid JSON to a custom Dart object using
+    a factory constructor (e.g., `fromJson`).
 
 ## Background Parsing
 
@@ -65,8 +70,11 @@ Use the following checklist to implement and validate network operations.
 - [ ] 3. Apply conditional logic based on the operation type:
   - **If fetching data (GET):** Append query parameters to the URI.
   - **If mutating data (POST/PUT):** Set `'Content-Type': 'application/json; charset=UTF-8'` and attach the `jsonEncode` body.
-  - **If deleting data (DELETE):** Return an empty model instance on success (`200 OK`).
-- [ ] 4. Validate the `statusCode` and throw an `Exception` on failure.
+  - **If deleting data (DELETE):** Return `Future<void>` (or an explicit
+    body-free domain result) for any successful `2xx` response unless the API
+    contract explicitly returns a representation to decode.
+- [ ] 4. Accept the full `2xx` range, validate the expected body separately,
+      and throw an `Exception` on non-success.
 - [ ] 5. Integrate the `Future` into the UI using `FutureBuilder`.
 - [ ] 6. Handle `snapshot.hasData`, `snapshot.hasError`, and default to a `CircularProgressIndicator`.
 - [ ] 7. **Feedback Loop:** Run `tool/verify_fast.sh` for ordinary deterministic network validation. Use `tool/live_smoke.sh` only when live-service verification is explicitly requested.
@@ -100,12 +108,16 @@ Future<List<Photo>> fetchPhotos() async {
     },
   );
 
-  if (response.statusCode == 200) {
-    // Offload heavy parsing to a background isolate
-    return compute(parsePhotos, response.body);
-  } else {
+  if (response.statusCode < 200 || response.statusCode >= 300) {
     throw Exception('Failed to load photos. Status: ${response.statusCode}');
   }
+
+  if (response.body.trim().isEmpty) {
+    throw const FormatException('Expected a response body for photos');
+  }
+
+  // Offload heavy parsing to a background isolate.
+  return compute(parsePhotos, response.body);
 }
 
 // 3. Strongly typed model

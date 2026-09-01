@@ -76,6 +76,7 @@ final GoRouter _router = GoRouter(
       routes: [
         GoRoute(
           path: 'details/:id',
+          name: 'details',
           builder: (context, state) => DetailsScreen(id: state.pathParameters['id']!),
         ),
       ],

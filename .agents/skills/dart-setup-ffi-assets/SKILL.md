@@ -273,6 +273,7 @@ const assetHashes = {
 Implement the downloading and integrity check logic using dynamic target filename matching:
 
 ```dart
+import 'dart:async';
 import 'dart:io';
 import 'package:code_assets/code_assets.dart';
 import 'package:crypto/crypto.dart';
@@ -349,7 +350,8 @@ Future<File> downloadAsset(
     ..connectionTimeout = requestTimeout
     ..findProxy = HttpClient.findProxyFromEnvironment;
   File? targetFile;
-  try {
+
+  Future<File> performDownload() async {
     final response = await openValidatedDownload(client, uri);
 
     if (response.statusCode != HttpStatus.ok) {
@@ -359,13 +361,35 @@ Future<File> downloadAsset(
     }
 
     targetFile = File.fromUri(outputDir.uri.resolve(fileName));
-    await targetFile.create(recursive: true);
-    await response
-        .timeout(bodyIdleTimeout)
-        .pipe(targetFile.openWrite())
-        .timeout(totalDownloadTimeout);
-    return targetFile;
+    await targetFile!.create(recursive: true);
+    await response.timeout(bodyIdleTimeout).pipe(targetFile!.openWrite());
+    return targetFile!;
+  }
+
+  final download = performDownload();
+  try {
+    return await download.timeout(
+      totalDownloadTimeout,
+      onTimeout: () {
+        // Future.timeout does not cancel the source future. Closing the client
+        // aborts any request, redirect drain, or response body still in flight.
+        client.close(force: true);
+        throw TimeoutException(
+          'Download of $uri exceeded $totalDownloadTimeout',
+        );
+      },
+    );
   } catch (_) {
+    client.close(force: true);
+
+    // Let the aborted source settle before deleting its partial output. The
+    // source may still be running after Future.timeout completes.
+    try {
+      await download;
+    } catch (_) {
+      // Preserve the original failure from the outer catch.
+    }
+
     final partialFile = targetFile;
     if (partialFile != null && await partialFile.exists()) {
       await partialFile.delete();

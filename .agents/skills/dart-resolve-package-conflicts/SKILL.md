@@ -66,8 +66,8 @@ Use conditional logic based on the audit results to upgrade dependencies.
   - [ ] Manually edit `pubspec.yaml` to bump the version constraint to match the "Resolvable" column (e.g., change `^0.11.0` to `^0.12.1`).
   - [ ] Run `"$pub_sdk" pub upgrade` to resolve the new constraints and update `pubspec.lock`.
 - [ ] **Feedback Loop:**
-  - [ ] Run `dart analyze` -> review errors -> fix breaking API changes.
-  - [ ] Run `dart test` -> review failures -> fix regressions.
+  - [ ] Run `"$pub_sdk" analyze` -> review errors -> fix breaking API changes.
+  - [ ] Run `"$pub_sdk" test` -> review failures -> fix regressions.
 
 ## Workflow: Resolving Version Conflicts
 

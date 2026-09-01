@@ -485,12 +485,33 @@ Add the foldable layout dependency with `flutter pub add dual_screen`, then
 import its `TwoPane` API:
 
 ```dart
+import 'dart:ui' show DisplayFeature, DisplayFeatureType, Offset, Rect;
+
 import 'package:dual_screen/dual_screen.dart';
+import 'package:flutter/widgets.dart';
+
+bool separatesScreen(DisplayFeature feature, Rect screenBounds) {
+  final bounds = feature.bounds;
+  final splitsVertically =
+      bounds.top <= screenBounds.top &&
+      bounds.bottom >= screenBounds.bottom &&
+      bounds.left > screenBounds.left &&
+      bounds.right < screenBounds.right;
+  final splitsHorizontally =
+      bounds.left <= screenBounds.left &&
+      bounds.right >= screenBounds.right &&
+      bounds.top > screenBounds.top &&
+      bounds.bottom < screenBounds.bottom;
+  return splitsVertically || splitsHorizontally;
+}
 
 Widget build(BuildContext context) {
-  final displayFeatures = MediaQuery.of(context).displayFeatures;
-  final hinges = displayFeatures.whereType<DisplayFeature>().where(
-    (f) => f.type == DisplayFeatureType.hinge || f.type == DisplayFeatureType.fold,
+  final screenBounds = Offset.zero & MediaQuery.sizeOf(context);
+  final hinges = MediaQuery.displayFeaturesOf(context).where(
+    (feature) =>
+        (feature.type == DisplayFeatureType.hinge ||
+            feature.type == DisplayFeatureType.fold) &&
+        separatesScreen(feature, screenBounds),
   ).toList();
   final hinge = hinges.isEmpty ? null : hinges.first;
 
@@ -708,6 +729,10 @@ The three canonical layouts adapt naturally to foldables:
 **Flutter:**
 - Use `DevicePreview` package to simulate foldables and tablets
 - Test with `MediaQuery` overrides for `displayFeatures`
+- Include a non-spanning fold fixture, such as a zero-width fold covering only
+  the middle half of the screen height, and verify it falls back to the regular
+  adaptive layout. Zero width or height alone does not make a fold separating;
+  a full-height zero-width fold or full-width zero-height fold still can be.
 - Run on Android emulators: Pixel Fold, 7.6" foldable, 10" tablet, Chromebook
 
 **Compose:**
