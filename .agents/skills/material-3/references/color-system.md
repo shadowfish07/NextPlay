@@ -32,7 +32,8 @@ Three accent groups (primary, secondary, tertiary) each have 4 roles:
 
 ### Error Colors
 
-Static colors that don't change with dynamic color schemes:
+Error roles generally do not change with the seed color, but their tones still
+vary with light/dark brightness and contrast settings:
 
 | Role | CSS Token | Purpose |
 |------|-----------|---------|

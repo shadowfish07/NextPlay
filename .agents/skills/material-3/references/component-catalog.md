@@ -1,6 +1,6 @@
 # MD3 Component Catalog
 
-Complete reference for Material Design 3 components. **Primary mappings:** Jetpack Compose (`androidx.compose.material3`) where most users ship UIs today; **web** uses `@material/web` element names and imports — [Material Web is maintenance-only](https://m3.material.io/develop/web).
+Complete reference for Material Design 3 components. **Primary mappings:** Jetpack Compose (`androidx.compose.material3`) where most users ship UIs today; **web** examples target `@material/web` 2.5.0 and use its actual element names and imports — [Material Web is maintenance-only](https://m3.material.io/develop/web). Components absent from that release use semantic HTML and token-backed CSS.
 
 ## Google I/O 2026 Component Updates
 
@@ -89,15 +89,16 @@ md-filled-button { --md-filled-button-container-height: 64px; } /* XL */
 **A11y**: Buttons have built-in button role. Use `aria-label` when using icon-only buttons. Minimum touch target 48x48dp.
 
 ### Button Group
-**Element**: `md-button-group` | **Import**: `@material/web/button/button-group.js`
+**No @material/web element.** Group the available button elements with
+standard HTML/CSS and an accessible group name.
 **Use when**: Grouping related actions together with connected visual treatment.
 
 ```html
-<md-button-group>
+<div class="md3-button-group" role="group" aria-label="Calendar range">
   <md-outlined-button>Day</md-outlined-button>
   <md-outlined-button>Week</md-outlined-button>
   <md-outlined-button>Month</md-outlined-button>
-</md-button-group>
+</div>
 ```
 
 ### FAB (Floating Action Button)
@@ -124,13 +125,13 @@ md-filled-button { --md-filled-button-container-height: 64px; } /* XL */
 **A11y**: Always provide `aria-label` since FABs are icon-only.
 
 ### Extended FAB
-**Element**: `md-extended-fab` | **Import**: `@material/web/fab/extended-fab.js`
+**Element**: `md-fab` with `label` | **Import**: `@material/web/fab/fab.js`
 **Use when**: Primary action with explanatory text.
 
 ```html
-<md-extended-fab label="New message">
+<md-fab label="New message">
   <md-icon slot="icon">edit</md-icon>
-</md-extended-fab>
+</md-fab>
 ```
 
 ### Icon Button
@@ -660,49 +661,31 @@ OutlinedTextField(
 ```
 
 ### Navigation Bar
-**Element**: `md-navigation-bar` | **Import**: `@material/web/navigation/navigation-bar.js`
+**No @material/web element.** Use semantic navigation links with MD3 tokens.
 **Use when**: 3–5 primary destinations, mobile/compact screens, persistent.
 
 ```html
-<md-navigation-bar>
-  <md-navigation-tab label="Home" active>
-    <md-icon slot="active-icon">home</md-icon>
-    <md-icon slot="inactive-icon">home</md-icon>
-  </md-navigation-tab>
-  <md-navigation-tab label="Explore">
-    <md-icon slot="active-icon">explore</md-icon>
-    <md-icon slot="inactive-icon">explore</md-icon>
-  </md-navigation-tab>
-  <md-navigation-tab label="Profile">
-    <md-icon slot="active-icon">person</md-icon>
-    <md-icon slot="inactive-icon">person</md-icon>
-  </md-navigation-tab>
-</md-navigation-bar>
+<nav class="md3-nav-bar" aria-label="Primary">
+  <a href="/" aria-current="page"><md-icon>home</md-icon><span>Home</span></a>
+  <a href="/explore"><md-icon>explore</md-icon><span>Explore</span></a>
+  <a href="/profile"><md-icon>person</md-icon><span>Profile</span></a>
+</nav>
 ```
 
 ### Navigation Drawer
-**Element**: `md-navigation-drawer` | **Import**: `@material/web/navigation/navigation-drawer.js`
+**No @material/web element.** Use an `aside` containing native navigation
+links; implement modal visibility with a native button and `hidden`/`inert` as
+appropriate.
 **Use when**: Many destinations, larger screens, can be modal or persistent.
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `opened` | boolean | Open state |
-| `type` | string | `standard` or `modal` |
-
 ```html
-<md-navigation-drawer opened>
-  <div slot="headline">Mail</div>
-  <md-list>
-    <md-list-item type="button" active>
-      <md-icon slot="start">inbox</md-icon>
-      Inbox
-    </md-list-item>
-    <md-list-item type="button">
-      <md-icon slot="start">send</md-icon>
-      Sent
-    </md-list-item>
-  </md-list>
-</md-navigation-drawer>
+<aside class="md3-nav-drawer">
+  <h2>Mail</h2>
+  <nav aria-label="Mail folders">
+    <a href="/inbox" aria-current="page"><md-icon>inbox</md-icon>Inbox</a>
+    <a href="/sent"><md-icon>send</md-icon>Sent</a>
+  </nav>
+</aside>
 ```
 
 ### Navigation Rail

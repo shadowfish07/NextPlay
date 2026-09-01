@@ -57,7 +57,7 @@ Create a new file named `l10n.yaml` in the root directory of the Flutter project
 arb-dir: lib/l10n
 template-arb-file: app_en.arb
 output-localization-file: app_localizations.dart
-synthetic-package: true
+synthetic-package: false
 ```
 
 ### 4. Configure the App Entry Point
@@ -65,7 +65,7 @@ Import the generated localizations and the `flutter_localizations` library in yo
 
 ```dart
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // Adjust path if synthetic-package is false
+import 'l10n/app_localizations.dart';
 
 // ... inside build method
 return MaterialApp(
@@ -176,14 +176,14 @@ Use the `select` syntax for conditional strings, such as gendered text.
 arb-dir: lib/l10n
 template-arb-file: app_en.arb
 output-localization-file: app_localizations.dart
-synthetic-package: true
+synthetic-package: false
 use-escaping: true
 ```
 
 ### Complete Widget Implementation
 ```dart
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'l10n/app_localizations.dart';
 
 class GreetingWidget extends StatelessWidget {
   final String userName;

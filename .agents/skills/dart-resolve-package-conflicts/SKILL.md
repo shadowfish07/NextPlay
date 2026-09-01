@@ -60,15 +60,15 @@ Use conditional logic based on the audit results to upgrade dependencies.
 
 ## Workflow: Resolving Version Conflicts
 
-When `pub` cannot find a set of concrete versions that satisfy all constraints, or when dealing with a retracted package version, manipulate the lockfile surgically.
+When `pub` cannot find a set of concrete versions that satisfy all constraints,
+or when dealing with a retracted package version, unlock only the affected
+package and its required transitive dependencies.
 
 **NEVER** delete the entire `pubspec.lock` file and run `dart pub get`. This causes uncontrolled upgrades across the entire dependency graph.
 
 **Task Progress:**
-- [ ] Open `pubspec.lock`.
-- [ ] Locate the specific YAML block for the conflicting or retracted package.
-- [ ] Delete ONLY that package's entry from the lockfile.
-- [ ] Run `dart pub get` to fetch the newest compatible, non-retracted version for that specific package.
+- [ ] Run `dart pub upgrade --unlock-transitive <package>` for the affected package.
+- [ ] Inspect the resulting `pubspec.lock` diff and confirm unrelated direct dependencies did not move unexpectedly.
 - [ ] **Feedback Loop:**
   - [ ] Run `dart pub deps` -> verify the dependency graph resolves correctly.
   - [ ] If resolution fails, identify the transitive dependency causing the lock, update its constraint in `pubspec.yaml`, and retry.

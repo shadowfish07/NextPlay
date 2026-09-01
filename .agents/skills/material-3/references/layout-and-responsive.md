@@ -4,7 +4,7 @@ Reference for Material Design 3's layout system: breakpoints, canonical layouts,
 
 ## Jetpack Compose and Android
 
-The **breakpoint table** below is a **design** reference. In **Jetpack Compose**, prefer **`calculateWindowSizeClass`** (`androidx.compose.material3:material3-window-size-class`) and/or **`androidx.compose.material3.adaptive`** APIs (e.g. `currentWindowAdaptiveInfo`, list-detail scaffolds) instead of hand-rolling raw `BoxWithConstraints` width checks everywhere.
+The **breakpoint table** below is a **design** reference. In **Jetpack Compose**, prefer **`calculateWindowSizeClass`** (`androidx.compose.material3:material3-window-size-class`) and/or **`androidx.compose.material3.adaptive`** APIs (e.g. `currentWindowAdaptiveInfoV2`, list-detail scaffolds) instead of hand-rolling raw `BoxWithConstraints` width checks everywhere.
 
 **Edge-to-edge:** Use **`enableEdgeToEdge()`** on your `Activity` (AndroidX) when you draw behind the system bars. Apply **`WindowInsets`** (`Modifier.statusBarsPadding()`, `navigationBarsPadding()`, **`imePadding()`**, `displayCutoutPadding()`, etc.) and **`Scaffold`** `contentWindowInsets` so content and **IME** behave correctly.
 
@@ -17,7 +17,10 @@ The **breakpoint table** below is a **design** reference. In **Jetpack Compose**
 Material's [I/O 2026 update](https://m3.material.io/blog/whats-new-at-io26) introduced broader expressive/adaptive layout guidance:
 
 - **Expressive layout scaffold**: Design screens to adapt across mobile, desktop, foldables, watches, XR, and other spatial form factors. In Compose, prefer Material3 adaptive scaffolds and window size classes over hard-coded phone/tablet branches.
-- **8dp spacing system**: Treat spacing as tokens. Use an 8dp scale for margins, padding, gaps, and component spacing so density and device-class changes can be applied consistently.
+- **4dp base grid, 8dp layout rhythm**: Treat spacing as tokens. Align values
+  to the 4dp base grid, and prefer 8dp increments for layout margins, padding,
+  gaps, and component spacing. Use 4dp increments only for compact internal
+  adjustments.
 - **Watch guidance**: Use physics-based motion, arc text styles, and edge-hugging containers. Avoid shrinking phone layouts onto a round or compact wearable screen.
 - **XR guidance**: Use spatial panels and depth-based elevation. Avoid treating XR as only a larger desktop canvas; account for depth, comfort, and panel placement.
 
@@ -112,7 +115,7 @@ MD3 defines 3 canonical layouts as starting points. Always begin from one of the
 
 **Use when**: Displaying a large collection of browsable items (social feed, news, product grid).
 
-```
+```text
 Compact:    Single column of cards
 Medium:     2-column grid
 Expanded:   3-column grid
@@ -165,7 +168,7 @@ Large:      4-column grid + optional side panel
 
 **Use when**: Browsing a list of items where each has detailed content (email, file browser, contacts).
 
-```
+```text
 Compact:    List view OR detail view (navigate between them)
 Medium:     Side-by-side list (1/3) + detail (2/3)
 Expanded:   Side-by-side with wider detail pane
@@ -274,7 +277,7 @@ In list-detail and supporting pane layouts, users can resize panes with a drag h
 
 **Use when**: Primary content needs supplementary information (document + properties panel, video + comments).
 
-```
+```text
 Compact:    Stacked — primary on top, supporting below (or bottom sheet)
 Medium:     Side-by-side (2/3 primary + 1/3 supporting)
 Expanded:   Same but with more space
@@ -356,7 +359,7 @@ Components transform across breakpoints:
 ```html
 <div class="md3-app-layout">
   <!-- Navigation (responsive — see navigation-patterns.md) -->
-  <nav class="md3-nav" aria-label="Main navigation">
+  <nav class="md3-nav" aria-label="Main">
     <!-- Nav content varies by breakpoint -->
   </nav>
 
@@ -451,7 +454,10 @@ The fold/hinge is a physical divider. Never place interactive content or critica
   .md3-list-detail__list {
     /* Span the left segment */
     width: env(viewport-segment-width 0 0);
-    margin-right: env(viewport-segment-left 1 0, 0px) - env(viewport-segment-right 0 0, 0px);
+    margin-right: calc(
+      env(viewport-segment-left 1 0, 0px) -
+      env(viewport-segment-right 0 0, 0px)
+    );
   }
   .md3-list-detail__detail {
     flex: 1;
@@ -475,7 +481,12 @@ The fold/hinge is a physical divider. Never place interactive content or critica
 
 **Flutter — `MediaQuery` and display features:**
 
+Add the foldable layout dependency with `flutter pub add dual_screen`, then
+import its `TwoPane` API:
+
 ```dart
+import 'package:dual_screen/dual_screen.dart';
+
 Widget build(BuildContext context) {
   final displayFeatures = MediaQuery.of(context).displayFeatures;
   final hinge = displayFeatures.whereType<DisplayFeature>().where(
@@ -524,7 +535,7 @@ fun AdaptiveLayout() {
         }
         else -> {
             // Standard adaptive layout based on window size class
-            val windowSizeClass = calculateWindowSizeClass(LocalContext.current as Activity)
+            val windowSizeClass = currentWindowAdaptiveInfoV2().windowSizeClass
             StandardAdaptiveLayout(windowSizeClass)
         }
     }
@@ -535,7 +546,7 @@ fun AdaptiveLayout() {
 
 When the device is in tabletop posture (horizontal fold, bottom half resting on a surface), the content naturally divides into two halves:
 
-```
+```text
 ┌─────────────────────┐
 │                     │  ← Top half: visual content
 │   Video / Image /   │     (camera viewfinder, video player,
@@ -553,7 +564,7 @@ When the device is in tabletop posture (horizontal fold, bottom half resting on 
 
 When the device is in book posture (vertical fold, held like a book), it naturally maps to list-detail:
 
-```
+```text
 ┌──────────┬──────────┐
 │          │          │
 │  List /  │  Detail  │

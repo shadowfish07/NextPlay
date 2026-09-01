@@ -99,6 +99,8 @@ Use Object patterns with switch expressions to handle family types exhaustively.
 
 **Implementation:**
 ```dart
+import 'dart:math' as math;
+
 sealed class Shape {}
 
 class Square implements Shape {
@@ -136,7 +138,7 @@ Use `when` to evaluate arbitrary conditions after a pattern matches.
 **Implementation:**
 ```dart
 switch (shape) {
-  case Square(size: var s) || Circle(size: var s) when s > 0:
+  case Square(length: var s) || Circle(radius: var s) when s > 0:
     print('Valid symmetric shape with size $s');
   case Square() || Circle():
     print('Invalid or empty shape');

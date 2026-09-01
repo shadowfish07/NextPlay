@@ -6,8 +6,6 @@ description: >
   (@material/web, maintenance mode). Covers tokens, 30+ components, layout, theming,
   M3 Expressive (platform matrix), and accessibility. Use when: "material design", "MD3",
   "material you", "Jetpack Compose", "MaterialTheme", "material component", "md3 button".
-user-invokable: true
-argument-hint: "[component|theme|layout|scaffold|audit] [description or URL]"
 ---
 
 # Material Design 3
@@ -44,7 +42,7 @@ When both skills are active, MD3 provides the design system (tokens, components,
 ## Decision Tree
 
 **What are you building?**
-```
+```text
 Full app scaffold        → See "Common Patterns: App Shell" + references/layout-and-responsive.md
 Single component         → See "Component Quick Reference" table → references/component-catalog.md
 Custom theme             → See references/theming-and-dynamic-color.md
@@ -54,7 +52,7 @@ Data display             → See references/component-catalog.md § Data Display
 ```
 
 **What platform?**
-```
+```text
 Jetpack Compose          → Primary: androidx.compose.material3, MaterialTheme, references/*
 Flutter                  → useMaterial3: true in ThemeData, ColorScheme.fromSeed()
 Web (vanilla JS)         → @material/web (limited; maintenance mode) + CSS custom properties
@@ -159,8 +157,8 @@ CSS easing values:
 | Component | Web Element | Key Variants | Category |
 |-----------|------------|--------------|----------|
 | Button | `md-filled-button`, `md-outlined-button`, `md-text-button`, `md-elevated-button`, `md-filled-tonal-button` | Filled, Outlined, Text, Elevated, Tonal; 5 sizes (XS–XL); toggle | Actions |
-| Button group | `md-button-group` | Standard, connected | Actions |
-| Extended FAB | `md-extended-fab` | Surface, Primary, Secondary, Tertiary | Actions |
+| Button group | — | Standard, connected | Actions |
+| Extended FAB | `md-fab` with `label` | Surface, Primary, Secondary, Tertiary | Actions |
 | FAB | `md-fab` | Small, Medium, Large | Actions |
 | FAB menu | — | — | Actions |
 | Icon button | `md-icon-button`, `md-filled-icon-button`, `md-filled-tonal-icon-button`, `md-outlined-icon-button` | Standard, Filled, Filled Tonal, Outlined | Actions |
@@ -187,8 +185,8 @@ CSS easing values:
 | Text field | `md-filled-text-field`, `md-outlined-text-field` | Filled, Outlined | Input |
 | Time picker | — | Docked, Modal | Input |
 | App bar (top) | — | Center-aligned, Small, Medium, Large | Navigation |
-| Navigation bar | `md-navigation-bar` | — | Navigation |
-| Navigation drawer | `md-navigation-drawer` | Standard, Modal | Navigation |
+| Navigation bar | — | — | Navigation |
+| Navigation drawer | — | Standard, Modal | Navigation |
 | Navigation rail | — | — | Navigation |
 | Search | — | Search bar, Search view | Navigation |
 | Tabs | `md-tabs`, `md-primary-tab`, `md-secondary-tab` | Primary, Secondary | Navigation |
@@ -292,6 +290,9 @@ Apply a custom theme by setting CSS custom properties on `:root` or any ancestor
   --md-sys-typescale-body-large-size: 1rem;
   --md-sys-typescale-body-large-weight: 400;
   --md-sys-typescale-body-large-line-height: 1.5rem;
+  --md-sys-typescale-title-large: 400 1.375rem/1.75rem 'Roboto Flex', sans-serif;
+  --md-sys-typescale-title-medium: 500 1rem/1.5rem 'Roboto Flex', sans-serif;
+  --md-sys-typescale-body-medium: 400 0.875rem/1.25rem 'Roboto Flex', sans-serif;
 
   /* Shape */
   --md-sys-shape-corner-full: 9999px;
@@ -347,21 +348,13 @@ Standard MD3 app with responsive navigation + top app bar + content area:
 
 ```html
 <div class="md3-app">
-  <nav class="md3-nav-rail" aria-label="Main navigation">
+  <nav class="md3-nav-rail" aria-label="Main">
     <!-- Navigation rail for medium+ screens -->
     <md-fab size="small" aria-label="Compose">
       <md-icon slot="icon">edit</md-icon>
     </md-fab>
-    <md-navigation-bar>
-      <md-navigation-tab label="Home">
-        <md-icon slot="active-icon">home</md-icon>
-        <md-icon slot="inactive-icon">home</md-icon>
-      </md-navigation-tab>
-      <md-navigation-tab label="Search">
-        <md-icon slot="active-icon">search</md-icon>
-        <md-icon slot="inactive-icon">search</md-icon>
-      </md-navigation-tab>
-    </md-navigation-bar>
+    <a href="/" aria-current="page"><md-icon>home</md-icon><span>Home</span></a>
+    <a href="/search"><md-icon>search</md-icon><span>Search</span></a>
   </nav>
   <main class="md3-content">
     <header class="md3-top-app-bar">
@@ -537,7 +530,7 @@ See **[Jetpack Compose (primary)](#jetpack-compose-primary)** above. Use `LocalC
 | Filled button | `md-filled-button` | `FilledButton` | `Button` |
 | Outlined text field | `md-outlined-text-field` | `OutlinedTextField` | `OutlinedTextField` |
 | FAB | `md-fab` | `FloatingActionButton` | `FloatingActionButton` |
-| Navigation bar | `md-navigation-bar` | `NavigationBar` | `NavigationBar` |
+| Navigation bar | Standard `<nav>` + CSS | `NavigationBar` | `NavigationBar` |
 | Switch | `md-switch` | `Switch` | `Switch` |
 
 ## M3 Expressive (May 2025)
@@ -585,7 +578,7 @@ When invoked with `audit` as the argument (e.g., `/material-3 audit`), or when a
 
 3. **Generate the report**:
 
-```
+```markdown
 # MD3 Compliance Audit Report
 
 Target: [URL or file path]
@@ -634,7 +627,7 @@ Overall Score: [X/100]
 - Check **web** imports for `@material/web` vs `@material/mdc-*` (MD2)
 
 **Quick checks** (adapt paths to your stack):
-```
+```bash
 # Web: hardcoded colors
 grep -rn '#[0-9a-fA-F]\{3,8\}' --include='*.css' --include='*.scss'
 

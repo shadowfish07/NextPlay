@@ -63,7 +63,8 @@ Configures Clang header parsing targets and compiler flags.
 *   `ignoreSourceErrors`: Set to `true` to silence errors occurring inside third-party headers during parsing.
 
 ### 3. `Functions`
-Specifies which native C/C++ functions to expose in Dart.
+Specifies which native C functions to expose in Dart. `ffigen` does not parse
+C++ APIs directly; expose C++ through a C-compatible wrapper first.
 *   `include`: A matcher function (e.g. `(decl) => {'my_func'}.contains(decl.originalName)` or `Functions.includeSet({'my_func'})`).
 *   `isLeaf`: Declares functions as leaf functions (`(decl) => true`) if they do not call back into Dart or block thread execution.
 *   `recordUse`: Enables metadata generation for native asset tree shaking (essential in `dart-lang/native`). Set to `(_) => true`.

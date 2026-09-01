@@ -38,7 +38,7 @@ Organize the codebase using a hybrid approach: group UI components by feature, a
 lib/
 ├── data/
 │   ├── models/         # API models
-│   ├── repositories/   # Repository implementations
+│   ├── repository/     # Repository implementations
 │   └── services/       # API clients, local storage wrappers
 ├── domain/
 │   ├── models/         # Clean domain models
@@ -85,14 +85,16 @@ class UserRepository {
   UserRepository({required ApiClient apiClient}) : _apiClient = apiClient;
 
   final ApiClient _apiClient;
-  User? _cachedUser;
+  final _userCache = <String, User>{};
 
   Future<User> getUser(String id) async {
-    if (_cachedUser != null) return _cachedUser!;
+    final cachedUser = _userCache[id];
+    if (cachedUser != null) return cachedUser;
 
     final apiModel = await _apiClient.fetchUser(id);
-    _cachedUser = User(id: apiModel.id, name: apiModel.fullName); // Transform to Domain Model
-    return _cachedUser!;
+    final user = User(id: apiModel.id, name: apiModel.fullName);
+    _userCache[id] = user;
+    return user;
   }
 }
 ```
@@ -113,12 +115,19 @@ class ProfileViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  Object? _error;
+  Object? get error => _error;
+
   Future<void> loadProfile(String id) async {
     _isLoading = true;
+    _error = null;
     notifyListeners();
 
     try {
       _user = await _userRepository.getUser(id);
+    } on Exception catch (error) {
+      _user = null;
+      _error = error;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -141,6 +150,10 @@ class ProfileView extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
+        if (viewModel.error != null) {
+          return const Center(child: Text('Unable to load profile'));
+        }
+
         final user = viewModel.user;
         if (user == null) {
           return const Center(child: Text('User not found'));
@@ -150,7 +163,9 @@ class ProfileView extends StatelessWidget {
           children: [
             Text(user.name),
             ElevatedButton(
-              onPressed: () => viewModel.loadProfile(user.id),
+              onPressed: () async {
+                await viewModel.loadProfile(user.id);
+              },
               child: const Text('Refresh'),
             ),
           ],

@@ -137,10 +137,8 @@ Configure the native platforms to intercept specific URLs and route them into th
 ```json
 {
   "applinks": {
-    "apps": [],
     "details": [{
       "appIDs": ["TEAM_ID.com.yourcompany.yourapp"],
-      "paths": ["*"],
       "components": [{"/": "/*"}]
     }]
   }

@@ -46,7 +46,7 @@ Scaffold(
 
 ### Decision Tree
 
-```
+```text
 How many primary destinations?
 ├── 2 destinations → Tabs (primary)
 ├── 3–5 destinations
@@ -85,31 +85,21 @@ How many primary destinations?
 ### Implementation
 
 ```html
-<md-navigation-bar active-index="0">
-  <md-navigation-tab label="Home" active-icon="home" inactive-icon="home">
-    <md-icon slot="active-icon">home</md-icon>
-    <md-icon slot="inactive-icon">home</md-icon>
-  </md-navigation-tab>
-  <md-navigation-tab label="Search">
-    <md-icon slot="active-icon">search</md-icon>
-    <md-icon slot="inactive-icon">search</md-icon>
-  </md-navigation-tab>
-  <md-navigation-tab label="Notifications">
-    <md-icon slot="active-icon">notifications</md-icon>
-    <md-icon slot="inactive-icon">notifications</md-icon>
-  </md-navigation-tab>
-  <md-navigation-tab label="Profile">
-    <md-icon slot="active-icon">person</md-icon>
-    <md-icon slot="inactive-icon">person</md-icon>
-  </md-navigation-tab>
-</md-navigation-bar>
+<nav class="md3-nav-bar" aria-label="Primary">
+  <a href="/" aria-current="page"><md-icon>home</md-icon><span>Home</span></a>
+  <a href="/search"><md-icon>search</md-icon><span>Search</span></a>
+  <a href="/notifications"><md-icon>notifications</md-icon><span>Notifications</span></a>
+  <a href="/profile"><md-icon>person</md-icon><span>Profile</span></a>
+</nav>
 ```
 
 ### Styling
 
 ```css
-md-navigation-bar {
-  --md-navigation-bar-container-color: var(--md-sys-color-surface-container);
+.md3-nav-bar {
+  display: flex;
+  justify-content: space-around;
+  background: var(--md-sys-color-surface-container);
 }
 ```
 
@@ -134,26 +124,26 @@ md-navigation-bar {
 ### Implementation
 
 ```html
-<nav class="md3-nav-rail" aria-label="Main navigation">
+<nav class="md3-nav-rail" aria-label="Main">
   <!-- Optional FAB -->
   <md-fab size="small" variant="tertiary" aria-label="Compose">
     <md-icon slot="icon">edit</md-icon>
   </md-fab>
 
-  <div class="md3-nav-rail__items" role="tablist">
-    <a href="/" class="md3-nav-rail__item" role="tab" aria-selected="true" aria-current="page">
+  <div class="md3-nav-rail__items">
+    <a href="/" class="md3-nav-rail__item" aria-current="page">
       <div class="md3-nav-rail__indicator">
         <md-icon>home</md-icon>
       </div>
       <span class="md3-nav-rail__label">Home</span>
     </a>
-    <a href="/search" class="md3-nav-rail__item" role="tab" aria-selected="false">
+    <a href="/search" class="md3-nav-rail__item">
       <div class="md3-nav-rail__indicator">
         <md-icon>search</md-icon>
       </div>
       <span class="md3-nav-rail__label">Search</span>
     </a>
-    <a href="/settings" class="md3-nav-rail__item" role="tab" aria-selected="false">
+    <a href="/settings" class="md3-nav-rail__item">
       <div class="md3-nav-rail__indicator">
         <md-icon>settings</md-icon>
       </div>
@@ -203,12 +193,12 @@ md-navigation-bar {
   border-radius: var(--md-sys-shape-corner-full);
 }
 
-.md3-nav-rail__item[aria-selected="true"] .md3-nav-rail__indicator {
+.md3-nav-rail__item[aria-current="page"] .md3-nav-rail__indicator {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
 }
 
-.md3-nav-rail__item[aria-selected="true"] {
+.md3-nav-rail__item[aria-current="page"] {
   color: var(--md-sys-color-on-surface);
 }
 ```
@@ -230,25 +220,14 @@ Always visible alongside content. Width: 360dp.
 
 ```html
 <div class="md3-layout">
-  <md-navigation-drawer opened>
-    <div slot="headline">App Name</div>
-    <md-list>
-      <md-list-item type="button" active>
-        <md-icon slot="start">inbox</md-icon>
-        <div slot="headline">Inbox</div>
-        <div slot="trailing-supporting-text">24</div>
-      </md-list-item>
-      <md-list-item type="button">
-        <md-icon slot="start">send</md-icon>
-        <div slot="headline">Sent</div>
-      </md-list-item>
-      <md-divider></md-divider>
-      <md-list-item type="button">
-        <md-icon slot="start">drafts</md-icon>
-        <div slot="headline">Drafts</div>
-      </md-list-item>
-    </md-list>
-  </md-navigation-drawer>
+  <aside class="md3-nav-drawer">
+    <h2>App Name</h2>
+    <nav aria-label="Mail folders">
+      <a href="/inbox" aria-current="page"><md-icon>inbox</md-icon>Inbox <span>24</span></a>
+      <a href="/sent"><md-icon>send</md-icon>Sent</a>
+      <a href="/drafts"><md-icon>drafts</md-icon>Drafts</a>
+    </nav>
+  </aside>
   <main class="md3-content">
     <!-- Page content -->
   </main>
@@ -260,15 +239,20 @@ Always visible alongside content. Width: 360dp.
 Overlays content with a scrim. Used on smaller screens or when content space is limited.
 
 ```html
-<md-navigation-drawer type="modal" id="nav-drawer">
-  <!-- Same content as standard -->
-</md-navigation-drawer>
+<button type="button" id="menu-btn" aria-controls="nav-drawer" aria-expanded="false">
+  Menu
+</button>
+<aside class="md3-nav-drawer" id="nav-drawer" hidden>
+  <nav aria-label="Primary"><!-- Native navigation links --></nav>
+</aside>
 
 <script>
-  // Toggle drawer
-  document.getElementById('menu-btn').addEventListener('click', () => {
-    const drawer = document.getElementById('nav-drawer');
-    drawer.opened = !drawer.opened;
+  const menuButton = document.getElementById('menu-btn');
+  const drawer = document.getElementById('nav-drawer');
+  menuButton.addEventListener('click', () => {
+    const willOpen = drawer.hidden;
+    drawer.hidden = !willOpen;
+    menuButton.setAttribute('aria-expanded', String(willOpen));
   });
 </script>
 ```
@@ -389,26 +373,30 @@ window.addEventListener('scroll', () => {
 ### Tab + Panel Connection
 
 ```html
-<md-tabs id="my-tabs">
-  <md-primary-tab id="tab-1" aria-controls="panel-1" active>Tab 1</md-primary-tab>
-  <md-primary-tab id="tab-2" aria-controls="panel-2">Tab 2</md-primary-tab>
-</md-tabs>
+<section class="tab-group">
+  <md-tabs id="my-tabs">
+    <md-primary-tab id="tab-1" aria-controls="panel-1" active>Tab 1</md-primary-tab>
+    <md-primary-tab id="tab-2" aria-controls="panel-2">Tab 2</md-primary-tab>
+  </md-tabs>
 
-<div id="panel-1" role="tabpanel" aria-labelledby="tab-1">
-  Panel 1 content
-</div>
-<div id="panel-2" role="tabpanel" aria-labelledby="tab-2" hidden>
-  Panel 2 content
-</div>
+  <div id="panel-1" role="tabpanel" aria-labelledby="tab-1">
+    Panel 1 content
+  </div>
+  <div id="panel-2" role="tabpanel" aria-labelledby="tab-2" hidden>
+    Panel 2 content
+  </div>
+</section>
 
 <script>
-  document.getElementById('my-tabs').addEventListener('change', (e) => {
-    // Hide all panels
-    document.querySelectorAll('[role="tabpanel"]').forEach(p => p.hidden = true);
-    // Show selected panel
-    const activeTab = e.target.querySelector('[active]');
+  const tabs = document.getElementById('my-tabs');
+  tabs.addEventListener('change', () => {
+    const tabGroup = tabs.closest('.tab-group');
+    tabGroup.querySelectorAll('[role="tabpanel"]').forEach((panel) => {
+      panel.hidden = true;
+    });
+    const activeTab = tabs.querySelector('[active]');
     const panelId = activeTab.getAttribute('aria-controls');
-    document.getElementById(panelId).hidden = false;
+    tabGroup.querySelector(`#${CSS.escape(panelId)}`).hidden = false;
   });
 </script>
 ```
@@ -419,7 +407,7 @@ The key MD3 pattern: navigation component transforms across breakpoints.
 
 ### Mobile → Tablet → Desktop
 
-```
+```text
 Compact (<600dp):   Navigation Bar (bottom)
 Medium (600–839dp): Navigation Rail (side)
 Expanded (840dp+):  Navigation Drawer (side, standard)
@@ -458,28 +446,20 @@ Expanded (840dp+):  Navigation Drawer (side, standard)
 <div class="md3-app">
   <!-- Navigation drawer (expanded+) -->
   <aside class="md3-nav-drawer">
-    <md-navigation-drawer opened>
-      <div slot="headline">My App</div>
-      <md-list>
-        <md-list-item type="button" active>
-          <md-icon slot="start">home</md-icon>Home
-        </md-list-item>
-        <md-list-item type="button">
-          <md-icon slot="start">search</md-icon>Search
-        </md-list-item>
-        <md-list-item type="button">
-          <md-icon slot="start">settings</md-icon>Settings
-        </md-list-item>
-      </md-list>
-    </md-navigation-drawer>
+    <h2>My App</h2>
+    <nav aria-label="Primary">
+      <a href="/" aria-current="page"><md-icon>home</md-icon>Home</a>
+      <a href="/search"><md-icon>search</md-icon>Search</a>
+      <a href="/settings"><md-icon>settings</md-icon>Settings</a>
+    </nav>
   </aside>
 
   <!-- Navigation rail (medium) -->
   <nav class="md3-nav-rail" aria-label="Main">
     <md-fab size="small" aria-label="New"><md-icon slot="icon">add</md-icon></md-fab>
-    <a class="md3-nav-rail__item active"><md-icon>home</md-icon><span>Home</span></a>
-    <a class="md3-nav-rail__item"><md-icon>search</md-icon><span>Search</span></a>
-    <a class="md3-nav-rail__item"><md-icon>settings</md-icon><span>Settings</span></a>
+    <a href="/" class="md3-nav-rail__item" aria-current="page"><md-icon>home</md-icon><span>Home</span></a>
+    <a href="/search" class="md3-nav-rail__item"><md-icon>search</md-icon><span>Search</span></a>
+    <a href="/settings" class="md3-nav-rail__item"><md-icon>settings</md-icon><span>Settings</span></a>
   </nav>
 
   <!-- Main content -->
@@ -494,20 +474,11 @@ Expanded (840dp+):  Navigation Drawer (side, standard)
   </main>
 
   <!-- Navigation bar (compact) -->
-  <md-navigation-bar class="md3-nav-bar">
-    <md-navigation-tab label="Home" active>
-      <md-icon slot="active-icon">home</md-icon>
-      <md-icon slot="inactive-icon">home</md-icon>
-    </md-navigation-tab>
-    <md-navigation-tab label="Search">
-      <md-icon slot="active-icon">search</md-icon>
-      <md-icon slot="inactive-icon">search</md-icon>
-    </md-navigation-tab>
-    <md-navigation-tab label="Settings">
-      <md-icon slot="active-icon">settings</md-icon>
-      <md-icon slot="inactive-icon">settings</md-icon>
-    </md-navigation-tab>
-  </md-navigation-bar>
+  <nav class="md3-nav-bar" aria-label="Primary">
+    <a href="/" aria-current="page"><md-icon>home</md-icon><span>Home</span></a>
+    <a href="/search"><md-icon>search</md-icon><span>Search</span></a>
+    <a href="/settings"><md-icon>settings</md-icon><span>Settings</span></a>
+  </nav>
 </div>
 ```
 

@@ -462,7 +462,9 @@ Apply different themes to different sections of the UI:
 /* Scoped theme for a section */
 .premium-section {
   --md-sys-color-primary: #B69DF8;
+  --md-sys-color-on-primary: #21005D;
   --md-sys-color-primary-container: #3F2D7A;
+  --md-sys-color-on-primary-container: #EADDFF;
   /* Only override what changes */
 }
 ```

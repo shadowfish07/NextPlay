@@ -13,7 +13,7 @@ description: "How to inject external code examples into Dartdoc using the {@exam
 *   [5. Placement and Path Resolution](#5-placement-and-path-resolution)
 *   [6. Verification](#6-verification)
 
-When writing documentation that requires multi-line code examples, you should generally extract those examples into standalone `.dart` files and inject them using the `{@example}` directive, rather than writing them inline inside `///` comments. This ensures the examples can be analyzed, linted, and executed.
+When writing documentation that requires multi-line code examples, you should generally extract those examples into standalone `.dart` files and inject them using the `{@example}` directive, rather than writing them inline inside `///` comments. Standalone files make examples easier to analyze, lint, and execute through the explicit verification steps below; injection does not run those checks automatically.
 
 ## 1. The `{@example}` Directive
 The `{@example}` directive parses an external file and resolves it into a fenced Markdown code block in the generated documentation.

@@ -62,7 +62,7 @@ Use this workflow to resolve outdated API usages, apply quick fixes, and migrate
 ### Comprehensive `analysis_options.yaml`
 
 ```yaml
-include: package:flutter_lints/recommended.yaml
+include: package:flutter_lints/flutter.yaml
 
 analyzer:
   exclude:

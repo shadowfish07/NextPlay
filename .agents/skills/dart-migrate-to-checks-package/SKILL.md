@@ -282,7 +282,7 @@ Use this table as a quick reference for direct matcher replacements:
 | `isTrue` / `true` | `check(actual).isTrue()` | Works on non-nullable `bool` only |
 | `isFalse` / `false` | `check(actual).isFalse()` | Works on non-nullable `bool` only |
 | `completion(matcher)` | `await check(future).completes(conditionCallback)` | Must be awaited! |
-| `throwsA(matcher)` | `await check(future).throws<Type>()` | Must be awaited! |
+| `throwsA(matcher)` | `await check(future).throws<Type>((it) => /* translate matcher checks to it */)` | Must be awaited; preserve message/property assertions in the callback. |
 | `emits(value)` | `await check(streamQueue).emits(conditionCallback)` | Must be awaited! |
 | `emitsThrough(value)` | `await check(streamQueue).emitsThrough(conditionCallback)` | Must be awaited! |
 | `stringContainsInOrder(list)` | `check(string).containsInOrder(list)` | String only |
@@ -374,7 +374,7 @@ simpler `has` helper:
   ```dart
   extension CustomPersonChecks on Subject<Person> {
     Subject<String> get ssn => context.nest(
-      'has a valid SSN',
+      () => ['has a valid SSN'],
       (actual) {
         final ssnValue = actual.ssn;
         if (ssnValue == null) {

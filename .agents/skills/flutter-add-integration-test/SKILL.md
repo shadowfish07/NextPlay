@@ -17,23 +17,29 @@ metadata:
 
 ## Project Setup and Dependencies
 
-Configure the project to support integration testing and Flutter Driver extensions.
+Configure the project to support modern `integration_test` tests. Do not enable
+the legacy Flutter Driver VM service extension in a production entry point.
 
 1. Add required development dependencies to `pubspec.yaml`:
    ```bash
    flutter pub add 'dev:integration_test:{"sdk":"flutter"}'
    flutter pub add 'dev:flutter_test:{"sdk":"flutter"}'
    ```
-2. Enable the Flutter Driver extension in your application entry point (typically `lib/main.dart` or a dedicated `lib/main_test.dart`):
-   - Import `package:flutter_driver/driver_extension.dart`.
-   - Call `enableFlutterDriverExtension();` before `runApp()`.
-3. Add `Key` parameters (e.g., `ValueKey('login_button')`) to critical widgets in the application code to ensure reliable targeting during tests.
+2. Reuse the app's existing entry point and inject deterministic dependencies
+   through `AppDependencies.create()` when a test needs fakes. Never select
+   fixtures from production `main()`.
+3. Define or reuse automation-facing selectors in
+   `lib/ui/core/app_keys.dart`, then pass those `AppKeys` members to widgets.
+   Existing key strings are compatibility contracts; do not create parallel
+   inline `ValueKey` strings in tests.
 
 ## Interactive Exploration via MCP
 
 Use the Dart/Flutter MCP server tools to interactively explore and manipulate the application state before writing static tests.
 
-- **Launch**: Execute `launch_app` with `target: "lib/main_test.dart"` to start the application and acquire the DTD URI.
+- **Launch**: Execute `launch_app` with the existing `lib/main.dart` target. Use
+  a dedicated target only after creating it and wiring test-only dependencies
+  without changing production composition.
 - **Inspect**: Execute `get_widget_tree` to discover available `Key`s, `Text` nodes, and widget `Type`s.
 - **Interact**: Execute `tap`, `enter_text`, and `scroll` to simulate user flows.
 - **Wait**: Always execute `waitFor` or verify state with `get_health` when navigating or triggering animations.
@@ -48,24 +54,38 @@ Structure integration tests using the `flutter_test` API paradigm.
 - Initialize the binding by calling `IntegrationTestWidgetsFlutterBinding.ensureInitialized();` at the start of `main()`.
 - Load the application UI using `await tester.pumpWidget(MyApp());`.
 - Trigger frames and wait for animations to complete using `await tester.pumpAndSettle();` after interactions like `tester.tap()`.
-- Assert widget visibility using `expect(find.byKey(ValueKey('foo')), findsOneWidget);` or `findsNothing`.
+- Assert widget visibility using stable selectors such as
+  `expect(find.byKey(AppKeys.onboardingNext), findsOneWidget);` or
+  `findsNothing`.
 - Scroll to specific off-screen widgets using `await tester.scrollUntilVisible(itemFinder, 500.0, scrollable: listFinder);`.
 
 **Conditional Logic for Legacy `flutter_driver`:**
-- If maintaining or migrating legacy `flutter_driver` tests, use `driver.waitFor()`, `driver.waitForAbsent()`, `driver.tap()`, and `driver.scroll()` instead of the `WidgetTester` APIs.
+- Modern `integration_test` tests do not call
+  `enableFlutterDriverExtension()`.
+- If maintaining a genuine legacy `flutter_driver` suite, add the
+  `flutter_driver` SDK dependency and use a dedicated entry point that is never
+  imported by production `main()`.
+- Gate the extension in that legacy-only entry point with an explicit
+  `--dart-define=ENABLE_FLUTTER_DRIVER=true`; release builds must never enable
+  it.
 
 ## Execution and Profiling
 
-Execute tests using the `flutter drive` command. Require a host driver script located in `test_driver/integration_test.dart` that calls `integrationDriver()`.
+Use the repository-owned runner for Android. A host driver script at
+`test_driver/integration_test.dart` that calls `integrationDriver()` is only
+needed for targets or reporting workflows that explicitly use `flutter drive`.
 
 **Conditional Execution Targets:**
 - **If testing on Chrome:** Launch `chromedriver --port=4444` in a separate terminal, then run:
   `flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart -d chrome`
 - **If testing headless web:** Run with `-d web-server`.
-- **If testing on Android (Local):** Run `flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart`.
+- **If testing NextPlay on Android (Local):** Run `tool/e2e_android.sh`. In a
+  linked worktree, `tool/worktree.sh e2e` also performs setup first. Both paths
+  use the repository's shared AVD lease and scoped cleanup.
 - **If testing on Firebase Test Lab (Android):**
   1. Build debug APK: `flutter build apk --debug`
-  2. Build test APK: `./gradlew app:assembleAndroidTest`
+  2. Confirm `android/gradlew` and its wrapper JAR are present, then build the
+     test APK with `(cd android && ./gradlew app:assembleAndroidTest)`.
   3. Upload both APKs to the Firebase Test Lab console.
 
 ## Workflow: End-to-End Integration Testing
@@ -74,8 +94,8 @@ Copy and follow this checklist to implement and verify integration tests.
 
 - [ ] **Task Progress: Setup**
   - [ ] Add `integration_test` and `flutter_test` to `pubspec.yaml`.
-  - [ ] Inject `enableFlutterDriverExtension()` into the app entry point.
-  - [ ] Assign `ValueKey`s to target widgets.
+  - [ ] Inject deterministic dependencies through `AppDependencies.create()`.
+  - [ ] Assign or reuse `AppKeys` members for target widgets.
 - [ ] **Task Progress: Exploration**
   - [ ] Run `launch_app` via MCP.
   - [ ] Map the widget tree using `get_widget_tree`.
@@ -83,9 +103,9 @@ Copy and follow this checklist to implement and verify integration tests.
 - [ ] **Task Progress: Authoring**
   - [ ] Create `integration_test/app_test.dart`.
   - [ ] Write test cases using `WidgetTester` APIs.
-  - [ ] Create `test_driver/integration_test.dart` with `integrationDriver()`.
+  - [ ] Create a host driver only when the selected target requires one.
 - [ ] **Task Progress: Execution & Feedback Loop**
-  - [ ] Run `flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart`.
+  - [ ] Run `tool/verify_fast.sh`, then use `tool/e2e_android.sh` for Android.
   - [ ] **Feedback Loop**: Review test output -> If `PumpAndSettleTimedOutException` occurs, check for infinite animations -> If widget not found, add `scrollUntilVisible` -> Re-run test until passing.
 
 ## Examples
@@ -96,30 +116,27 @@ Copy and follow this checklist to implement and verify integration tests.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:my_app/ui/core/app_keys.dart';
 import 'package:my_app/main.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   group('End-to-end test', () {
-    testWidgets('tap on the floating action button, verify counter', (tester) async {
+    testWidgets('advance through onboarding', (tester) async {
       // Load app widget.
       await tester.pumpWidget(const MyApp());
 
-      // Verify the counter starts at 0.
-      expect(find.text('0'), findsOneWidget);
+      // Use selectors defined by the application, not copied key strings.
+      final nextButton = find.byKey(AppKeys.onboardingNext);
+      expect(nextButton, findsOneWidget);
 
-      // Find the floating action button to tap on.
-      final fab = find.byKey(const ValueKey('increment'));
-
-      // Emulate a tap on the floating action button.
-      await tester.tap(fab);
+      await tester.tap(nextButton);
 
       // Trigger a frame and wait for animations.
       await tester.pumpAndSettle();
 
-      // Verify the counter increments by 1.
-      expect(find.text('1'), findsOneWidget);
+      expect(find.byKey(AppKeys.onboardingPrevious), findsOneWidget);
     });
   });
 }

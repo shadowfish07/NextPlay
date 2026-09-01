@@ -80,13 +80,15 @@ Extension types **must** use primary constructors.
 - The representation variable can optionally use the `final` modifier. If `final` is not present then it is inferred; that is, the parameter is declaring whether or not it's explicitly `final`.
 
 ### 2.5 Empty Body Semicolon Shorthand (`;`)
-When a class, mixin class, mixin, extension or extension type has an empty body, the `{}` braces can be replaced by a semicolon (`;`):
+When a class, mixin class, extension, or extension type has an empty body, the
+`{}` braces can be replaced by a semicolon (`;`). An ordinary `mixin`
+declaration still uses an empty brace body:
 
 ```dart
 class C(int x);
 mixin class MC;
 extension type ET(int x);
-mixin M;
+mixin M {}
 extension Ext on C;
 ```
 
@@ -96,7 +98,7 @@ If a primary constructor requires assertions or custom field initializations, th
 ```dart
 class Point(var int x, var int y) {
   // Initializer list in class body
-  this : assert(x >= 0), y = y * 2;
+  this : assert(x >= 0);
 }
 ```
 

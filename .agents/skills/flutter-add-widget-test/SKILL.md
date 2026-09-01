@@ -79,6 +79,12 @@ class _TodoListState extends State<TodoList> {
   final controller = TextEditingController();
 
   @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(

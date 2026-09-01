@@ -69,7 +69,7 @@ Use the following checklist to implement and validate network operations.
 - [ ] 4. Validate the `statusCode` and throw an `Exception` on failure.
 - [ ] 5. Integrate the `Future` into the UI using `FutureBuilder`.
 - [ ] 6. Handle `snapshot.hasData`, `snapshot.hasError`, and default to a `CircularProgressIndicator`.
-- [ ] 7. **Feedback Loop:** Run the app -> trigger the network request -> review console for unhandled exceptions -> fix parsing or permission errors.
+- [ ] 7. **Feedback Loop:** Run `tool/verify_fast.sh` for ordinary deterministic network validation. Use `tool/live_smoke.sh` only when live-service verification is explicitly requested.
 
 ## Examples
 
