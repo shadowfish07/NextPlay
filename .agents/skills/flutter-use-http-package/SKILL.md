@@ -41,7 +41,10 @@ Configure the environment and platform-specific permissions required for network
 Execute HTTP operations and map responses to strongly typed Dart objects.
 
 *   **URIs:** Always parse URL strings using `Uri.parse('your_url')`.
-*   **Headers:** Inject authorization and content-type headers via the `headers` parameter map. Use `HttpHeaders.authorizationHeader` for auth tokens.
+*   **Headers:** Inject authorization and content-type headers via the `headers`
+    parameter map. Use literal standardized names such as `'Authorization'` and
+    `'Accept'` in cross-platform Flutter code so the client remains compatible
+    with Flutter Web without importing `dart:io`.
 *   **Payloads:** For POST and PUT requests, encode the body using `jsonEncode()` from `dart:convert`.
 *   **Status Validation:** Evaluate `response.statusCode`. Treat the full `200`–`299` range as HTTP success, then apply the endpoint's separate response-body contract.
 *   **Error Handling:** Throw explicit exceptions for non-success status codes. Never return `null` on failure, as this prevents `FutureBuilder` from triggering its error state and causes infinite loading indicators.
@@ -54,10 +57,13 @@ Execute HTTP operations and map responses to strongly typed Dart objects.
 
 ## Background Parsing
 
-Offload expensive JSON parsing to a separate Isolate to prevent UI jank (frame drops).
+Use `compute()` for expensive JSON parsing, with platform-specific expectations.
 
 *   Import `package:flutter/foundation.dart`.
-*   Use the `compute()` function to run the parsing logic in a background isolate.
+*   On native platforms, `compute()` runs the callback in a separate isolate.
+    On Flutter Web it runs on the current event loop, so large payloads can
+    still block UI work; use a Web worker or incremental parsing when that cost
+    is material.
 *   Ensure the parsing function passed to `compute()` is a top-level function or a static method, as closures or instance methods cannot be passed across isolates.
 
 ## Workflow: Executing Network Operations
@@ -92,9 +98,7 @@ Use the following checklist to implement and validate network operations.
 ### High-Fidelity Implementation: Fetching and Parsing in the Background
 
 ```dart
-import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -111,8 +115,8 @@ Future<List<Photo>> fetchPhotos() async {
   final response = await http.get(
     Uri.parse('https://jsonplaceholder.typicode.com/photos'),
     headers: {
-      HttpHeaders.authorizationHeader: 'Bearer your_token_here',
-      HttpHeaders.acceptHeader: 'application/json',
+      'Authorization': 'Bearer your_token_here',
+      'Accept': 'application/json',
     },
   );
 
@@ -124,7 +128,7 @@ Future<List<Photo>> fetchPhotos() async {
     throw const FormatException('Expected a response body for photos');
   }
 
-  // Offload heavy parsing to a background isolate.
+  // Native uses a background isolate; Web uses the current event loop.
   return compute(parsePhotos, response.body);
 }
 

@@ -282,6 +282,7 @@ const version = '1.0.0';
 const requestTimeout = Duration(seconds: 20);
 const bodyIdleTimeout = Duration(seconds: 30);
 const totalDownloadTimeout = Duration(minutes: 2);
+const cleanupTimeout = Duration(seconds: 10);
 const maxRedirects = 5;
 const allowedDownloadHosts = {
   'github.com',
@@ -350,6 +351,7 @@ Future<File> downloadAsset(
     ..connectionTimeout = requestTimeout
     ..findProxy = HttpClient.findProxyFromEnvironment;
   File? targetFile;
+  IOSink? targetSink;
 
   Future<File> performDownload() async {
     final response = await openValidatedDownload(client, uri);
@@ -362,7 +364,10 @@ Future<File> downloadAsset(
 
     targetFile = File.fromUri(outputDir.uri.resolve(fileName));
     await targetFile!.create(recursive: true);
-    await response.timeout(bodyIdleTimeout).pipe(targetFile!.openWrite());
+    final sink = targetFile!.openWrite();
+    targetSink = sink;
+    await response.timeout(bodyIdleTimeout).pipe(sink);
+    targetSink = null;
     return targetFile!;
   }
 
@@ -382,16 +387,28 @@ Future<File> downloadAsset(
   } catch (_) {
     client.close(force: true);
 
-    // Let the aborted source settle before deleting its partial output. The
-    // source may still be running after Future.timeout completes.
+    // Future.timeout does not cancel the source. Bound both sink shutdown and
+    // the wait for the aborted source so hook cleanup cannot hang indefinitely.
+    var writeStopped = targetSink == null;
+    final sink = targetSink;
+    if (sink != null) {
+      try {
+        await sink.close().timeout(cleanupTimeout);
+        writeStopped = true;
+        targetSink = null;
+      } catch (_) {
+        // Keep the partial file while its sink may still be active.
+      }
+    }
+
     try {
-      await download;
+      await download.timeout(cleanupTimeout);
     } catch (_) {
       // Preserve the original failure from the outer catch.
     }
 
     final partialFile = targetFile;
-    if (partialFile != null && await partialFile.exists()) {
+    if (writeStopped && partialFile != null && await partialFile.exists()) {
       await partialFile.delete();
     }
     rethrow;
