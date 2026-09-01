@@ -103,6 +103,10 @@ Example: `dart compile exe --target-os=linux --target-arch=arm64 bin/cli.dart`
 - [ ] Compile for host OS: `dart compile exe bin/cli.dart -o build/cli-host`
 - [ ] Compile for Linux (if host is macOS/Windows): `dart compile exe --target-os=linux --target-arch=x64 bin/cli.dart -o build/cli-linux-x64`
 
+If CLI or tooling work is performed inside NextPlay, run
+`tool/verify_fast.sh` after the focused CLI tests and builds; the standalone
+commands above do not replace the repository gate.
+
 ## Examples
 
 ### Example: CommandRunner Implementation

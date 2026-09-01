@@ -245,3 +245,6 @@ Always perform the following verification before completing a binding generation
     repository-owned setup/code-generation path before its first analyzer or
     build step. Use `git check-ignore -v <output>` to catch a global `*.g.dart`
     rule that would otherwise hide a local-only binding.
+4.  **NextPlay Gates**: Run `tool/verify_fast.sh`. If the generated binding is
+    packaged into or exercised by Android, also run `tool/e2e_android.sh` (or
+    `tool/worktree.sh e2e` from a linked worktree).

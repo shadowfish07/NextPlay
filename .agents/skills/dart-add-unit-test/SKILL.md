@@ -59,6 +59,8 @@ Follow this sequential workflow when implementing new test suites. Copy the chec
 - [ ] 5. Write `test()` cases grouped by functionality using `group()`.
 - [ ] 6. Execute the test suite using the appropriate CLI command.
 - [ ] 7. **Feedback Loop**: Run test -> Review stack trace for failures -> Fix implementation or assertions -> Re-run until passing.
+- [ ] 8. In NextPlay, run `tool/verify_fast.sh` after the focused test. For an
+      Android integration test, also use the leased runner described above.
 
 ## Examples
 

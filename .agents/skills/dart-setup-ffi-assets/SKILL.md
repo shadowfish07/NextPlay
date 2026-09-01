@@ -586,6 +586,11 @@ Run unit tests and confirm the native assets compile/link process completes with
 dart test
 ```
 
+In NextPlay, also run `tool/verify_fast.sh`. When the native asset is bundled
+into or exercised by Android, finish with `tool/e2e_android.sh` (or
+`tool/worktree.sh e2e` from a linked worktree) so the leased target runtime
+proves packaging and loading.
+
 Add a regression test for the total-deadline path, not only the idle timeout.
 Use a controlled response stream whose `onCancel` callback records
 cancellation, let the stream remain open until `totalDownloadTimeout`, and

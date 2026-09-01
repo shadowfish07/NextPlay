@@ -19,6 +19,10 @@ analyzer:
   enable-experiment:
     - primary-constructors
 ```
+
+NextPlay is currently verified with Dart 3.9.0, so do not apply this migration
+there unless the repository's locked toolchain is explicitly upgraded first.
+After any supported NextPlay migration, run `tool/verify_fast.sh`.
 *   **Dart 3.11 and earlier**: Primary constructors are not supported.
 
 ---

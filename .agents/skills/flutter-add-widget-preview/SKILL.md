@@ -62,6 +62,9 @@ Follow the appropriate conditional workflow to launch and interact with the Widg
 3. If global state (e.g., static initializers) was modified: Click the global hot restart button at the bottom right.
 4. If only the local widget state needs resetting: Click the individual hot restart button on the specific preview card.
 5. Review errors in the IDE/CLI console -> fix -> repeat.
+6. In NextPlay, run `tool/verify_fast.sh`, then exercise the changed UI with
+   `tool/e2e_android.sh` (or `tool/worktree.sh e2e` from a linked worktree).
+   The browser preview is iteration evidence, not the final runtime gate.
 
 ## Examples
 

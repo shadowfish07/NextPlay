@@ -56,6 +56,8 @@ Use this workflow to resolve outdated API usages, apply quick fixes, and migrate
 - [ ] 4. Apply the fixes using the `dart_fix` MCP tool or CLI command `dart fix --apply`.
 - [ ] 5. Format the modified code using the `dart_format` MCP tool or CLI command `dart format .`.
 - [ ] 6. Run the static analysis workflow to verify all diagnostics are resolved.
+- [ ] 7. If fixes changed NextPlay, run `tool/verify_fast.sh`; analyzer output
+      alone is not the repository completion gate.
 
 ## Examples
 

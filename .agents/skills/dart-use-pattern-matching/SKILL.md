@@ -72,6 +72,8 @@ When switching over `sealed` classes or enums, you must ensure all subtypes are 
 1. **Run validator:** Execute `dart analyze`.
 2. **Review errors:** Look for "The type 'X' is not exhaustively matched by the switch cases" errors.
 3. **Fix:** Add the missing Object patterns for the unhandled subtypes, or add a Wildcard (`_`) case if a default fallback is acceptable.
+4. **Verify NextPlay:** Run `tool/verify_fast.sh` after the focused analyzer and
+   tests pass.
 
 ## Examples
 

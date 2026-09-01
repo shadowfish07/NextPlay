@@ -577,6 +577,14 @@ The Expressive update adds visual richness while maintaining usability. **Availa
 
 **Legacy easing/duration** remains valid for **transitions** (enter/exit/shared-axis) where the spec still references them; see the Motion table below.
 
+### NextPlay Verification
+
+When Material 3 work changes NextPlay's Flutter UI, run
+`tool/verify_fast.sh`, then exercise the changed screen in Android with
+`tool/e2e_android.sh` (or `tool/worktree.sh e2e` from a linked worktree).
+Preview, browser, or source inspection alone is not completion evidence. A
+read-only compliance audit does not require these mutation gates.
+
 ## MD3 Compliance Audit
 
 When invoked with `audit` as the argument (e.g., `/material-3 audit`), or when asked to audit/review MD3 compliance, analyze the target app or page and produce a compliance report.

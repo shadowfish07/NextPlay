@@ -94,3 +94,5 @@ The `{@example}` directive is a block-level directive. It must appear on its own
 After injecting examples:
 1.  Run `dart analyze` on the example files to ensure the hidden setup code compiles.
 2.  (Optional) Run `dart doc` to verify that dartdoc successfully parsed the directive without throwing a "Failed to read file" or "missing region" warning.
+3.  In NextPlay, run `tool/verify_fast.sh` after changing repository-owned
+    examples or Dartdoc; the focused analyzer does not replace the project gate.

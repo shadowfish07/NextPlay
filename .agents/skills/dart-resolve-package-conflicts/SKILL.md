@@ -68,6 +68,8 @@ Use conditional logic based on the audit results to upgrade dependencies.
 - [ ] **Feedback Loop:**
   - [ ] Run `"$pub_sdk" analyze` -> review errors -> fix breaking API changes.
   - [ ] Run `"$pub_sdk" test` -> review failures -> fix regressions.
+  - [ ] In NextPlay, run `tool/verify_fast.sh` after the dependency graph and
+        focused tests pass.
 
 ## Workflow: Resolving Version Conflicts
 
@@ -83,6 +85,7 @@ package and its required transitive dependencies.
 - [ ] **Feedback Loop:**
   - [ ] Run `"$pub_sdk" pub deps` -> verify the dependency graph resolves correctly.
   - [ ] If resolution fails, identify the transitive dependency causing the lock, update its constraint in `pubspec.yaml`, and retry.
+  - [ ] In NextPlay, run `tool/verify_fast.sh` after the conflict is resolved.
 
 ## Examples
 

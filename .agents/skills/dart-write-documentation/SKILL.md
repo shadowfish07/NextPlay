@@ -53,6 +53,8 @@ When asked to write or update documentation for Dart code, you must strictly fol
 After writing or updating doc comments:
 1. Run `dart analyze` to ensure all bracketed references resolve properly without triggering `comment_references` warnings.
 2. (Optional) Run `dart doc` to verify the generated documentation renders cleanly.
+3. In NextPlay, run `tool/verify_fast.sh`; focused Dartdoc checks do not replace
+   the repository gate.
 
 ## Examples
 
