@@ -71,7 +71,9 @@ Use the following checklist to implement and verify mocked unit tests.
 
 ### Feedback Loop: Test Failures
 If tests fail or `build_runner` encounters errors:
-1. **Run validator:** Execute `dart test` or `dart run build_runner build`.
+1. **Run validator:** Execute `dart test` for pure Dart or `flutter test` for
+   Flutter, and use `dart run build_runner build` when regenerating mocks. In
+   NextPlay, also run `tool/verify_fast.sh` before completion.
 2. **Review errors:** Check for missing stubs, mismatched argument matchers, or syntax errors in the generated files.
 3. **Fix:**
    - If a mock method throws an unexpected null error, ensure you used `@GenerateNiceMocks`.
@@ -95,15 +97,21 @@ class ApiService {
 
   ApiService(this.client);
 
-  Future<String> fetchData(String urlString) async {
+  Future<String?> fetchData(String urlString) async {
     final uri = Uri.parse(urlString);
     final response = await client.get(uri);
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return jsonDecode(response.body)['data'];
-    } else {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Failed to load data');
     }
+
+    if (response.body.trim().isEmpty) return null;
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map<String, dynamic> && decoded['data'] is String) {
+      return decoded['data'] as String;
+    }
+    throw const FormatException('Expected a JSON object with string data');
   }
 }
 ```
@@ -145,6 +153,19 @@ void main() {
       // Verify the mock was called with the correct Uri
       verify(mockHttpClient.get(Uri.parse('https://api.example.com/data'))).called(1);
     });
+
+    for (final statusCode in [200, 204, 205]) {
+      test('returns null for an empty $statusCode response', () async {
+        when(mockHttpClient.get(any)).thenAnswer(
+          (_) async => http.Response('', statusCode),
+        );
+
+        final result =
+            await apiService.fetchData('https://api.example.com/data');
+
+        expect(result, isNull);
+      });
+    }
 
     test('throws an exception if the http call completes with an error', () {
       // Arrange

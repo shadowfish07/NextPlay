@@ -68,7 +68,24 @@ Structure integration tests using the `flutter_test` API paradigm.
 - Assert widget visibility using stable selectors such as
   `expect(find.byKey(AppKeys.onboardingNext), findsOneWidget);` or
   `findsNothing`.
-- Scroll to specific off-screen widgets using `await tester.scrollUntilVisible(itemFinder, 500.0, scrollable: listFinder);`.
+- Scroll to a specific off-screen widget by locating the exact list and its
+  descendant `Scrollable`; `scrollUntilVisible` cannot use a `ListView` or
+  `GridView` finder directly:
+  ```dart
+  final itemFinder = find.text('Target item');
+  final listFinder = find.byType(ListView);
+  expect(listFinder, findsOneWidget);
+  final scrollableFinder = find.descendant(
+    of: listFinder,
+    matching: find.byType(Scrollable),
+  );
+  expect(scrollableFinder, findsOneWidget);
+  await tester.scrollUntilVisible(
+    itemFinder,
+    500,
+    scrollable: scrollableFinder,
+  );
+  ```
 
 **Conditional Logic for Legacy `flutter_driver`:**
 - Modern `integration_test` tests do not call

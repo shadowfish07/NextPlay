@@ -82,13 +82,23 @@ Review the remaining analyzer output and apply conditional logic based on the er
     *   Add the `covariant` keyword to the parameter if tightening the type is intentionally required by the domain logic.
 
 **4. Verify fixes (Feedback Loop)**
-Run the validator. Review errors. Fix.
+Run the validator appropriate to the project. Review errors. Fix.
 ```bash
+# Pure Dart package
 dart analyze .
 dart test
+
+# Flutter package
+flutter analyze
+flutter test
 ```
-*   **If `dart analyze` reports errors:** Return to Step 3.
-*   **If `dart test` fails with a `TypeError`:** You have introduced an invalid explicit cast (`as T`) or accessed an uninitialized `late` variable. Locate the runtime failure and correct the type hierarchy or initialization order.
+In NextPlay, use `tool/verify_fast.sh` as the required final validator instead
+of stopping after the generic commands. If the fix changes Android runtime UI
+or navigation behavior, also run `tool/e2e_android.sh` (or
+`tool/worktree.sh e2e` from a linked worktree).
+
+*   **If analysis reports errors:** Return to Step 3.
+*   **If a test fails with a `TypeError`:** You have introduced an invalid explicit cast (`as T`) or accessed an uninitialized `late` variable. Locate the runtime failure and correct the type hierarchy or initialization order.
 
 ## Examples
 

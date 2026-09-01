@@ -159,6 +159,8 @@ Configure the native platforms to intercept specific URLs and route them into th
 
 ### Validation Loop
 Run validator -> review errors -> fix.
+- **NextPlay fast gate**: Run `tool/verify_fast.sh` after every routing change,
+  in addition to the applicable platform validation below.
 - **Android**: Run platform-intent validation through the repository-owned,
   device-selecting Android runner. In NextPlay, add the deep-link URL as a
   dedicated scenario inside the leased section of `tool/e2e_android.sh`, use

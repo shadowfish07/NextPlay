@@ -38,6 +38,10 @@ Copy and use this checklist to systematically resolve layout constraint violatio
   - **If "Incorrect use of ParentData widget"**: Move the `ParentDataWidget` to be a direct child of its required parent. Ensure `Expanded`/`Flexible` are direct children of `Row`/`Column`/`Flex`. Ensure `Positioned` is a direct child of `Stack`.
 - [ ] Execute Flutter hot reload.
 - [ ] Run validator -> review errors -> fix: Inspect the UI to verify the red/grey error screen or yellow/black overflow stripes are resolved. If new layout errors appear, repeat the workflow.
+- [ ] In NextPlay, run `tool/verify_fast.sh`, then exercise the fixed layout in
+      Android with `tool/e2e_android.sh` (or `tool/worktree.sh e2e` from a
+      linked worktree). Hot reload and visual inspection are diagnostic steps,
+      not completion gates.
 
 ## Examples
 

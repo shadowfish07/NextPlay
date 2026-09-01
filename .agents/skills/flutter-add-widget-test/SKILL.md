@@ -70,6 +70,7 @@ Apply the following conditional logic based on the type of interaction or state 
     then find its descendant `Scrollable` and assert both finders match one
     widget before passing the `Scrollable` finder to `scrollUntilVisible`:
     ```dart
+    final itemFinder = find.text('Target item');
     final listFinder = find.byType(ListView);
     expect(listFinder, findsOneWidget);
     final scrollableFinder = find.descendant(

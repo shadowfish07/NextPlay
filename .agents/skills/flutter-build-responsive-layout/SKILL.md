@@ -51,6 +51,9 @@ Follow this workflow to implement a layout that adapts to the available `BoxCons
 - [ ] **If `maxWidth > largeScreenMinWidth`:** Return a large-screen layout (e.g., a `Row` placing a navigation sidebar and content area side-by-side).
 - [ ] **If `maxWidth <= largeScreenMinWidth`:** Return a small-screen layout (e.g., a `Column` or standard navigation-style approach).
 - [ ] Run validator -> resize the application window -> review layout transitions -> fix overflow errors.
+- [ ] In NextPlay, run `tool/verify_fast.sh`, then verify the responsive UI in
+      Android with `tool/e2e_android.sh` (or `tool/worktree.sh e2e` from a
+      linked worktree).
 
 ## Workflow: Optimizing for Large Screens
 
@@ -63,6 +66,9 @@ Follow this workflow to prevent UI elements from stretching unnaturally on large
 - [ ] Apply `BoxConstraints(maxWidth: [optimal_width])` to the `ConstrainedBox`.
 - [ ] Wrap the `ConstrainedBox` in a `Center` widget to keep the constrained content centered on large screens.
 - [ ] Run validator -> test on desktop/tablet target -> review horizontal stretching -> adjust `maxWidth` or grid extents.
+- [ ] In NextPlay, run `tool/verify_fast.sh`, then verify the responsive UI in
+      Android with `tool/e2e_android.sh` (or `tool/worktree.sh e2e` from a
+      linked worktree).
 
 ## Examples
 

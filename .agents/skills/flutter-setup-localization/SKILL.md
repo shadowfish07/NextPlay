@@ -26,6 +26,7 @@ Copy and track this checklist when initializing internationalization in a Flutte
   - [ ] 2. Enable the `generate` flag.
   - [ ] 3. Create the `l10n.yaml` configuration file.
   - [ ] 4. Configure `MaterialApp` or `CupertinoApp`.
+  - [ ] 5. Run the repository verification gates.
 
 ### 1. Add Dependencies
 Add the required localization packages to the project. Execute the following commands in the terminal:
@@ -112,7 +113,11 @@ Run the following command to trigger code generation:
 ```bash
 flutter pub get
 ```
-*Feedback Loop:* Run validator -> review terminal output for ARB syntax errors -> fix missing commas or mismatched placeholders -> re-run `flutter pub get`.
+*Feedback Loop:* Run validator -> review terminal output for ARB syntax errors
+-> fix missing commas or mismatched placeholders -> re-run `flutter pub get`.
+In NextPlay, finish by running `tool/verify_fast.sh`, then validate the generated
+strings and visible UI in Android with `tool/e2e_android.sh` (or
+`tool/worktree.sh e2e` from a linked worktree).
 
 ### 3. Consume Localized Strings
 Access the localized strings in your widget tree using `AppLocalizations.of(context)`. Ensure the widget calling this is a descendant of `MaterialApp`.

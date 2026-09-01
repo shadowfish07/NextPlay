@@ -339,6 +339,45 @@ Future<HttpClientResponse> openValidatedDownload(
   throw StateError('Unreachable redirect state');
 }
 
+class ResponseFileWriter {
+  ResponseFileWriter(this.sink);
+
+  final IOSink sink;
+  final Completer<void> _done = Completer<void>();
+  StreamSubscription<List<int>>? _subscription;
+  Future<void>? _stopFuture;
+
+  Future<void> add(Stream<List<int>> source) async {
+    _subscription = source.listen(
+      sink.add,
+      onError: (Object error, StackTrace stackTrace) {
+        if (!_done.isCompleted) {
+          _done.completeError(error, stackTrace);
+        }
+      },
+      onDone: () {
+        if (!_done.isCompleted) _done.complete();
+      },
+      cancelOnError: true,
+    );
+
+    try {
+      await _done.future;
+    } finally {
+      await stop();
+    }
+  }
+
+  Future<void> stop() => _stopFuture ??= _stop();
+
+  Future<void> _stop() async {
+    final subscription = _subscription;
+    _subscription = null;
+    if (subscription != null) await subscription.cancel();
+    if (!_done.isCompleted) _done.complete();
+  }
+}
+
 Future<File> downloadAsset(
   OS targetOS,
   Architecture targetArchitecture,
@@ -352,6 +391,24 @@ Future<File> downloadAsset(
     ..findProxy = HttpClient.findProxyFromEnvironment;
   File? targetFile;
   IOSink? targetSink;
+  ResponseFileWriter? targetWriter;
+  Future<void>? sinkClose;
+  var cleanupRequested = false;
+
+  Future<void> closeTargetSink() {
+    final closeInFlight = sinkClose;
+    if (closeInFlight != null) return closeInFlight;
+
+    final sink = targetSink;
+    if (sink == null) return Future<void>.value();
+
+    final close = () async {
+      await sink.close();
+      if (identical(targetSink, sink)) targetSink = null;
+    }();
+    sinkClose = close;
+    return close;
+  }
 
   Future<File> performDownload() async {
     final response = await openValidatedDownload(client, uri);
@@ -361,13 +418,27 @@ Future<File> downloadAsset(
         'Download target $uri failed: Code ${response.statusCode}',
       );
     }
+    if (cleanupRequested) {
+      throw TimeoutException('Download of $uri was cancelled');
+    }
 
     targetFile = File.fromUri(outputDir.uri.resolve(fileName));
     await targetFile!.create(recursive: true);
     final sink = targetFile!.openWrite();
     targetSink = sink;
-    await response.timeout(bodyIdleTimeout).pipe(sink);
-    targetSink = null;
+    final writer = ResponseFileWriter(sink);
+    targetWriter = writer;
+    try {
+      await writer.add(response.timeout(bodyIdleTimeout));
+    } finally {
+      await writer.stop();
+      if (identical(targetWriter, writer)) targetWriter = null;
+    }
+
+    if (cleanupRequested) {
+      throw TimeoutException('Download of $uri was cancelled');
+    }
+    await closeTargetSink();
     return targetFile!;
   }
 
@@ -376,8 +447,10 @@ Future<File> downloadAsset(
     return await download.timeout(
       totalDownloadTimeout,
       onTimeout: () {
-        // Future.timeout does not cancel the source future. Closing the client
-        // aborts any request, redirect drain, or response body still in flight.
+        // Future.timeout does not cancel the source future. Mark cleanup before
+        // closing the client so performDownload cannot start or close a new
+        // writer on its normal success path after the deadline.
+        cleanupRequested = true;
         client.close(force: true);
         throw TimeoutException(
           'Download of $uri exceeded $totalDownloadTimeout',
@@ -385,19 +458,19 @@ Future<File> downloadAsset(
       },
     );
   } catch (_) {
+    cleanupRequested = true;
     client.close(force: true);
 
-    // Future.timeout does not cancel the source. Bound both sink shutdown and
-    // the wait for the aborted source so hook cleanup cannot hang indefinitely.
-    var writeStopped = targetSink == null;
-    final sink = targetSink;
-    if (sink != null) {
+    // Cancel and await the body subscription before closing its IOSink. This
+    // preserves the StreamConsumer contract even after the total deadline.
+    var writeStopped = targetWriter == null;
+    final writer = targetWriter;
+    if (writer != null) {
       try {
-        await sink.close().timeout(cleanupTimeout);
+        await writer.stop().timeout(cleanupTimeout);
         writeStopped = true;
-        targetSink = null;
       } catch (_) {
-        // Keep the partial file while its sink may still be active.
+        // Retry after the force-closed request has had time to unwind.
       }
     }
 
@@ -407,8 +480,31 @@ Future<File> downloadAsset(
       // Preserve the original failure from the outer catch.
     }
 
+    final remainingWriter = targetWriter;
+    if (!writeStopped && remainingWriter != null) {
+      try {
+        await remainingWriter.stop().timeout(cleanupTimeout);
+        writeStopped = true;
+      } catch (_) {
+        // Never close or delete the file while its stream may still write.
+      }
+    }
+
+    var sinkClosed = targetSink == null;
+    if (writeStopped && !sinkClosed) {
+      try {
+        await closeTargetSink().timeout(cleanupTimeout);
+        sinkClosed = targetSink == null;
+      } catch (_) {
+        // Keep the partial file when sink shutdown cannot be confirmed.
+      }
+    }
+
     final partialFile = targetFile;
-    if (writeStopped && partialFile != null && await partialFile.exists()) {
+    if (writeStopped &&
+        sinkClosed &&
+        partialFile != null &&
+        await partialFile.exists()) {
       await partialFile.delete();
     }
     rethrow;
@@ -489,6 +585,19 @@ Run unit tests and confirm the native assets compile/link process completes with
 ```bash
 dart test
 ```
+
+Add a regression test for the total-deadline path, not only the idle timeout.
+Use a controlled response stream whose `onCancel` callback records
+cancellation, let the stream remain open until `totalDownloadTimeout`, and
+assert all of the following before accepting the downloader:
+
+- it throws `TimeoutException`;
+- the response subscription is cancelled before the `IOSink` is closed;
+- the partial file can be deleted immediately, proving its handle is closed;
+- a late body event cannot recreate or append to the partial file.
+
+Keep the injected timeout short in the test; never wait for the production
+two-minute deadline.
 
 ### 2. Verify Target Outputs
 Navigate to your package target directory and verify that dynamic binary assets are created for the host system:
