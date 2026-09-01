@@ -1,6 +1,6 @@
 ---
 name: dart-collect-coverage
-description: Collect coverage using the coverage packge and create an LCOV report
+description: Collect coverage using the coverage package and create an LCOV report
 metadata:
   model: models/gemini-3.1-pro-preview
   last_modified: Fri, 24 Apr 2026 15:14:32 GMT
@@ -22,6 +22,18 @@ Structure your test suites using the standard Dart testing paradigms. Use `packa
 - **Component/Widget Tests:** Verify component behavior, layout, and interaction using mock objects (`package:mockito`).
 - **Integration Tests:** Verify entire app flows on simulated or real devices.
 
+## Repository-Owned Coverage Gates Take Precedence
+
+Before adding dependencies or choosing a coverage command, inspect the repository instructions and top-level verification scripts. Use a repository-owned gate when it exists because it may own dependency resolution, the correct Dart or Flutter test runner, LCOV generation, exclusions, and the required coverage threshold.
+
+In NextPlay, run this from the repository root:
+
+```bash
+tool/verify_fast.sh
+```
+
+Do not replace this with `dart run coverage:test_with_coverage`. NextPlay's gate runs the Flutter test suite with coverage and enforces the repository threshold. A successful coverage check requires the gate to exit successfully; the mere presence of LCOV files is not sufficient.
+
 ## Coverage Directives
 
 Exclude specific lines, blocks, or entire files from coverage metrics using inline comments. Pass the `--check-ignore` flag during formatting to enforce these directives.
@@ -32,43 +44,46 @@ Exclude specific lines, blocks, or entire files from coverage metrics using inli
 
 ## Workflow: Configuring and Generating Coverage Reports
 
-Follow this sequential workflow to add the coverage package, execute tests, and generate an LCOV report.
+Follow the branch that matches the project after checking for a repository-owned gate.
 
 **Task Progress Checklist:**
-- [ ] 1. Add `coverage` as a `dev_dependency`.
-- [ ] 2. Execute the automated coverage script.
-- [ ] 3. Validate the LCOV output.
+- [ ] 1. Use the repository-owned coverage gate when one exists.
+- [ ] 2. Otherwise select the Dart or Flutter coverage command.
+- [ ] 3. Validate LCOV output and any configured threshold.
 
 ### 1. Add Dependencies
-Add the `coverage` package as a `dev_dependency` to your project. Do not add it to standard dependencies.
+For a standalone Dart project without an existing coverage gate, add the `coverage` package as a `dev_dependency`. Do not add it to standard dependencies.
 
-If working in a standard Dart project:
 ```bash
 dart pub add dev:coverage
 ```
 
-If working in a Flutter project:
-```bash
-flutter pub add dev:coverage
-```
+Flutter's `flutter test --coverage` already provides the normal Flutter coverage path. Do not add a direct `coverage` dependency unless the project's own tooling explicitly uses the package APIs or executables.
 
 ### 2. Collect Coverage and Generate LCOV
-Use the bundled `test_with_coverage` script. This script automatically runs all tests, collects the JSON coverage data from the Dart VM, and formats it into an LCOV report.
+For a standalone Dart project, use the bundled `test_with_coverage` script. It runs Dart tests, collects VM coverage data, and formats it into LCOV:
 
 ```bash
 dart run coverage:test_with_coverage
 ```
 *Note: If working within a Dart workspace (monorepo), specify the test directories explicitly (e.g., `dart run coverage:test_with_coverage -- pkgs/foo/test pkgs/bar/test`).*
 
+For a standalone Flutter project without a repository-owned gate, use Flutter's test runner:
+
+```bash
+flutter test --coverage
+```
+
 ### 3. Feedback Loop: Validate Output
 **Run validator -> review errors -> fix:**
-1. Verify that the `coverage/` directory was created in the project root.
-2. Ensure `coverage/coverage.json` (raw data) and `coverage/lcov.info` (formatted report) exist.
-3. If coverage is missing for specific files, ensure they are imported and executed by your test files, or add `// coverage:ignore-file` if they are intentionally excluded.
+1. Require the repository-owned gate to exit successfully when one exists.
+2. Otherwise verify that `coverage/lcov.info` was created in the project root. Dart's `test_with_coverage` also creates `coverage/coverage.json`; Flutter coverage does not require that intermediate file.
+3. Run the project's configured threshold checker, if any. Do not infer threshold compliance from file existence alone.
+4. If coverage is missing for specific files, ensure they are imported and executed by your test files, or add `// coverage:ignore-file` only when the repository policy permits the exclusion.
 
 ## Workflow: Advanced Manual Coverage Collection
 
-If you require granular control over the VM service, isolate pausing, or need branch/function-level coverage, use the manual collection workflow.
+This is a Dart-only fallback for projects without a repository-owned gate. If you require granular control over the VM service, isolate pausing, or need branch/function-level coverage, use the manual collection workflow. Do not use it as a replacement for NextPlay's gate or Flutter's test runner.
 
 **Task Progress Checklist:**
 - [ ] 1. Run tests with VM service enabled.

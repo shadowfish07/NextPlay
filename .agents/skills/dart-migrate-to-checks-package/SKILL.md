@@ -38,11 +38,16 @@ Follow this structured workflow to safely and systematically migrate a test suit
 
 ### 1. Dependency Setup
 - Add `package:checks` as a `dev_dependency` in `pubspec.yaml`:
+  - Dart package:
   ```bash
   dart pub add dev:checks
   ```
+  - Flutter package:
+  ```bash
+  flutter pub add dev:checks
+  ```
 - Remove `package:matcher` if it is explicitly listed under `dev_dependencies`
-  (it is typically transitively included by `package:test`, which is fine).
+  (it is typically transitively included by the test framework, which is fine).
 
 ### 2. Identify and Plan Target Files
 - Use the grep patterns in [Strategies for Discovery](#strategies-for-discovery)
@@ -52,16 +57,31 @@ Follow this structured workflow to safely and systematically migrate a test suit
 ### 3. Migrating a File (Incremental or Full)
 For any target test file:
 1. **Update Imports**:
-   - Replace the generic `import 'package:test/test.dart';` with:
+   - For a Dart test, replace the generic `package:test/test.dart` import with:
      ```dart
      import 'package:test/scaffolding.dart';
      import 'package:checks/checks.dart';
      ```
-   - **For Incremental Migration**: If you only want to migrate some test cases
-     in the file, or want to migrate one step at a time, add:
+   - For an incremental Dart migration, temporarily add:
      ```dart
      import 'package:test/expect.dart'; // Temporarily allows legacy expect()
      ```
+   - For a Flutter test, retain `flutter_test` so `testWidgets`,
+     `WidgetTester`, bindings, and Flutter test utilities remain available.
+     A fully migrated file can hide the legacy assertion entry points:
+     ```dart
+     import 'package:checks/checks.dart';
+     import 'package:flutter_test/flutter_test.dart'
+         hide expect, expectLater;
+     ```
+   - For an incremental Flutter migration, import both packages without the
+     `hide` clause so remaining legacy assertions continue to compile:
+     ```dart
+     import 'package:checks/checks.dart';
+     import 'package:flutter_test/flutter_test.dart';
+     ```
+   - Do not add a direct `package:test` import to a Flutter project unless its
+     `pubspec.yaml` explicitly declares `test`.
 2. **Translate Assertions**: Rewrite legacy `expect` and `expectLater` calls
    to `check` syntax following the [Key Syntax Differences and
    Pitfalls](#key-syntax-differences-and-pitfalls) and the
@@ -72,17 +92,32 @@ For any target test file:
    find and fix.
 
 ### 4. Verification and Feedback Loops
+- **Repository Gate**: Prefer the repository's top-level verification gate.
+  In NextPlay, run from the repository root:
+  ```bash
+  tool/verify_fast.sh
+  ```
 - **Static Analysis**: Run static analysis on the target package:
+  - Dart package:
   ```bash
   dart analyze
+  ```
+  - Flutter package without a repository-owned gate:
+  ```bash
+  flutter analyze
   ```
   Pay close attention to generic type parameters on `.isA<Type>()` and
   ensure asynchronous expectations are properly awaited (check for
   `unawaited_futures` warnings).
 - **Run Tests**: Execute the tests to verify both behavior and correct
   assertion runtime logic:
+  - Dart package:
   ```bash
   dart test
+  ```
+  - Flutter package without a repository-owned gate:
+  ```bash
+  flutter test
   ```
   If a test fails, review the extremely detailed failure output of
   `package:checks` to diagnose if the test is genuinely failing or if the
