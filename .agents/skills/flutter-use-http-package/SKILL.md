@@ -75,9 +75,17 @@ Use the following checklist to implement and validate network operations.
     contract explicitly returns a representation to decode.
 - [ ] 4. Accept the full `2xx` range, validate the expected body separately,
       and throw an `Exception` on non-success.
-- [ ] 5. Integrate the `Future` into the UI using `FutureBuilder`.
-- [ ] 6. Handle `snapshot.hasData`, `snapshot.hasError`, and default to a `CircularProgressIndicator`.
-- [ ] 7. **Feedback Loop:** Run `tool/verify_fast.sh` for ordinary deterministic network validation. Use `tool/live_smoke.sh` only when live-service verification is explicitly requested.
+- [ ] 5. Integrate the `Future` into the UI using a `FutureBuilder` whose result
+      type matches the request method.
+- [ ] 6. Handle `snapshot.hasError` before success. For a value-returning future,
+      use `snapshot.hasData`; for `Future<void>`, treat
+      `snapshot.connectionState == ConnectionState.done` as success because its
+      completed data remains `null`. Show a `CircularProgressIndicator` only
+      while the future is still incomplete.
+- [ ] 7. **Feedback Loop:** Run `tool/verify_fast.sh` for deterministic network
+      validation. If the change affects an externally exercised IGDB, Steam, or
+      other live-service contract, also run the relevant `tool/live_smoke.sh`
+      check even when live verification was not explicitly requested.
 
 ## Examples
 

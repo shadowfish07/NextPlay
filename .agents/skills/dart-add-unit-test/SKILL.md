@@ -37,7 +37,15 @@ Select the appropriate test runner based on the project type and test location.
 
 * If working on a pure Dart project, execute tests using the `dart test` command.
 * If working on a Flutter project, execute tests using the `flutter test` command.
-* If running integration tests, explicitly specify the directory path, as the default runner ignores it: `dart test integration_test` or `flutter test integration_test`.
+* For pure Dart integration tests, explicitly specify the directory because the
+  default runner ignores it: `dart test integration_test`.
+* For a generic non-Android Flutter project, use
+  `flutter test integration_test` when that target supports the intended
+  runtime.
+* For NextPlay integration tests on Android, never invoke
+  `flutter test integration_test` directly. Run `tool/e2e_android.sh`, or
+  `tool/worktree.sh e2e` from a linked worktree, so the test acquires the shared
+  AVD lease and exercises the required Android runtime.
 
 ## Test Implementation Workflow
 
