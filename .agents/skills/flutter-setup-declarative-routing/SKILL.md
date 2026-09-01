@@ -28,14 +28,25 @@ Use the `go_router` package for declarative routing in Flutter. It provides a ro
 Follow this workflow to bootstrap a new Flutter application with `go_router` and configure the root routing mechanism.
 
 ### Task Progress
-- [ ] Create the Flutter application.
+- [ ] Confirm whether the target is an existing root app or a new greenfield app.
+- [ ] Create the Flutter application only for a greenfield project.
 - [ ] Add the `go_router` dependency.
 - [ ] Configure the URL strategy for web/deep linking.
 - [ ] Implement the `GoRouter` configuration.
 - [ ] Bind the router to `MaterialApp.router`.
 
-### 1. Scaffold the Application
-Run the following commands to create the app and add the required routing package:
+### 1. Use the Existing App or Scaffold a Greenfield App
+
+If the repository already contains the Flutter app at its root (including
+NextPlay), run from that root and add routing to the existing app:
+
+```bash
+flutter pub add go_router
+```
+
+Do not run `flutter create` inside an existing application. Only scaffold when
+starting a new app in an empty parent directory:
+
 ```bash
 flutter create <app-name>
 cd <app-name>

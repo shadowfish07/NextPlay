@@ -21,13 +21,16 @@ Ensure the testing environment is properly configured before authoring widget te
 1. Add the `flutter_test` dependency to the `dev_dependencies` section of `pubspec.yaml`.
 2. Place all test files in the `test/` directory at the root of the project.
 3. Suffix all test file names with `_test.dart` (e.g., `widget_test.dart`).
+4. For automation-facing controls and states, define or reuse selectors in the
+   application's `AppKeys` class. Existing key strings are compatibility
+   contracts; tests must import the member instead of duplicating its string.
 
 ## Core Components
 
 Utilize the following `flutter_test` components to interact with and validate the widget tree:
 
 *   **`WidgetTester`**: The primary interface for building and interacting with widgets in the test environment. Provided automatically by the `testWidgets()` function.
-*   **`Finder`**: Locates widgets in the test environment (e.g., `find.text('Submit')`, `find.byType(TextField)`, `find.byKey(Key('submit_btn'))`).
+*   **`Finder`**: Locates widgets in the test environment (e.g., `find.text('Submit')`, `find.byType(TextField)`, `find.byKey(AppKeys.submitButton)`).
 *   **`Matcher`**: Verifies the presence or state of widgets located by a `Finder` (e.g., `findsOneWidget`, `findsNothing`, `findsNWidgets(2)`, `matchesGoldenFile`).
 
 ## Workflow: Implementing a Widget Test
