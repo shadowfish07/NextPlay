@@ -506,7 +506,7 @@
       .rating-card {
         position: relative;
         overflow: hidden;
-        min-height: 21rem;
+        min-height: 13.4rem;
         border: 1px solid rgba(54, 216, 255, 0.3);
         border-radius: 1rem;
         padding: 0.9rem;
@@ -683,14 +683,54 @@
         background: rgba(170, 178, 194, 0.1);
       }
 
-      .breakdown-heading {
-        margin: 0.85rem 0 0;
+      .breakdown-trigger {
+        display: flex;
+        width: 100%;
+        min-height: 3.4rem;
+        cursor: pointer;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        margin-top: 0.88rem;
         border-top: 1px solid rgba(215, 222, 238, 0.1);
-        padding-top: 0.72rem;
-        color: var(--phone-muted);
-        font-size: 0.62rem;
+        border-right: 0;
+        border-bottom: 0;
+        border-left: 0;
+        padding: 0.7rem 0.15rem 0;
+        color: var(--phone-text);
+        background: transparent;
+        text-align: start;
+      }
+
+      .breakdown-trigger-copy {
+        display: grid;
+        min-width: 0;
+        gap: 0.15rem;
+      }
+
+      .breakdown-trigger-title {
+        font-size: 0.72rem;
         font-weight: 800;
-        letter-spacing: 0.04em;
+      }
+
+      .breakdown-trigger-summary {
+        overflow: hidden;
+        color: var(--phone-muted);
+        font-size: 0.58rem;
+        font-weight: 650;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .breakdown-trigger-icon {
+        width: 1rem;
+        height: 1rem;
+        flex: 0 0 auto;
+        fill: none;
+        stroke: var(--cyan);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
       }
 
       .source-scores {
@@ -812,6 +852,109 @@
 
       .retry-button[hidden] {
         display: none;
+      }
+
+      .score-sheet {
+        position: fixed;
+        inset: auto 0 0;
+        width: min(100%, 25.5rem);
+        max-width: none;
+        max-height: min(82vh, 42rem);
+        overflow: auto;
+        overscroll-behavior: contain;
+        margin: auto auto 0;
+        border: 1px solid rgba(157, 170, 205, 0.22);
+        border-bottom: 0;
+        border-radius: 1.45rem 1.45rem 0 0;
+        padding: 0;
+        color: var(--phone-text);
+        background: var(--phone-card);
+        box-shadow: 0 -1.5rem 4rem rgba(0, 0, 0, 0.46);
+      }
+
+      .score-sheet::backdrop {
+        background: rgba(3, 6, 12, 0.72);
+        backdrop-filter: blur(0.22rem);
+      }
+
+      .sheet-content {
+        margin: 0;
+        padding: 0.55rem 1rem max(1rem, env(safe-area-inset-bottom));
+      }
+
+      .sheet-handle {
+        width: 2.6rem;
+        height: 0.26rem;
+        margin: 0 auto 0.8rem;
+        border-radius: 999px;
+        background: rgba(170, 178, 194, 0.34);
+      }
+
+      .sheet-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.95rem;
+      }
+
+      .sheet-kicker {
+        margin: 0 0 0.2rem;
+        color: var(--warning);
+        font-size: 0.6rem;
+        font-weight: 850;
+        letter-spacing: 0.045em;
+      }
+
+      .sheet-title {
+        margin: 0;
+        font-size: 1.15rem;
+        letter-spacing: -0.025em;
+      }
+
+      .sheet-close {
+        display: grid;
+        width: 2.2rem;
+        height: 2.2rem;
+        cursor: pointer;
+        flex: 0 0 auto;
+        place-items: center;
+        border: 1px solid var(--outline);
+        border-radius: 50%;
+        padding: 0;
+        color: var(--phone-muted);
+        background: var(--phone-elevated);
+        font-size: 1.15rem;
+        line-height: 1;
+      }
+
+      .sheet-section + .sheet-section {
+        margin-top: 0.95rem;
+      }
+
+      .sheet-section[hidden] {
+        display: none;
+      }
+
+      .sheet-section-title {
+        margin: 0;
+        color: var(--phone-muted);
+        font-size: 0.65rem;
+        font-weight: 800;
+      }
+
+      .sheet-link {
+        display: flex;
+        min-height: 2.8rem;
+        align-items: center;
+        justify-content: center;
+        margin-top: 1rem;
+        border-radius: 0.8rem;
+        color: #061017;
+        background: var(--cyan);
+        font-size: 0.72rem;
+        font-weight: 850;
+        text-decoration: none;
       }
 
       .metadata-list {
@@ -1012,18 +1155,18 @@
     <main class="studio">
       <aside class="brief" aria-labelledby="prototype-title">
         <p class="eyebrow">NEXTPLAY · UX CONCEPT 01</p>
-        <h1 id="prototype-title">数字自己说明含义</h1>
+        <h1 id="prototype-title">首屏做判断，二级看构成</h1>
         <p class="lede">
-          不增加解释入口，而是在评分卡里直接区分质量分、好评率、当前版本、历史口碑和首发表现。
+          详情首屏只保留 VGC 主分和状态；来源分数通过“查看评分构成”进入底部弹层，按当前、历史与外部评价分组。
         </p>
 
         <section class="design-note" aria-labelledby="intent-title">
           <h2 id="intent-title">设计意图</h2>
           <ul>
-            <li>百分号只用于玩家“好评率”，质量评价统一显示“/100”。</li>
-            <li>当前版本玩家单独高亮，和 Steam 历史总评明确分开。</li>
-            <li>每个数字下面只留一行来源或时间范围，不写方法说明。</li>
-            <li>抢先体验和 IGDB 回退沿用同一信息结构。</li>
+            <li>首屏只回答“现在值不值得关注”，不堆满来源数据。</li>
+            <li>二级弹层区分百分比好评率和“/100”质量分。</li>
+            <li>当前版本玩家单独成组，历史与外部评价放在对照组。</li>
+            <li>弹层仍只展示数据含义，不加入评分方法说明。</li>
           </ul>
         </section>
 
@@ -1168,44 +1311,20 @@
                       </div>
                     </div>
 
-                    <h4 class="breakdown-heading">评分构成</h4>
-                    <dl class="source-scores" id="source-scores">
-                      <div class="source-score" data-current="true">
-                        <dt>
-                          <span class="source-title">当前版本玩家</span>
-                          <span class="source-context">补丁后 Steam · 加权好评率</span>
-                        </dt>
-                        <dd>89<span class="source-unit">%</span></dd>
-                      </div>
-                      <div class="source-score">
-                        <dt>
-                          <span class="source-title">Steam 总评</span>
-                          <span class="source-context">全部历史评价</span>
-                        </dt>
-                        <dd>93<span class="source-unit">%</span></dd>
-                      </div>
-                      <div class="source-score">
-                        <dt>
-                          <span class="source-title">媒体均分</span>
-                          <span class="source-context">OpenCritic</span>
-                        </dt>
-                        <dd>95<span class="source-unit">/100</span></dd>
-                      </div>
-                      <div class="source-score">
-                        <dt>
-                          <span class="source-title">站外玩家</span>
-                          <span class="source-context">主机商店 · Metacritic 等</span>
-                        </dt>
-                        <dd>89<span class="source-unit">/100</span></dd>
-                      </div>
-                      <div class="source-score">
-                        <dt>
-                          <span class="source-title">首发评分</span>
-                          <span class="source-context">媒体 + 前 12 周 Steam</span>
-                        </dt>
-                        <dd>81<span class="source-unit">/100</span></dd>
-                      </div>
-                    </dl>
+                    <button
+                      class="breakdown-trigger"
+                      id="breakdown-trigger"
+                      type="button"
+                      aria-haspopup="dialog"
+                    >
+                      <span class="breakdown-trigger-copy">
+                        <span class="breakdown-trigger-title" id="breakdown-trigger-title">查看评分构成</span>
+                        <span class="breakdown-trigger-summary" id="breakdown-trigger-summary">5 项 · 当前玩家、历史、媒体</span>
+                      </span>
+                      <svg class="breakdown-trigger-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m9 18 6-6-6-6"></path>
+                      </svg>
+                    </button>
                   </article>
 
                   <ul class="metadata-list" aria-label="其他游戏信息">
@@ -1247,6 +1366,77 @@
       </section>
     </main>
 
+    <dialog class="score-sheet" id="score-sheet" aria-labelledby="sheet-title" closedby="any">
+      <form class="sheet-content" method="dialog">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <header class="sheet-header">
+          <div>
+            <p class="sheet-kicker" id="sheet-kicker">ELDEN RING · VGC SCORE 85</p>
+            <h2 class="sheet-title" id="sheet-title">评分构成</h2>
+          </div>
+          <button class="sheet-close" type="submit" value="close" aria-label="关闭评分构成">×</button>
+        </header>
+
+        <section class="sheet-section" id="current-score-section" aria-labelledby="current-score-title">
+          <h3 class="sheet-section-title" id="current-score-title">当前玩家口碑</h3>
+          <dl class="source-scores" id="current-source-scores">
+            <div class="source-score" data-current="true">
+              <dt>
+                <span class="source-title">当前版本玩家</span>
+                <span class="source-context">补丁后 Steam · 加权好评率</span>
+              </dt>
+              <dd>89<span class="source-unit">%</span></dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="sheet-section" id="reference-score-section" aria-labelledby="reference-score-title">
+          <h3 class="sheet-section-title" id="reference-score-title">历史与外部对照</h3>
+          <dl class="source-scores" id="reference-source-scores">
+            <div class="source-score">
+              <dt>
+                <span class="source-title">Steam 总评</span>
+                <span class="source-context">全部历史评价</span>
+              </dt>
+              <dd>93<span class="source-unit">%</span></dd>
+            </div>
+            <div class="source-score">
+              <dt>
+                <span class="source-title">媒体均分</span>
+                <span class="source-context">OpenCritic</span>
+              </dt>
+              <dd>95<span class="source-unit">/100</span></dd>
+            </div>
+            <div class="source-score">
+              <dt>
+                <span class="source-title">站外玩家</span>
+                <span class="source-context">主机商店 · Metacritic 等</span>
+              </dt>
+              <dd>89<span class="source-unit">/100</span></dd>
+            </div>
+            <div class="source-score">
+              <dt>
+                <span class="source-title">首发评分</span>
+                <span class="source-context">媒体 + 前 12 周 Steam</span>
+              </dt>
+              <dd>81<span class="source-unit">/100</span></dd>
+            </div>
+          </dl>
+        </section>
+
+        <a
+          class="sheet-link"
+          id="sheet-source-link"
+          href="https://videogamescritic.com/game/1245620"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          在 VGC 查看完整数据 <span aria-hidden="true">↗</span>
+          <span class="visually-hidden">（在新窗口打开）</span>
+        </a>
+      </form>
+    </dialog>
+
     <script>
       const scenarios = {
         vgc: {
@@ -1264,6 +1454,12 @@
           label: "VGC 综合质量分",
           definition: "0–100 · 多来源加权",
           confidence: "高可信度",
+          triggerTitle: "查看评分构成",
+          triggerSummary: "5 项 · 当前玩家、历史、媒体",
+          sheetKicker: "ELDEN RING · VGC SCORE 85",
+          sheetTitle: "评分构成",
+          currentHeading: "当前玩家口碑",
+          referenceHeading: "历史与外部对照",
           breakdown: [
             {
               label: "当前版本玩家",
@@ -1305,6 +1501,12 @@
           label: "VGC 综合质量分",
           definition: "0–100 · 缓存数据",
           confidence: "缓存数据",
+          triggerTitle: "查看缓存评分构成",
+          triggerSummary: "5 项 · 上次成功获取的数据",
+          sheetKicker: "ELDEN RING · VGC SCORE 85",
+          sheetTitle: "缓存评分构成",
+          currentHeading: "缓存的当前口碑",
+          referenceHeading: "历史与外部对照",
           breakdown: [
             {
               label: "当前版本玩家",
@@ -1346,6 +1548,12 @@
           label: "VGC 暂不评分",
           definition: "抢先体验阶段",
           confidence: "等待 1.0",
+          triggerTitle: "查看抢先体验数据",
+          triggerSummary: "4 项 · 玩家口碑、时长、更新",
+          sheetKicker: "No Rest for the Wicked · VGC EA",
+          sheetTitle: "抢先体验数据",
+          currentHeading: "当前玩家口碑",
+          referenceHeading: "开发与阶段",
           breakdown: [
             {
               label: "当前版本玩家",
@@ -1381,6 +1589,12 @@
           label: "IGDB 媒体均分",
           definition: "0–100 · 非 VGC Score",
           confidence: "来源回退",
+          triggerTitle: "查看评分来源",
+          triggerSummary: "IGDB 媒体均分",
+          sheetKicker: "Baldur's Gate 3 · IGDB MEDIA 96",
+          sheetTitle: "评分来源",
+          currentHeading: "当前来源",
+          referenceHeading: "",
           breakdown: [
             {
               label: "媒体均分",
@@ -1411,12 +1625,45 @@
         label: document.querySelector("#score-label"),
         definition: document.querySelector("#score-definition"),
         confidence: document.querySelector("#confidence-badge"),
-        sourceScores: document.querySelector("#source-scores"),
+        breakdownTrigger: document.querySelector("#breakdown-trigger"),
+        breakdownTriggerTitle: document.querySelector("#breakdown-trigger-title"),
+        breakdownTriggerSummary: document.querySelector("#breakdown-trigger-summary"),
+        sheet: document.querySelector("#score-sheet"),
+        sheetKicker: document.querySelector("#sheet-kicker"),
+        sheetTitle: document.querySelector("#sheet-title"),
+        sheetSourceLink: document.querySelector("#sheet-source-link"),
+        currentSection: document.querySelector("#current-score-section"),
+        currentTitle: document.querySelector("#current-score-title"),
+        currentScores: document.querySelector("#current-source-scores"),
+        referenceSection: document.querySelector("#reference-score-section"),
+        referenceTitle: document.querySelector("#reference-score-title"),
+        referenceScores: document.querySelector("#reference-source-scores"),
         retry: document.querySelector("#retry-button"),
         announcer: document.querySelector("#scenario-announcer"),
         themeToggle: document.querySelector("#theme-toggle"),
         themeLabel: document.querySelector("#theme-label"),
       };
+
+      function createSourceScore(item) {
+        const source = document.createElement("div");
+        const term = document.createElement("dt");
+        const title = document.createElement("span");
+        const context = document.createElement("span");
+        const value = document.createElement("dd");
+        const unit = document.createElement("span");
+        source.className = "source-score";
+        source.dataset.current = String(Boolean(item.current));
+        title.className = "source-title";
+        title.textContent = item.label;
+        context.className = "source-context";
+        context.textContent = item.context;
+        unit.className = "source-unit";
+        unit.textContent = item.unit;
+        term.append(title, context);
+        value.append(item.value, unit);
+        source.append(term, value);
+        return source;
+      }
 
       function renderScenario(key) {
         const state = scenarios[key];
@@ -1435,28 +1682,20 @@
         elements.confidence.textContent = state.confidence;
         elements.sourceBadge.href = state.sourceUrl;
         elements.retry.hidden = !state.retry;
-        elements.sourceScores.replaceChildren(
-          ...state.breakdown.map((item) => {
-            const source = document.createElement("div");
-            const term = document.createElement("dt");
-            const title = document.createElement("span");
-            const context = document.createElement("span");
-            const value = document.createElement("dd");
-            const unit = document.createElement("span");
-            source.className = "source-score";
-            source.dataset.current = String(Boolean(item.current));
-            title.className = "source-title";
-            title.textContent = item.label;
-            context.className = "source-context";
-            context.textContent = item.context;
-            unit.className = "source-unit";
-            unit.textContent = item.unit;
-            term.append(title, context);
-            value.append(item.value, unit);
-            source.append(term, value);
-            return source;
-          }),
-        );
+        elements.breakdownTriggerTitle.textContent = state.triggerTitle;
+        elements.breakdownTriggerSummary.textContent = state.triggerSummary;
+        elements.sheetKicker.textContent = state.sheetKicker;
+        elements.sheetTitle.textContent = state.sheetTitle;
+        elements.sheetSourceLink.href = state.sourceUrl;
+
+        const currentItems = state.breakdown.filter((item) => item.current);
+        const referenceItems = state.breakdown.filter((item) => !item.current);
+        elements.currentSection.hidden = currentItems.length === 0;
+        elements.currentTitle.textContent = state.currentHeading;
+        elements.currentScores.replaceChildren(...currentItems.map(createSourceScore));
+        elements.referenceSection.hidden = referenceItems.length === 0;
+        elements.referenceTitle.textContent = state.referenceHeading;
+        elements.referenceScores.replaceChildren(...referenceItems.map(createSourceScore));
         elements.genres.replaceChildren(
           ...state.genres.map((genre) => {
             const tag = document.createElement("span");
@@ -1472,6 +1711,7 @@
         input.addEventListener("change", (event) => renderScenario(event.target.value));
       });
 
+      elements.breakdownTrigger.addEventListener("click", () => elements.sheet.showModal());
       elements.retry.addEventListener("click", () => {
         document.querySelector("#state-vgc").checked = true;
         renderScenario("vgc");
