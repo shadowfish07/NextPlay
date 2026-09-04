@@ -506,7 +506,7 @@
       .rating-card {
         position: relative;
         overflow: hidden;
-        min-height: 18.6rem;
+        min-height: 21rem;
         border: 1px solid rgba(54, 216, 255, 0.3);
         border-radius: 1rem;
         padding: 0.9rem;
@@ -651,10 +651,18 @@
       }
 
       .score-label {
-        margin: 0 0 0.5rem;
+        margin: 0 0 0.22rem;
         color: var(--phone-text);
         font-size: 1rem;
         font-weight: 850;
+      }
+
+      .score-definition {
+        margin: 0 0 0.52rem;
+        color: var(--phone-muted);
+        font-size: 0.64rem;
+        font-weight: 650;
+        line-height: 1.35;
       }
 
       .confidence-badge {
@@ -675,22 +683,30 @@
         background: rgba(170, 178, 194, 0.1);
       }
 
+      .breakdown-heading {
+        margin: 0.85rem 0 0;
+        border-top: 1px solid rgba(215, 222, 238, 0.1);
+        padding-top: 0.72rem;
+        color: var(--phone-muted);
+        font-size: 0.62rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+      }
+
       .source-scores {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 0.48rem;
-        margin: 0.85rem 0 0;
-        border-top: 1px solid rgba(215, 222, 238, 0.1);
-        padding-top: 0.75rem;
+        margin: 0.48rem 0 0;
       }
 
       .source-score {
-        display: flex;
+        display: grid;
         min-width: 0;
-        min-height: 3.35rem;
+        min-height: 4.1rem;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.55rem;
         align-items: center;
-        justify-content: space-between;
-        gap: 0.45rem;
         border: 1px solid rgba(215, 222, 238, 0.1);
         border-radius: 0.72rem;
         padding: 0.62rem 0.66rem;
@@ -708,20 +724,34 @@
       }
 
       .source-score dt {
-        overflow: hidden;
-        color: var(--phone-muted);
-        font-size: 0.62rem;
-        font-weight: 720;
-        line-height: 1.25;
-        text-overflow: ellipsis;
+        display: grid;
+        min-width: 0;
+        gap: 0.16rem;
       }
 
-      .source-score[data-current="true"] dt {
+      .source-title {
+        color: var(--phone-muted);
+        font-size: 0.65rem;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .source-context {
+        color: var(--phone-muted);
+        font-size: 0.54rem;
+        font-weight: 600;
+        line-height: 1.3;
+        opacity: 0.78;
+      }
+
+      .source-score[data-current="true"] .source-title {
         color: var(--success);
       }
 
       .source-score dd {
-        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: baseline;
+        gap: 0.08rem;
         margin: 0;
         color: var(--phone-text);
         font-size: 1.02rem;
@@ -730,12 +760,23 @@
         letter-spacing: -0.025em;
       }
 
+      .source-score[data-current="true"] dd {
+        font-size: 1.2rem;
+      }
+
+      .source-unit {
+        color: var(--phone-muted);
+        font-size: 0.56rem;
+        font-weight: 750;
+        letter-spacing: 0;
+      }
+
       .rating-card[data-kind="cached"] .source-score[data-current="true"] {
         border-color: rgba(246, 196, 83, 0.3);
         background: rgba(246, 196, 83, 0.08);
       }
 
-      .rating-card[data-kind="cached"] .source-score[data-current="true"] dt {
+      .rating-card[data-kind="cached"] .source-score[data-current="true"] .source-title {
         color: var(--warning);
       }
 
@@ -744,7 +785,7 @@
         background: rgba(123, 130, 255, 0.09);
       }
 
-      .rating-card[data-kind="early"] .source-score[data-current="true"] dt {
+      .rating-card[data-kind="early"] .source-score[data-current="true"] .source-title {
         color: #bfc4ff;
       }
 
@@ -753,7 +794,7 @@
         background: rgba(170, 178, 194, 0.08);
       }
 
-      .rating-card[data-kind="fallback"] .source-score[data-current="true"] dt {
+      .rating-card[data-kind="fallback"] .source-score[data-current="true"] .source-title {
         color: var(--phone-muted);
       }
 
@@ -905,10 +946,6 @@
           grid-column: span 2;
         }
 
-        .source-score:not([data-current="true"]) {
-          align-items: flex-start;
-          flex-direction: column;
-        }
       }
 
       @media (max-width: 52rem) {
@@ -975,18 +1012,18 @@
     <main class="studio">
       <aside class="brief" aria-labelledby="prototype-title">
         <p class="eyebrow">NEXTPLAY · UX CONCEPT 01</p>
-        <h1 id="prototype-title">一个主分，五个来源</h1>
+        <h1 id="prototype-title">数字自己说明含义</h1>
         <p class="lede">
-          VGC Score 继续作为视觉主角，来源分数直接铺在卡片里。用户无需额外操作，就能比较当前玩家、历史玩家与媒体评价。
+          不增加解释入口，而是在评分卡里直接区分质量分、好评率、当前版本、历史口碑和首发表现。
         </p>
 
         <section class="design-note" aria-labelledby="intent-title">
           <h2 id="intent-title">设计意图</h2>
           <ul>
-            <li>VGC 主分仍是第一视觉层级，不和来源分数竞争。</li>
-            <li>补丁后 Steam 作为当前口碑高亮，其余来源紧凑对照。</li>
-            <li>无评分、缓存、回退沿用同一数据网格，只展示当前可用项。</li>
-            <li>VGC 使用克制的金色来源标识；分数仍沿用 NextPlay 状态色。</li>
+            <li>百分号只用于玩家“好评率”，质量评价统一显示“/100”。</li>
+            <li>当前版本玩家单独高亮，和 Steam 历史总评明确分开。</li>
+            <li>每个数字下面只留一行来源或时间范围，不写方法说明。</li>
+            <li>抢先体验和 IGDB 回退沿用同一信息结构。</li>
           </ul>
         </section>
 
@@ -1122,34 +1159,51 @@
                     <div class="rating-core">
                       <div class="score-ring">
                         <span id="score-value" aria-hidden="true">85</span>
-                        <span class="visually-hidden" id="score-accessible">VGC 评分 85 分</span>
+                        <span class="visually-hidden" id="score-accessible">VGC 综合质量分 85 分，满分 100 分</span>
                       </div>
                       <div class="score-copy">
-                        <h3 class="score-label" id="score-label">当前综合评分</h3>
+                        <h3 class="score-label" id="score-label">VGC 综合质量分</h3>
+                        <p class="score-definition" id="score-definition">0–100 · 多来源加权</p>
                         <span class="confidence-badge" id="confidence-badge">高可信度</span>
                       </div>
                     </div>
 
+                    <h4 class="breakdown-heading">评分构成</h4>
                     <dl class="source-scores" id="source-scores">
                       <div class="source-score" data-current="true">
-                        <dt>补丁后 Steam</dt>
-                        <dd>89%</dd>
+                        <dt>
+                          <span class="source-title">当前版本玩家</span>
+                          <span class="source-context">补丁后 Steam · 加权好评率</span>
+                        </dt>
+                        <dd>89<span class="source-unit">%</span></dd>
                       </div>
                       <div class="source-score">
-                        <dt>Steam 总评</dt>
-                        <dd>93%</dd>
+                        <dt>
+                          <span class="source-title">Steam 总评</span>
+                          <span class="source-context">全部历史评价</span>
+                        </dt>
+                        <dd>93<span class="source-unit">%</span></dd>
                       </div>
                       <div class="source-score">
-                        <dt>OpenCritic</dt>
-                        <dd>95%</dd>
+                        <dt>
+                          <span class="source-title">媒体均分</span>
+                          <span class="source-context">OpenCritic</span>
+                        </dt>
+                        <dd>95<span class="source-unit">/100</span></dd>
                       </div>
                       <div class="source-score">
-                        <dt>站外玩家</dt>
-                        <dd>89%</dd>
+                        <dt>
+                          <span class="source-title">站外玩家</span>
+                          <span class="source-context">主机商店 · Metacritic 等</span>
+                        </dt>
+                        <dd>89<span class="source-unit">/100</span></dd>
                       </div>
                       <div class="source-score">
-                        <dt>首发综合</dt>
-                        <dd>81%</dd>
+                        <dt>
+                          <span class="source-title">首发评分</span>
+                          <span class="source-context">媒体 + 前 12 周 Steam</span>
+                        </dt>
+                        <dd>81<span class="source-unit">/100</span></dd>
                       </div>
                     </dl>
                   </article>
@@ -1206,15 +1260,32 @@
           sourceName: "VGC SCORE",
           freshness: "8 小时前更新",
           score: "85",
-          scoreAria: "VGC 评分 85 分",
-          label: "当前综合评分",
+          scoreAria: "VGC 综合质量分 85 分，满分 100 分",
+          label: "VGC 综合质量分",
+          definition: "0–100 · 多来源加权",
           confidence: "高可信度",
           breakdown: [
-            { label: "补丁后 Steam", value: "89%", current: true },
-            { label: "Steam 总评", value: "93%" },
-            { label: "OpenCritic", value: "95%" },
-            { label: "站外玩家", value: "89%" },
-            { label: "首发综合", value: "81%" },
+            {
+              label: "当前版本玩家",
+              context: "补丁后 Steam · 加权好评率",
+              value: "89",
+              unit: "%",
+              current: true,
+            },
+            { label: "Steam 总评", context: "全部历史评价", value: "93", unit: "%" },
+            { label: "媒体均分", context: "OpenCritic", value: "95", unit: "/100" },
+            {
+              label: "站外玩家",
+              context: "主机商店 · Metacritic 等",
+              value: "89",
+              unit: "/100",
+            },
+            {
+              label: "首发评分",
+              context: "媒体 + 前 12 周 Steam",
+              value: "81",
+              unit: "/100",
+            },
           ],
           sourceUrl: "https://videogamescritic.com/game/1245620",
           retry: false,
@@ -1230,15 +1301,32 @@
           sourceName: "VGC SCORE",
           freshness: "离线缓存 · 2 天前",
           score: "85",
-          scoreAria: "缓存的 VGC 评分 85 分",
-          label: "上次可用评分",
+          scoreAria: "缓存的 VGC 综合质量分 85 分，满分 100 分",
+          label: "VGC 综合质量分",
+          definition: "0–100 · 缓存数据",
           confidence: "缓存数据",
           breakdown: [
-            { label: "补丁后 Steam", value: "89%", current: true },
-            { label: "Steam 总评", value: "93%" },
-            { label: "OpenCritic", value: "95%" },
-            { label: "站外玩家", value: "89%" },
-            { label: "首发综合", value: "81%" },
+            {
+              label: "当前版本玩家",
+              context: "补丁后 Steam · 加权好评率",
+              value: "89",
+              unit: "%",
+              current: true,
+            },
+            { label: "Steam 总评", context: "全部历史评价", value: "93", unit: "%" },
+            { label: "媒体均分", context: "OpenCritic", value: "95", unit: "/100" },
+            {
+              label: "站外玩家",
+              context: "主机商店 · Metacritic 等",
+              value: "89",
+              unit: "/100",
+            },
+            {
+              label: "首发评分",
+              context: "媒体 + 前 12 周 Steam",
+              value: "81",
+              unit: "/100",
+            },
           ],
           sourceUrl: "https://videogamescritic.com/game/1245620",
           retry: true,
@@ -1255,13 +1343,25 @@
           freshness: "抢先体验",
           score: "EA",
           scoreAria: "VGC 尚未为抢先体验游戏评分",
-          label: "尚未评分",
+          label: "VGC 暂不评分",
+          definition: "抢先体验阶段",
           confidence: "等待 1.0",
           breakdown: [
-            { label: "当前 Steam", value: "79%", current: true },
-            { label: "Steam 推荐", value: "80%" },
-            { label: "抢先体验", value: "2.4 年" },
-            { label: "90 天更新", value: "0" },
+            {
+              label: "当前版本玩家",
+              context: "当前 Steam · 加权好评率",
+              value: "79",
+              unit: "%",
+              current: true,
+            },
+            {
+              label: "Steam 推荐",
+              context: "全部抢先体验评价",
+              value: "80",
+              unit: "%",
+            },
+            { label: "抢先体验时长", context: "距首次发售", value: "2.4", unit: "年" },
+            { label: "近 90 天更新", context: "开发活跃度", value: "0", unit: "次" },
           ],
           sourceUrl: "https://videogamescritic.com/game/1371980",
           retry: false,
@@ -1278,9 +1378,18 @@
           freshness: "VGC 暂不可用",
           score: "96",
           scoreAria: "IGDB 媒体评分 96 分",
-          label: "媒体评分",
+          label: "IGDB 媒体均分",
+          definition: "0–100 · 非 VGC Score",
           confidence: "来源回退",
-          breakdown: [{ label: "IGDB 媒体", value: "96", current: true }],
+          breakdown: [
+            {
+              label: "媒体均分",
+              context: "IGDB · 非 VGC Score",
+              value: "96",
+              unit: "/100",
+              current: true,
+            },
+          ],
           sourceUrl: "https://www.igdb.com/games/baldurs-gate-3",
           retry: true,
         },
@@ -1300,6 +1409,7 @@
         score: document.querySelector("#score-value"),
         scoreAccessible: document.querySelector("#score-accessible"),
         label: document.querySelector("#score-label"),
+        definition: document.querySelector("#score-definition"),
         confidence: document.querySelector("#confidence-badge"),
         sourceScores: document.querySelector("#source-scores"),
         retry: document.querySelector("#retry-button"),
@@ -1321,6 +1431,7 @@
         elements.score.textContent = state.score;
         elements.scoreAccessible.textContent = state.scoreAria;
         elements.label.textContent = state.label;
+        elements.definition.textContent = state.definition;
         elements.confidence.textContent = state.confidence;
         elements.sourceBadge.href = state.sourceUrl;
         elements.retry.hidden = !state.retry;
@@ -1328,11 +1439,20 @@
           ...state.breakdown.map((item) => {
             const source = document.createElement("div");
             const term = document.createElement("dt");
+            const title = document.createElement("span");
+            const context = document.createElement("span");
             const value = document.createElement("dd");
+            const unit = document.createElement("span");
             source.className = "source-score";
             source.dataset.current = String(Boolean(item.current));
-            term.textContent = item.label;
-            value.textContent = item.value;
+            title.className = "source-title";
+            title.textContent = item.label;
+            context.className = "source-context";
+            context.textContent = item.context;
+            unit.className = "source-unit";
+            unit.textContent = item.unit;
+            term.append(title, context);
+            value.append(item.value, unit);
             source.append(term, value);
             return source;
           }),
