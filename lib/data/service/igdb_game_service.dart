@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:result_dart/result_dart.dart';
 import '../../domain/models/game/igdb_game_data.dart';
+import '../../domain/models/game/vgc_rating.dart';
 import '../../utils/logger.dart';
 
 /// IGDB 游戏服务 - 从 igdb.zqydev.me 获取游戏详情
@@ -16,6 +17,48 @@ class IgdbGameService {
   }
 
   static const int _maxIdsPerRequest = 100;
+  static const String vgcRatingNotFoundError = 'VGC_RATING_NOT_FOUND';
+
+  /// 按 Steam AppID 获取 VideoGamesCritic 评分。
+  ///
+  /// 服务端对 VGC 页面做限时缓存；不存在对应页面时返回稳定的 not-found 错误，
+  /// 调用方可明确回退到已有 IGDB 媒体分。
+  Future<Result<VgcRating, String>> getVgcRating(int steamId) async {
+    if (steamId <= 0) return const Failure('Invalid Steam AppID');
+
+    try {
+      final response = await _dio.get(
+        '/api/ratings/$steamId',
+        options: Options(
+          receiveTimeout: const Duration(seconds: 15),
+          validateStatus: (status) =>
+              status != null &&
+              ((status >= 200 && status < 300) || status == 404),
+        ),
+      );
+      final statusCode = response.statusCode ?? 0;
+      if (statusCode == 404) return const Failure(vgcRatingNotFoundError);
+      if (statusCode < 200 || statusCode >= 300) {
+        return Failure('HTTP $statusCode: Failed to fetch VGC rating');
+      }
+      final data = response.data;
+      if (data is! Map) {
+        return const Failure('Invalid VGC rating response');
+      }
+      return Success(VgcRating.fromJson(Map<String, dynamic>.from(data)));
+    } on DioException catch (e) {
+      AppLogger.warning(
+        'VGC rating request failed: ${e.response?.statusCode} ${e.message}',
+      );
+      return Failure('Network error: ${e.message}');
+    } on FormatException catch (e) {
+      AppLogger.warning('VGC rating response was invalid: ${e.message}');
+      return Failure('Invalid VGC rating response: ${e.message}');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error fetching VGC rating', e, stackTrace);
+      return Failure('Error: $e');
+    }
+  }
 
   /// 查询已缓存的 Steam 官方本地化，并为缺失项登记后台任务。
   ///

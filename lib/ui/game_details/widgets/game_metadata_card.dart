@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
 
 import '../../../domain/models/game/game.dart';
+import '../../../domain/models/game/vgc_rating.dart';
+import 'game_rating_card.dart';
 
 /// 游戏元数据卡片
 class GameMetadataCard extends StatelessWidget {
   final Game game;
+  final VgcRating? vgcRating;
+  final bool isRatingLoading;
+  final VoidCallback? onOpenRatingSource;
 
-  const GameMetadataCard({super.key, required this.game});
+  const GameMetadataCard({
+    super.key,
+    required this.game,
+    required this.vgcRating,
+    required this.isRatingLoading,
+    this.onOpenRatingSource,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -14,8 +25,15 @@ class GameMetadataCard extends StatelessWidget {
 
     final rows = <Widget>[];
 
-    if (game.aggregatedRating > 0) {
-      rows.add(_buildRatingHighlight(context));
+    if (isRatingLoading || vgcRating != null || game.aggregatedRating > 0) {
+      rows.add(
+        GameRatingCard(
+          game: game,
+          rating: vgcRating,
+          isLoading: isRatingLoading,
+          onOpenSource: onOpenRatingSource,
+        ),
+      );
     }
 
     if (game.genres.isNotEmpty) {
@@ -142,97 +160,12 @@ class GameMetadataCard extends StatelessWidget {
     );
   }
 
-  Widget _buildRatingHighlight(BuildContext context) {
-    final theme = Theme.of(context);
-    final score = game.aggregatedRating.round();
-    final color = _getRatingColor(theme, score);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.star, color: color, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            '综合评分',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const Spacer(),
-          _buildRatingBadge(context, score, overrideColor: color),
-        ],
-      ),
-    );
-  }
-
-  Color _getRatingColor(ThemeData theme, int score) {
-    if (score >= 75) return theme.colorScheme.primary;
-    if (score >= 50) return theme.colorScheme.tertiary;
-    return theme.colorScheme.error;
-  }
-
   List<String> _collectGameFeatures() {
     final features = <String>[];
     if (game.isSinglePlayer) features.add('单人');
     if (game.isMultiplayer) features.add('多人');
     if (game.hasAchievements) features.add('成就系统');
     return features;
-  }
-
-  Widget _buildRatingBadge(
-    BuildContext context,
-    int score, {
-    Color? overrideColor,
-  }) {
-    final theme = Theme.of(context);
-    final color = overrideColor ?? _getRatingColor(theme, score);
-    final label = _getRatingLabel(score);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withValues(alpha: 0.18),
-              border: Border.all(
-                color: color.withValues(alpha: 0.6),
-                width: 1.2,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              score.toString(),
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.1,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildTagRow(
@@ -289,14 +222,6 @@ class GameMetadataCard extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  String _getRatingLabel(int score) {
-    if (score >= 85) return '好评如潮';
-    if (score >= 75) return '广受好评';
-    if (score >= 60) return '褒贬不一';
-    if (score > 0) return '评价一般';
-    return '暂无评分';
   }
 
   Color _surfaceTone(ColorScheme colorScheme) {

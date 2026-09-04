@@ -7,6 +7,7 @@ import 'package:nextplay/data/service/igdb_game_service.dart';
 import 'package:nextplay/data/service/steam_api_service.dart';
 import 'package:nextplay/domain/models/game/game.dart';
 import 'package:nextplay/domain/models/game/igdb_game_data.dart';
+import 'package:nextplay/domain/models/game/vgc_rating.dart';
 
 class FakeApiKeyStorage implements ApiKeyStorage {
   FakeApiKeyStorage({this.value});
@@ -208,14 +209,29 @@ class FakeIgdbGameService extends IgdbGameService {
     this.delay = Duration.zero,
     List<IgdbGameData>? games,
     Map<String, List<IgdbGameData>>? gamesByLanguage,
+    Map<int, VgcRating>? ratings,
   }) : games = games ?? const [],
-       gamesByLanguage = gamesByLanguage ?? const {};
+       gamesByLanguage = gamesByLanguage ?? const {},
+       ratings = ratings ?? const {};
 
   FakeServiceMode mode;
   final Duration delay;
   final List<IgdbGameData> games;
   final Map<String, List<IgdbGameData>> gamesByLanguage;
+  final Map<int, VgcRating> ratings;
   String? lastLanguage;
+
+  @override
+  Future<Result<VgcRating, String>> getVgcRating(int steamId) async {
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
+    if (mode == FakeServiceMode.failure) {
+      return const Failure('fixture VGC failure');
+    }
+    final rating = ratings[steamId];
+    return rating == null
+        ? const Failure(IgdbGameService.vgcRatingNotFoundError)
+        : Success(rating);
+  }
 
   @override
   Future<Result<IgdbBatchResponse, String>> getBatchGameInfo(

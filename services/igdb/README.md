@@ -14,6 +14,7 @@ local development and PM2 always use the monorepo path.
 - 🔄 OAuth token management with auto-refresh
 - 📊 Partial success responses (found/notFound/errors)
 - 🌐 Publisher-authored Steam localization for game names and descriptions
+- ⭐ On-demand VideoGamesCritic ratings with source attribution and stale fallback
 - 🚀 Built with Bun for optimal performance
 
 ## Prerequisites
@@ -237,6 +238,43 @@ pm2 save
 - `notFound`: Steam IDs with no IGDB mapping
 - `errors`: Steam IDs that failed to fetch (with reasons)
 - `localization`: Current server-side official-localization queue/cache counts
+
+### VideoGamesCritic rating
+
+`GET /api/ratings/:steamId` resolves a single public VideoGamesCritic game page
+by Steam AppID. It returns the current VGC score plus the compact source metrics
+shown on that page. Requests are cached for six hours; if a refresh fails, a
+last-known-good response no older than 30 days is returned with `stale: true`.
+
+```bash
+curl http://localhost:3000/api/ratings/1245620
+```
+
+```json
+{
+  "steamId": 1245620,
+  "status": "scored",
+  "score": 85,
+  "confidence": "high",
+  "trend": "stable",
+  "computedLabel": "14h ago",
+  "sourceUrl": "https://videogamescritic.com/game/1245620",
+  "fetchedAt": "2026-09-04T17:55:37.000Z",
+  "stale": false,
+  "components": [
+    { "kind": "current_players", "value": 89, "unit": "percent" },
+    { "kind": "steam_all_time", "value": 93, "unit": "percent" },
+    { "kind": "press", "value": 95, "unit": "score" },
+    { "kind": "player_sentiment", "value": 89, "unit": "score" },
+    { "kind": "launch", "value": 81, "unit": "score" }
+  ]
+}
+```
+
+Early Access pages return `status: "early_access"` without a `score`, while
+retaining their available player and development-stage metrics. Unknown AppIDs
+return HTTP 404 and upstream or parsing failures return HTTP 502. Clients must
+keep the `sourceUrl` attribution and provide an explicit fallback state.
 
 ### Incremental official localization
 

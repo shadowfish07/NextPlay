@@ -125,7 +125,14 @@ class GameDetailsScreen extends StatelessWidget {
                   const SizedBox(height: 16),
 
                   // 游戏元数据卡片
-                  GameMetadataCard(game: game),
+                  GameMetadataCard(
+                    game: game,
+                    vgcRating: viewModel.vgcRating,
+                    isRatingLoading: viewModel.isRatingLoading,
+                    onOpenRatingSource: viewModel.hasRatingSource
+                        ? () => viewModel.launchRatingSourceCommand.execute()
+                        : null,
+                  ),
 
                   const SizedBox(height: 16),
 

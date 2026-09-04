@@ -10,6 +10,7 @@ import 'package:nextplay/data/service/api_key_storage.dart';
 import 'package:nextplay/data/service/game_database_service.dart';
 import 'package:nextplay/domain/models/game/game.dart';
 import 'package:nextplay/domain/models/game/igdb_game_data.dart';
+import 'package:nextplay/domain/models/game/vgc_rating.dart';
 import 'package:nextplay/main.dart';
 
 import 'fake_services.dart';
@@ -27,6 +28,7 @@ Future<AppDependencies> createTestDependencies({
   Set<int>? softwareAppIds,
   List<IgdbGameData>? igdbGames,
   Map<String, List<IgdbGameData>>? igdbGamesByLanguage,
+  Map<int, VgcRating>? vgcRatings,
   String databaseName = 'nextplay_test.db',
   bool resetDatabase = true,
   ApiKeyStorage? apiKeyStorage,
@@ -56,6 +58,7 @@ Future<AppDependencies> createTestDependencies({
       delay: igdbDelay,
       games: igdbGames ?? TestFixtures.igdbGames,
       gamesByLanguage: igdbGamesByLanguage,
+      ratings: vgcRatings ?? TestFixtures.vgcRatings,
     ),
     gameDatabaseService: GameDatabaseService(databaseName: databaseName),
   );

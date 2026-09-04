@@ -1,5 +1,6 @@
 import { GameService } from "./service";
 import { SteamStoreMetadataService } from "./steam-store-service";
+import { VgcRatingService } from "./vgc-rating-service";
 import type { GamesRequest, LocalizationsRequest } from "./types";
 
 // Load environment variables
@@ -17,6 +18,7 @@ const gameService = new GameService(
   TWITCH_CLIENT_SECRET,
   new SteamStoreMetadataService(),
 );
+const vgcRatingService = new VgcRatingService();
 
 const server = Bun.serve({
   port: PORT,
@@ -39,6 +41,34 @@ const server = Bun.serve({
     // Health check
     if (url.pathname === "/health" && req.method === "GET") {
       return new Response(JSON.stringify({ status: "ok" }), { headers });
+    }
+
+    const ratingMatch = url.pathname.match(/^\/api\/ratings\/(\d+)$/);
+    if (ratingMatch && req.method === "GET") {
+      const steamId = Number.parseInt(ratingMatch[1], 10);
+      if (!Number.isSafeInteger(steamId) || steamId <= 0) {
+        return new Response(JSON.stringify({ error: "Invalid Steam AppID" }), {
+          status: 400,
+          headers,
+        });
+      }
+
+      try {
+        const rating = await vgcRatingService.getRating(steamId);
+        if (!rating) {
+          return new Response(
+            JSON.stringify({ error: "VGC rating not found" }),
+            { status: 404, headers },
+          );
+        }
+        return new Response(JSON.stringify(rating), { headers });
+      } catch (error) {
+        console.error(`[VGC] Failed to fetch Steam ID ${steamId}:`, error);
+        return new Response(
+          JSON.stringify({ error: "VGC rating temporarily unavailable" }),
+          { status: 502, headers },
+        );
+      }
     }
 
     // Main endpoint
@@ -172,11 +202,13 @@ const server = Bun.serve({
 console.log(`Server running at http://localhost:${PORT}`);
 console.log(`Endpoint: POST http://localhost:${PORT}/api/games`);
 console.log(`Endpoint: POST http://localhost:${PORT}/api/localizations`);
+console.log(`Endpoint: GET http://localhost:${PORT}/api/ratings/:steamId`);
 
 // Graceful shutdown
 process.on("SIGINT", () => {
   console.log("\nShutting down...");
   gameService.close();
+  vgcRatingService.close();
   server.stop();
   process.exit(0);
 });

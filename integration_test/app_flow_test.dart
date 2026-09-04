@@ -265,6 +265,40 @@ void main() {
     expect(find.text('Portal 2'), findsWidgets);
     expect(find.textContaining('fixture puzzle adventure'), findsOneWidget);
 
+    final ratingBreakdown = find.byKey(AppKeys.detailsRatingBreakdown);
+    await _waitFor(tester, ratingBreakdown);
+    final detailsScroll = find.descendant(
+      of: find.byKey(AppKeys.detailsScreen),
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable && widget.axisDirection == AxisDirection.down,
+        description: 'vertical game details scrollable',
+      ),
+    );
+    expect(detailsScroll, findsOneWidget);
+    await Scrollable.ensureVisible(
+      ratingBreakdown.evaluate().single,
+      alignment: 0.5,
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('VGC 综合质量分'), findsOneWidget);
+    expect(find.text('查看评分构成'), findsOneWidget);
+    expect(find.text('当前版本玩家'), findsNothing);
+
+    await tester.tap(ratingBreakdown);
+    await _waitFor(tester, find.byKey(AppKeys.detailsRatingSheet));
+    expect(find.text('当前玩家口碑'), findsOneWidget);
+    expect(find.text('历史与外部对照'), findsOneWidget);
+    expect(find.text('当前版本玩家'), findsOneWidget);
+    expect(find.text('Steam 总评'), findsOneWidget);
+    expect(find.text('媒体均分'), findsOneWidget);
+    if (_captureVisualEvidence) {
+      await _holdForScreenshot(tester, 'vgc-rating-breakdown');
+    }
+    await tester.tap(find.byKey(AppKeys.detailsRatingSheetClose));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.detailsRatingSheet), findsNothing);
+
     expect(await tester.binding.handlePopRoute(), isTrue);
     await tester.pump(const Duration(milliseconds: 300));
     await _waitFor(tester, find.byKey(AppKeys.libraryScreen));

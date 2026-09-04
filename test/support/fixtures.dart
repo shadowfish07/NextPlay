@@ -1,8 +1,50 @@
 import 'package:nextplay/domain/models/game/game.dart';
 import 'package:nextplay/domain/models/game/igdb_game_data.dart';
+import 'package:nextplay/domain/models/game/vgc_rating.dart';
 
 abstract final class TestFixtures {
   static const softwareGame = Game(appId: 223850, name: '3DMark');
+
+  static final vgcRatings = <int, VgcRating>{
+    620: VgcRating(
+      steamId: 620,
+      status: VgcRatingStatus.scored,
+      score: 86,
+      confidence: 'high',
+      trend: 'stable',
+      computedLabel: '3h ago',
+      sourceUrl: 'https://videogamescritic.com/game/620',
+      fetchedAt: DateTime.utc(2026, 9, 4, 15),
+      stale: false,
+      components: const [
+        VgcRatingComponent(
+          kind: VgcRatingComponentKind.currentPlayers,
+          value: 92,
+          unit: VgcRatingUnit.percent,
+        ),
+        VgcRatingComponent(
+          kind: VgcRatingComponentKind.steamAllTime,
+          value: 98,
+          unit: VgcRatingUnit.percent,
+        ),
+        VgcRatingComponent(
+          kind: VgcRatingComponentKind.press,
+          value: 95,
+          unit: VgcRatingUnit.score,
+        ),
+        VgcRatingComponent(
+          kind: VgcRatingComponentKind.playerSentiment,
+          value: 91,
+          unit: VgcRatingUnit.score,
+        ),
+        VgcRatingComponent(
+          kind: VgcRatingComponentKind.launch,
+          value: 90,
+          unit: VgcRatingUnit.score,
+        ),
+      ],
+    ),
+  };
 
   static final games = <Game>[
     Game(
