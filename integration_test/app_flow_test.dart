@@ -287,6 +287,7 @@ void main() {
 
     await tester.tap(ratingBreakdown);
     await _waitFor(tester, find.byKey(AppKeys.detailsRatingSheet));
+    await tester.pumpAndSettle();
     expect(find.text('当前玩家口碑'), findsOneWidget);
     expect(find.text('历史与外部对照'), findsOneWidget);
     expect(find.text('当前版本玩家'), findsOneWidget);
