@@ -50,6 +50,8 @@ interface QueuedRefresh {
   enqueuedAt: number;
 }
 
+class VgcRefreshQueueError extends Error {}
+
 const metricDefinitions = new Map<string, MetricDefinition>([
   ["recent sentiment", { kind: "current_players", unit: "percent" }],
   ["now", { kind: "current_players", unit: "percent" }],
@@ -235,9 +237,26 @@ export class VgcRatingService {
 
     const request = this.enqueueRefresh(() =>
       this.refreshRating(steamId, cached, now),
-    ).finally(() => {
-      this.inFlight.delete(steamId);
-    });
+    )
+      .catch((error: unknown) => {
+        const fallbackAt = this.now();
+        if (
+          error instanceof VgcRefreshQueueError &&
+          cached?.found === 1 &&
+          cached.data &&
+          cached.fetched_at >= fallbackAt - MAX_STALE_AGE_MS
+        ) {
+          this.deferStaleRetry(steamId, fallbackAt);
+          console.warn(
+            `[VGC] Refresh queue unavailable for Steam ID ${steamId}; serving stale cache`,
+          );
+          return this.parseCached(cached, true);
+        }
+        throw error;
+      })
+      .finally(() => {
+        this.inFlight.delete(steamId);
+      });
     this.inFlight.set(steamId, request);
     return request;
   }
@@ -249,7 +268,9 @@ export class VgcRatingService {
       this.activeRefreshes + this.refreshQueue.length >=
       this.maxPendingRefreshes
     ) {
-      return Promise.reject(new Error("VGC refresh capacity exceeded"));
+      return Promise.reject(
+        new VgcRefreshQueueError("VGC refresh capacity exceeded"),
+      );
     }
 
     return new Promise((resolve, reject) => {
@@ -268,7 +289,7 @@ export class VgcRatingService {
     ) {
       this.refreshQueue
         .shift()
-        ?.reject(new Error("VGC refresh queue wait exceeded"));
+        ?.reject(new VgcRefreshQueueError("VGC refresh queue wait exceeded"));
     }
     if (this.refreshQueue.length === 0) return;
 

@@ -190,6 +190,42 @@ describe("VgcRatingService", () => {
     service.close();
   });
 
+  test("serves stale cache when the refresh queue is full", async () => {
+    let now = 1_788_566_400_000;
+    let releaseBlocker: (() => void) | undefined;
+    const blocker = new Promise<void>((resolve) => {
+      releaseBlocker = resolve;
+    });
+    let fetchCount = 0;
+    const service = new VgcRatingService({
+      dbPath: ":memory:",
+      now: () => now,
+      maxConcurrentRefreshes: 1,
+      minRefreshIntervalMs: 0,
+      maxPendingRefreshes: 1,
+      fetcher: (async (input) => {
+        fetchCount += 1;
+        if (String(input).endsWith("/2")) {
+          await blocker;
+          return new Response("not found", { status: 404 });
+        }
+        return new Response(scoredPage, { status: 200 });
+      }) as typeof fetch,
+    });
+
+    await service.getRating(1);
+    now += 7 * 60 * 60 * 1000;
+    const blockingRequest = service.getRating(2);
+    const stale = await service.getRating(1);
+    releaseBlocker?.();
+    await blockingRequest;
+
+    expect(stale?.score).toBe(85);
+    expect(stale?.stale).toBe(true);
+    expect(fetchCount).toBe(2);
+    service.close();
+  });
+
   test("prunes old missing entries after reaching the cache bound", async () => {
     const directory = mkdtempSync(join(tmpdir(), "igdb-vgc-rating-"));
     const dbPath = join(directory, "ratings.db");
