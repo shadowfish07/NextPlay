@@ -161,6 +161,35 @@ describe("VgcRatingService", () => {
     service.close();
   });
 
+  test("drops queued refreshes before the client deadline", async () => {
+    let releaseFirst: (() => void) | undefined;
+    const firstFetch = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let fetchCount = 0;
+    const service = new VgcRatingService({
+      dbPath: ":memory:",
+      maxConcurrentRefreshes: 1,
+      minRefreshIntervalMs: 0,
+      maxRefreshQueueWaitMs: 10,
+      fetcher: (async () => {
+        fetchCount += 1;
+        if (fetchCount === 1) await firstFetch;
+        return new Response("not found", { status: 404 });
+      }) as typeof fetch,
+    });
+
+    const active = service.getRating(1);
+    await expect(service.getRating(2)).rejects.toThrow(
+      "VGC refresh queue wait exceeded",
+    );
+    releaseFirst?.();
+    await active;
+
+    expect(fetchCount).toBe(1);
+    service.close();
+  });
+
   test("prunes old missing entries after reaching the cache bound", async () => {
     const directory = mkdtempSync(join(tmpdir(), "igdb-vgc-rating-"));
     const dbPath = join(directory, "ratings.db");

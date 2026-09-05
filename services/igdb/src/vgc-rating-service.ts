@@ -16,6 +16,7 @@ const MAX_STALE_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_CONCURRENT_REFRESHES = 2;
 const MIN_REFRESH_INTERVAL_MS = 250;
 const MAX_PENDING_REFRESHES = 100;
+const MAX_REFRESH_QUEUE_WAIT_MS = 4_000;
 const MAX_MISSING_CACHE_ENTRIES = 1_000;
 
 interface VgcCacheRow {
@@ -38,6 +39,7 @@ interface VgcRatingServiceOptions {
   maxConcurrentRefreshes?: number;
   minRefreshIntervalMs?: number;
   maxPendingRefreshes?: number;
+  maxRefreshQueueWaitMs?: number;
   maxMissingCacheEntries?: number;
 }
 
@@ -45,6 +47,7 @@ interface QueuedRefresh {
   run: () => Promise<VgcRating | null>;
   resolve: (rating: VgcRating | null) => void;
   reject: (error: unknown) => void;
+  enqueuedAt: number;
 }
 
 const metricDefinitions = new Map<string, MetricDefinition>([
@@ -169,6 +172,7 @@ export class VgcRatingService {
   private readonly maxConcurrentRefreshes: number;
   private readonly minRefreshIntervalMs: number;
   private readonly maxPendingRefreshes: number;
+  private readonly maxRefreshQueueWaitMs: number;
   private readonly maxMissingCacheEntries: number;
   private readonly inFlight = new Map<number, Promise<VgcRating | null>>();
   private readonly refreshQueue: QueuedRefresh[] = [];
@@ -193,6 +197,10 @@ export class VgcRatingService {
     this.maxPendingRefreshes = Math.max(
       this.maxConcurrentRefreshes,
       options.maxPendingRefreshes ?? MAX_PENDING_REFRESHES,
+    );
+    this.maxRefreshQueueWaitMs = Math.max(
+      1,
+      options.maxRefreshQueueWaitMs ?? MAX_REFRESH_QUEUE_WAIT_MS,
     );
     this.maxMissingCacheEntries = Math.max(
       0,
@@ -245,26 +253,38 @@ export class VgcRatingService {
     }
 
     return new Promise((resolve, reject) => {
-      this.refreshQueue.push({ run, resolve, reject });
+      this.refreshQueue.push({ run, resolve, reject, enqueuedAt: Date.now() });
       this.drainRefreshQueue();
     });
   }
 
   private drainRefreshQueue(): void {
-    if (
-      this.refreshTimer ||
-      this.activeRefreshes >= this.maxConcurrentRefreshes ||
-      this.refreshQueue.length === 0
+    if (this.refreshTimer) return;
+
+    const now = Date.now();
+    while (
+      this.refreshQueue[0] &&
+      now - this.refreshQueue[0].enqueuedAt >= this.maxRefreshQueueWaitMs
     ) {
+      this.refreshQueue
+        .shift()
+        ?.reject(new Error("VGC refresh queue wait exceeded"));
+    }
+    if (this.refreshQueue.length === 0) return;
+
+    const queueWaitRemaining = Math.max(
+      1,
+      this.maxRefreshQueueWaitMs -
+        (Date.now() - this.refreshQueue[0].enqueuedAt),
+    );
+    if (this.activeRefreshes >= this.maxConcurrentRefreshes) {
+      this.scheduleRefreshDrain(queueWaitRemaining);
       return;
     }
 
     const delay = Math.max(0, this.nextRefreshAt - Date.now());
     if (delay > 0) {
-      this.refreshTimer = setTimeout(() => {
-        this.refreshTimer = null;
-        this.drainRefreshQueue();
-      }, delay);
+      this.scheduleRefreshDrain(Math.min(delay, queueWaitRemaining));
       return;
     }
 
@@ -278,9 +298,20 @@ export class VgcRatingService {
       .then(queued.resolve, queued.reject)
       .finally(() => {
         this.activeRefreshes -= 1;
+        if (this.refreshTimer) {
+          clearTimeout(this.refreshTimer);
+          this.refreshTimer = null;
+        }
         this.drainRefreshQueue();
       });
     this.drainRefreshQueue();
+  }
+
+  private scheduleRefreshDrain(delay: number): void {
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = null;
+      this.drainRefreshQueue();
+    }, delay);
   }
 
   private async refreshRating(
