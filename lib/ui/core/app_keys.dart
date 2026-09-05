@@ -46,6 +46,11 @@ abstract final class AppKeys {
   static const detailsRetry = ValueKey('details.retry');
   static const detailsStatus = ValueKey('details.status');
   static const detailsWishlist = ValueKey('details.wishlist');
+  static const detailsRating = ValueKey('details.rating');
+  static const detailsRatingBreakdown = ValueKey('details.rating.breakdown');
+  static const detailsRatingSheet = ValueKey('details.rating.sheet');
+  static const detailsRatingSheetClose = ValueKey('details.rating.sheet.close');
+  static const detailsRatingSource = ValueKey('details.rating.source');
 
   static ValueKey<String> libraryItem(int appId) =>
       ValueKey('library.item.$appId');

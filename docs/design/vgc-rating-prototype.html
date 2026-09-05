@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark light">
+    <title>VGC 评分详情卡片 · NextPlay UX 原型</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        --studio-bg: #080b12;
+        --studio-panel: rgba(20, 25, 36, 0.86);
+        --studio-border: rgba(157, 170, 205, 0.16);
+        --studio-text: #f2f5ff;
+        --studio-muted: #9aa5bc;
+        --phone-bg: #0f1419;
+        --phone-card: #1a1f26;
+        --phone-elevated: #252a32;
+        --phone-text: #f4f6fa;
+        --phone-muted: #aab2c0;
+        --primary: #7b82ff;
+        --primary-soft: rgba(107, 115, 255, 0.15);
+        --cyan: #36d8ff;
+        --cyan-soft: rgba(0, 212, 255, 0.12);
+        --success: #63d69a;
+        --success-soft: rgba(99, 214, 154, 0.13);
+        --warning: #f6c453;
+        --warning-soft: rgba(246, 196, 83, 0.14);
+        --danger: #ff8d8d;
+        --outline: rgba(215, 222, 238, 0.12);
+        --shadow: 0 28px 80px rgba(0, 0, 0, 0.48);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        min-height: 100%;
+        background: var(--studio-bg);
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        color: var(--studio-text);
+        background:
+          radial-gradient(circle at 14% 12%, rgba(87, 96, 255, 0.16), transparent 31rem),
+          radial-gradient(circle at 88% 76%, rgba(0, 212, 255, 0.08), transparent 34rem),
+          var(--studio-bg);
+      }
+
+      button,
+      a {
+        font: inherit;
+      }
+
+      button {
+        color: inherit;
+      }
+
+      :where(button, a):focus-visible {
+        outline: 0.1875rem solid var(--cyan);
+        outline-offset: 0.1875rem;
+      }
+
+      .skip-link {
+        position: fixed;
+        z-index: 100;
+        top: 0.75rem;
+        left: 0.75rem;
+        transform: translateY(-200%);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        color: #061017;
+        background: var(--cyan);
+        font-weight: 800;
+        transition: transform 160ms ease;
+      }
+
+      .skip-link:focus {
+        transform: translateY(0);
+      }
+
+      .studio {
+        display: grid;
+        min-height: 100vh;
+        grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr);
+        gap: clamp(1.5rem, 4vw, 4.5rem);
+        align-items: start;
+        width: min(100%, 86rem);
+        margin-inline: auto;
+        padding: clamp(1.25rem, 4vw, 3.5rem);
+      }
+
+      .brief {
+        position: sticky;
+        top: 2rem;
+        padding: 0.25rem 0;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0 0 1rem;
+        color: #bdc4ff;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+      }
+
+      .eyebrow::before {
+        width: 1.65rem;
+        height: 0.16rem;
+        border-radius: 99rem;
+        background: linear-gradient(90deg, var(--primary), var(--cyan));
+        content: "";
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        max-width: 13ch;
+        margin-bottom: 1rem;
+        font-size: clamp(2rem, 4vw, 3.45rem);
+        line-height: 1.02;
+        letter-spacing: -0.045em;
+      }
+
+      .lede {
+        max-width: 38rem;
+        margin-bottom: 1.75rem;
+        color: var(--studio-muted);
+        font-size: 0.98rem;
+        line-height: 1.7;
+      }
+
+      .design-note {
+        margin-bottom: 1.15rem;
+        border: 1px solid var(--studio-border);
+        border-radius: 1.1rem;
+        padding: 1.05rem 1.1rem;
+        background: var(--studio-panel);
+        backdrop-filter: blur(1rem);
+      }
+
+      .design-note h2,
+      .control-group legend {
+        margin-bottom: 0.7rem;
+        color: #e2e7f7;
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.025em;
+      }
+
+      .design-note ul {
+        display: grid;
+        gap: 0.72rem;
+        margin: 0;
+        padding-left: 1.15rem;
+        color: var(--studio-muted);
+        font-size: 0.84rem;
+        line-height: 1.55;
+      }
+
+      .design-note li::marker {
+        color: var(--cyan);
+      }
+
+      .control-group {
+        display: grid;
+        gap: 0.58rem;
+        margin: 0 0 1rem;
+        border: 0;
+        padding: 0;
+      }
+
+      .state-option {
+        position: relative;
+      }
+
+      .state-option input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .state-option label {
+        display: flex;
+        min-height: 3.25rem;
+        cursor: pointer;
+        align-items: center;
+        gap: 0.72rem;
+        border: 1px solid var(--studio-border);
+        border-radius: 0.9rem;
+        padding: 0.72rem 0.85rem;
+        background: rgba(18, 23, 33, 0.76);
+        color: var(--studio-muted);
+        font-size: 0.84rem;
+        transition:
+          border-color 160ms ease,
+          background 160ms ease,
+          transform 160ms ease;
+      }
+
+      .state-option label::before {
+        width: 0.7rem;
+        height: 0.7rem;
+        flex: 0 0 auto;
+        border: 0.125rem solid rgba(193, 203, 226, 0.5);
+        border-radius: 50%;
+        content: "";
+      }
+
+      .state-option input:checked + label {
+        transform: translateX(0.2rem);
+        border-color: rgba(123, 130, 255, 0.7);
+        background: rgba(93, 102, 230, 0.16);
+        color: #f1f3ff;
+      }
+
+      .state-option input:checked + label::before {
+        border-color: var(--primary);
+        box-shadow: inset 0 0 0 0.15rem var(--studio-bg);
+        background: var(--cyan);
+      }
+
+      .state-option input:focus-visible + label {
+        outline: 0.1875rem solid var(--cyan);
+        outline-offset: 0.125rem;
+      }
+
+      .theme-toggle {
+        display: inline-flex;
+        min-height: 2.75rem;
+        align-items: center;
+        gap: 0.55rem;
+        border: 1px solid var(--studio-border);
+        border-radius: 999px;
+        padding: 0.58rem 0.9rem;
+        background: rgba(18, 23, 33, 0.76);
+        cursor: pointer;
+        color: var(--studio-muted);
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+
+      .preview-region {
+        display: grid;
+        min-width: 0;
+        place-items: start center;
+        container-type: inline-size;
+      }
+
+      .phone-shell {
+        width: min(100%, 25.5rem);
+        border: 0.5rem solid #05070a;
+        border-radius: 2.6rem;
+        padding: 0.18rem;
+        background: #05070a;
+        box-shadow: var(--shadow), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      }
+
+      .phone {
+        position: relative;
+        overflow: hidden;
+        height: min(52.75rem, calc(100vh - 7rem));
+        min-height: 41rem;
+        border-radius: 2rem;
+        color: var(--phone-text);
+        background: var(--phone-bg);
+        container-type: inline-size;
+      }
+
+      .phone-scroll {
+        height: 100%;
+        overflow: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(123, 130, 255, 0.5) transparent;
+      }
+
+      .status-bar {
+        position: absolute;
+        z-index: 8;
+        top: 0;
+        left: 0;
+        display: flex;
+        width: 100%;
+        height: 2rem;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 1.1rem;
+        color: white;
+        font-size: 0.67rem;
+        font-weight: 700;
+        text-shadow: 0 0.0625rem 0.35rem rgba(0, 0, 0, 0.7);
+      }
+
+      .signal-icons {
+        letter-spacing: 0.12em;
+      }
+
+      .hero {
+        position: relative;
+        height: 18.75rem;
+        overflow: hidden;
+        background: #242b39;
+      }
+
+      .hero img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+        transition: opacity 180ms ease;
+      }
+
+      .hero::after {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          180deg,
+          rgba(2, 6, 12, 0.22) 0%,
+          rgba(2, 6, 12, 0.05) 33%,
+          rgba(4, 8, 14, 0.7) 72%,
+          var(--phone-bg) 100%
+        );
+        content: "";
+      }
+
+      .hero-nav {
+        position: absolute;
+        z-index: 3;
+        top: 2.35rem;
+        left: 0.8rem;
+        right: 0.8rem;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .icon-button {
+        display: inline-grid;
+        width: 2.65rem;
+        height: 2.65rem;
+        cursor: pointer;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 50%;
+        background: rgba(6, 10, 18, 0.52);
+        color: white;
+        backdrop-filter: blur(0.8rem);
+      }
+
+      .icon-button svg,
+      .button-icon,
+      .section-icon,
+      .meta-icon {
+        width: 1.15rem;
+        height: 1.15rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.8;
+      }
+
+      .hero-copy {
+        position: absolute;
+        z-index: 3;
+        right: 1.1rem;
+        bottom: 1.15rem;
+        left: 1.1rem;
+      }
+
+      .hero-kicker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.42rem;
+        margin-bottom: 0.55rem;
+      }
+
+      .hero-chip {
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 99rem;
+        padding: 0.22rem 0.52rem;
+        color: rgba(255, 255, 255, 0.88);
+        background: rgba(9, 13, 21, 0.5);
+        font-size: 0.63rem;
+        font-weight: 700;
+        backdrop-filter: blur(0.5rem);
+      }
+
+      .game-title {
+        margin: 0;
+        color: white;
+        font-size: 1.52rem;
+        line-height: 1.1;
+        letter-spacing: -0.025em;
+        text-shadow: 0 0.125rem 0.9rem rgba(0, 0, 0, 0.75);
+      }
+
+      .content {
+        display: grid;
+        gap: 0.9rem;
+        padding: 0 0.9rem 2rem;
+      }
+
+      .app-card {
+        overflow: hidden;
+        border: 1px solid var(--outline);
+        border-radius: 1rem;
+        background: var(--phone-card);
+        box-shadow: 0 0.65rem 1.6rem rgba(0, 0, 0, 0.13);
+      }
+
+      .status-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.9rem 1rem;
+        border-color: rgba(99, 214, 154, 0.24);
+        background: linear-gradient(135deg, rgba(31, 128, 88, 0.95), rgba(38, 103, 81, 0.82));
+      }
+
+      .status-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.34rem;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 0.68rem;
+        font-weight: 700;
+      }
+
+      .status-value {
+        margin: 0;
+        color: white;
+        font-size: 1rem;
+        font-weight: 800;
+      }
+
+      .status-action {
+        min-height: 2.35rem;
+        cursor: pointer;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 0.7rem;
+        padding: 0.45rem 0.7rem;
+        color: white;
+        background: rgba(3, 20, 14, 0.2);
+        font-size: 0.7rem;
+        font-weight: 800;
+      }
+
+      .quick-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.65rem;
+        padding: 0.72rem;
+      }
+
+      .quick-button {
+        display: inline-flex;
+        min-height: 2.75rem;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        gap: 0.42rem;
+        border: 0;
+        border-radius: 0.75rem;
+        padding: 0.55rem 0.6rem;
+        color: #f7f7ff;
+        background: var(--primary-soft);
+        font-size: 0.7rem;
+        font-weight: 750;
+      }
+
+      .quick-button.primary {
+        background: var(--primary);
+      }
+
+      .metadata-card {
+        padding: 1rem;
+      }
+
+      .section-heading {
+        display: flex;
+        align-items: center;
+        gap: 0.48rem;
+        margin: 0 0 0.8rem;
+        color: var(--primary);
+        font-size: 0.94rem;
+        font-weight: 800;
+      }
+
+      .rating-card {
+        position: relative;
+        overflow: hidden;
+        min-height: 13.4rem;
+        border: 1px solid rgba(54, 216, 255, 0.3);
+        border-radius: 1rem;
+        padding: 0.9rem;
+        background:
+          radial-gradient(circle at 8% 15%, rgba(54, 216, 255, 0.14), transparent 8rem),
+          linear-gradient(145deg, rgba(24, 48, 60, 0.82), rgba(21, 31, 42, 0.88));
+        transition:
+          border-color 180ms ease,
+          background 180ms ease;
+      }
+
+      .rating-card[data-kind="cached"] {
+        border-color: rgba(246, 196, 83, 0.34);
+        background:
+          radial-gradient(circle at 8% 15%, rgba(246, 196, 83, 0.12), transparent 8rem),
+          linear-gradient(145deg, rgba(53, 45, 26, 0.78), rgba(29, 30, 35, 0.9));
+      }
+
+      .rating-card[data-kind="early"] {
+        border-color: rgba(123, 130, 255, 0.34);
+        background:
+          radial-gradient(circle at 8% 15%, rgba(123, 130, 255, 0.14), transparent 8rem),
+          linear-gradient(145deg, rgba(34, 37, 67, 0.8), rgba(26, 29, 39, 0.9));
+      }
+
+      .rating-card[data-kind="fallback"] {
+        border-color: rgba(170, 178, 194, 0.3);
+        background:
+          radial-gradient(circle at 8% 15%, rgba(170, 178, 194, 0.1), transparent 8rem),
+          linear-gradient(145deg, rgba(38, 43, 52, 0.86), rgba(25, 29, 35, 0.92));
+      }
+
+      .rating-meta {
+        display: flex;
+        min-height: 1.8rem;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+        margin-bottom: 0.85rem;
+      }
+
+      .rating-utility {
+        display: inline-flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.4rem;
+      }
+
+      .source-badge,
+      .freshness-badge,
+      .confidence-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.38rem;
+        border-radius: 999px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .source-badge {
+        border: 1px solid rgba(246, 196, 83, 0.34);
+        padding: 0.3rem 0.53rem;
+        color: #ffe3a0;
+        background: rgba(246, 196, 83, 0.1);
+        font-size: 0.62rem;
+        letter-spacing: 0.055em;
+        text-decoration: none;
+      }
+
+      .source-badge[data-source="igdb"] {
+        border-color: rgba(174, 184, 206, 0.3);
+        color: #d4daea;
+        background: rgba(174, 184, 206, 0.09);
+      }
+
+      .source-dot {
+        width: 0.38rem;
+        height: 0.38rem;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 0.6rem currentColor;
+      }
+
+      .freshness-badge {
+        padding: 0.3rem 0;
+        color: var(--success);
+        font-size: 0.62rem;
+      }
+
+      .rating-card[data-kind="cached"] .freshness-badge {
+        color: var(--warning);
+      }
+
+      .rating-card[data-kind="early"] .freshness-badge,
+      .rating-card[data-kind="fallback"] .freshness-badge {
+        color: var(--phone-muted);
+      }
+
+      .rating-core {
+        display: grid;
+        gap: 0.75rem;
+        align-items: center;
+      }
+
+      .score-ring {
+        display: grid;
+        width: 5.25rem;
+        height: 5.25rem;
+        place-items: center;
+        border: 0.22rem solid var(--success);
+        border-radius: 50%;
+        color: var(--phone-text);
+        background: rgba(6, 14, 19, 0.46);
+        box-shadow:
+          inset 0 0 0 0.32rem rgba(99, 214, 154, 0.08),
+          0 0 1.4rem rgba(99, 214, 154, 0.09);
+        font-size: 2rem;
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+
+      .rating-card[data-kind="cached"] .score-ring {
+        border-color: var(--warning);
+        box-shadow: inset 0 0 0 0.32rem rgba(246, 196, 83, 0.08);
+      }
+
+      .rating-card[data-kind="early"] .score-ring {
+        border-color: var(--primary);
+        color: #c9cdff;
+        box-shadow: inset 0 0 0 0.32rem rgba(123, 130, 255, 0.08);
+      }
+
+      .rating-card[data-kind="fallback"] .score-ring {
+        border-color: #9da7bb;
+        box-shadow: inset 0 0 0 0.32rem rgba(174, 184, 206, 0.08);
+      }
+
+      .score-copy {
+        min-width: 0;
+      }
+
+      .score-label {
+        margin: 0 0 0.22rem;
+        color: var(--phone-text);
+        font-size: 1rem;
+        font-weight: 850;
+      }
+
+      .score-definition {
+        margin: 0 0 0.52rem;
+        color: var(--phone-muted);
+        font-size: 0.64rem;
+        font-weight: 650;
+        line-height: 1.35;
+      }
+
+      .confidence-badge {
+        padding: 0.3rem 0.52rem;
+        color: var(--success);
+        background: var(--success-soft);
+        font-size: 0.62rem;
+      }
+
+      .rating-card[data-kind="cached"] .confidence-badge {
+        color: var(--warning);
+        background: var(--warning-soft);
+      }
+
+      .rating-card[data-kind="early"] .confidence-badge,
+      .rating-card[data-kind="fallback"] .confidence-badge {
+        color: var(--phone-muted);
+        background: rgba(170, 178, 194, 0.1);
+      }
+
+      .breakdown-trigger {
+        display: flex;
+        width: 100%;
+        min-height: 3.4rem;
+        cursor: pointer;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        margin-top: 0.88rem;
+        border-top: 1px solid rgba(215, 222, 238, 0.1);
+        border-right: 0;
+        border-bottom: 0;
+        border-left: 0;
+        padding: 0.7rem 0.15rem 0;
+        color: var(--phone-text);
+        background: transparent;
+        text-align: start;
+      }
+
+      .breakdown-trigger-copy {
+        display: grid;
+        min-width: 0;
+        gap: 0.15rem;
+      }
+
+      .breakdown-trigger-title {
+        font-size: 0.72rem;
+        font-weight: 800;
+      }
+
+      .breakdown-trigger-summary {
+        overflow: hidden;
+        color: var(--phone-muted);
+        font-size: 0.58rem;
+        font-weight: 650;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .breakdown-trigger-icon {
+        width: 1rem;
+        height: 1rem;
+        flex: 0 0 auto;
+        fill: none;
+        stroke: var(--cyan);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
+      }
+
+      .source-scores {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.48rem;
+        margin: 0.48rem 0 0;
+      }
+
+      .source-score {
+        display: grid;
+        min-width: 0;
+        min-height: 4.1rem;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.55rem;
+        align-items: center;
+        border: 1px solid rgba(215, 222, 238, 0.1);
+        border-radius: 0.72rem;
+        padding: 0.62rem 0.66rem;
+        background: rgba(7, 13, 19, 0.24);
+      }
+
+      .source-score[data-current="true"] {
+        grid-column: 1 / -1;
+        border-color: rgba(99, 214, 154, 0.3);
+        background: rgba(99, 214, 154, 0.09);
+      }
+
+      .source-score:only-child {
+        grid-column: 1 / -1;
+      }
+
+      .source-score dt {
+        display: grid;
+        min-width: 0;
+        gap: 0.16rem;
+      }
+
+      .source-title {
+        color: var(--phone-muted);
+        font-size: 0.65rem;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .source-context {
+        color: var(--phone-muted);
+        font-size: 0.54rem;
+        font-weight: 600;
+        line-height: 1.3;
+        opacity: 0.78;
+      }
+
+      .source-score[data-current="true"] .source-title {
+        color: var(--success);
+      }
+
+      .source-score dd {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 0.08rem;
+        margin: 0;
+        color: var(--phone-text);
+        font-size: 1.02rem;
+        font-variant-numeric: tabular-nums;
+        font-weight: 900;
+        letter-spacing: -0.025em;
+      }
+
+      .source-score[data-current="true"] dd {
+        font-size: 1.2rem;
+      }
+
+      .source-unit {
+        color: var(--phone-muted);
+        font-size: 0.56rem;
+        font-weight: 750;
+        letter-spacing: 0;
+      }
+
+      .rating-card[data-kind="cached"] .source-score[data-current="true"] {
+        border-color: rgba(246, 196, 83, 0.3);
+        background: rgba(246, 196, 83, 0.08);
+      }
+
+      .rating-card[data-kind="cached"] .source-score[data-current="true"] .source-title {
+        color: var(--warning);
+      }
+
+      .rating-card[data-kind="early"] .source-score[data-current="true"] {
+        border-color: rgba(123, 130, 255, 0.3);
+        background: rgba(123, 130, 255, 0.09);
+      }
+
+      .rating-card[data-kind="early"] .source-score[data-current="true"] .source-title {
+        color: #bfc4ff;
+      }
+
+      .rating-card[data-kind="fallback"] .source-score[data-current="true"] {
+        border-color: rgba(170, 178, 194, 0.26);
+        background: rgba(170, 178, 194, 0.08);
+      }
+
+      .rating-card[data-kind="fallback"] .source-score[data-current="true"] .source-title {
+        color: var(--phone-muted);
+      }
+
+      .retry-button {
+        min-height: 1.75rem;
+        cursor: pointer;
+        border: 0;
+        border-radius: 0.5rem;
+        padding: 0.2rem 0.4rem;
+        color: var(--phone-muted);
+        background: transparent;
+        font-size: 0.62rem;
+        font-weight: 800;
+      }
+
+      .retry-button[hidden] {
+        display: none;
+      }
+
+      .score-sheet {
+        position: fixed;
+        inset: auto 0 0;
+        width: min(100%, 25.5rem);
+        max-width: none;
+        max-height: min(82vh, 42rem);
+        overflow: auto;
+        overscroll-behavior: contain;
+        margin: auto auto 0;
+        border: 1px solid rgba(157, 170, 205, 0.22);
+        border-bottom: 0;
+        border-radius: 1.45rem 1.45rem 0 0;
+        padding: 0;
+        color: var(--phone-text);
+        background: var(--phone-card);
+        box-shadow: 0 -1.5rem 4rem rgba(0, 0, 0, 0.46);
+      }
+
+      .score-sheet::backdrop {
+        background: rgba(3, 6, 12, 0.72);
+        backdrop-filter: blur(0.22rem);
+      }
+
+      .sheet-content {
+        margin: 0;
+        padding: 0.55rem 1rem max(1rem, env(safe-area-inset-bottom));
+      }
+
+      .sheet-handle {
+        width: 2.6rem;
+        height: 0.26rem;
+        margin: 0 auto 0.8rem;
+        border-radius: 999px;
+        background: rgba(170, 178, 194, 0.34);
+      }
+
+      .sheet-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.95rem;
+      }
+
+      .sheet-kicker {
+        margin: 0 0 0.2rem;
+        color: var(--warning);
+        font-size: 0.6rem;
+        font-weight: 850;
+        letter-spacing: 0.045em;
+      }
+
+      .sheet-title {
+        margin: 0;
+        font-size: 1.15rem;
+        letter-spacing: -0.025em;
+      }
+
+      .sheet-close {
+        display: grid;
+        width: 2.2rem;
+        height: 2.2rem;
+        cursor: pointer;
+        flex: 0 0 auto;
+        place-items: center;
+        border: 1px solid var(--outline);
+        border-radius: 50%;
+        padding: 0;
+        color: var(--phone-muted);
+        background: var(--phone-elevated);
+        font-size: 1.15rem;
+        line-height: 1;
+      }
+
+      .sheet-section + .sheet-section {
+        margin-top: 0.95rem;
+      }
+
+      .sheet-section[hidden] {
+        display: none;
+      }
+
+      .sheet-section-title {
+        margin: 0;
+        color: var(--phone-muted);
+        font-size: 0.65rem;
+        font-weight: 800;
+      }
+
+      .sheet-link {
+        display: flex;
+        min-height: 2.8rem;
+        align-items: center;
+        justify-content: center;
+        margin-top: 1rem;
+        border-radius: 0.8rem;
+        color: #061017;
+        background: var(--cyan);
+        font-size: 0.72rem;
+        font-weight: 850;
+        text-decoration: none;
+      }
+
+      .metadata-list {
+        display: grid;
+        gap: 0.8rem;
+        margin: 0.9rem 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .metadata-row {
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .metadata-label {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: var(--phone-muted);
+        font-size: 0.68rem;
+        font-weight: 750;
+      }
+
+      .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+      }
+
+      .tag {
+        border: 1px solid var(--outline);
+        border-radius: 0.62rem;
+        padding: 0.42rem 0.58rem;
+        color: var(--phone-text);
+        background: var(--phone-elevated);
+        font-size: 0.64rem;
+        font-weight: 700;
+      }
+
+      .description-skeleton {
+        display: grid;
+        gap: 0.62rem;
+        padding: 1rem;
+      }
+
+      .skeleton-line {
+        height: 0.58rem;
+        border-radius: 99rem;
+        background: var(--phone-elevated);
+      }
+
+      .skeleton-line:nth-child(2) {
+        width: 88%;
+      }
+
+      .skeleton-line:nth-child(3) {
+        width: 64%;
+      }
+
+      .visually-hidden:where(:not(:focus-within, :active)) {
+        position: absolute !important;
+        overflow: hidden !important;
+        width: 1px !important;
+        height: 1px !important;
+        margin: -1px !important;
+        border: 0 !important;
+        padding: 0 !important;
+        clip-path: inset(50%) !important;
+        white-space: nowrap !important;
+      }
+
+      body[data-phone-theme="light"] {
+        --phone-bg: #f6f7fb;
+        --phone-card: #ffffff;
+        --phone-elevated: #eef0f7;
+        --phone-text: #171b26;
+        --phone-muted: #5d6679;
+        --outline: rgba(42, 55, 86, 0.14);
+      }
+
+      body[data-phone-theme="light"] .rating-card {
+        background:
+          radial-gradient(circle at 8% 15%, rgba(0, 173, 214, 0.12), transparent 8rem),
+          linear-gradient(145deg, #eefaff, #f8fbfd);
+      }
+
+      body[data-phone-theme="light"] .rating-card[data-kind="cached"] {
+        background: linear-gradient(145deg, #fff9e9, #fffdf7);
+      }
+
+      body[data-phone-theme="light"] .rating-card[data-kind="early"] {
+        background: linear-gradient(145deg, #f0f1ff, #fafaff);
+      }
+
+      body[data-phone-theme="light"] .rating-card[data-kind="fallback"] {
+        background: linear-gradient(145deg, #f1f3f7, #fbfcfe);
+      }
+
+      body[data-phone-theme="light"] .score-ring {
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      body[data-phone-theme="light"] .source-badge {
+        color: #795400;
+      }
+
+      body[data-phone-theme="light"] .source-badge[data-source="igdb"] {
+        color: #4c566c;
+      }
+
+      body[data-phone-theme="light"] .section-heading {
+        color: #4e58cf;
+      }
+
+      body[data-phone-theme="light"] .source-score {
+        background: rgba(255, 255, 255, 0.48);
+      }
+
+      @container (min-width: 22rem) {
+        .rating-core {
+          grid-template-columns: 5.35rem minmax(0, 1fr);
+        }
+      }
+
+      @container (min-width: 38rem) {
+        .source-scores {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .source-score[data-current="true"] {
+          grid-column: span 2;
+        }
+
+      }
+
+      @media (max-width: 52rem) {
+        .studio {
+          grid-template-columns: 1fr;
+        }
+
+        .brief {
+          position: static;
+        }
+
+        h1 {
+          max-width: 18ch;
+        }
+
+        .controls {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.58rem;
+        }
+      }
+
+      @media (max-width: 34rem) {
+        .studio {
+          padding: 1rem 0.6rem 2rem;
+        }
+
+        .brief {
+          padding-inline: 0.5rem;
+        }
+
+        .controls {
+          grid-template-columns: 1fr;
+        }
+
+        .phone-shell {
+          width: 100%;
+          border-width: 0;
+          border-radius: 1.5rem;
+          padding: 0;
+        }
+
+        .phone {
+          height: min(50rem, calc(100vh - 1.5rem));
+          border-radius: 1.5rem;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+    </style>
+  </head>
+  <body data-phone-theme="dark">
+    <a class="skip-link" href="#preview">跳到手机预览</a>
+
+    <main class="studio">
+      <aside class="brief" aria-labelledby="prototype-title">
+        <p class="eyebrow">NEXTPLAY · UX CONCEPT 01</p>
+        <h1 id="prototype-title">首屏做判断，二级看构成</h1>
+        <p class="lede">
+          详情首屏只保留 VGC 主分和状态；来源分数通过“查看评分构成”进入底部弹层，按当前、历史与外部评价分组。
+        </p>
+
+        <section class="design-note" aria-labelledby="intent-title">
+          <h2 id="intent-title">设计意图</h2>
+          <ul>
+            <li>首屏只回答“现在值不值得关注”，不堆满来源数据。</li>
+            <li>二级弹层区分百分比好评率和“/100”质量分。</li>
+            <li>当前版本玩家单独成组，历史与外部评价放在对照组。</li>
+            <li>弹层仍只展示数据含义，不加入评分方法说明。</li>
+          </ul>
+        </section>
+
+        <fieldset class="control-group">
+          <legend>切换数据状态</legend>
+          <div class="controls">
+            <div class="state-option">
+              <input id="state-vgc" name="scenario" type="radio" value="vgc" checked>
+              <label for="state-vgc">VGC 已更新</label>
+            </div>
+            <div class="state-option">
+              <input id="state-cached" name="scenario" type="radio" value="cached">
+              <label for="state-cached">显示缓存分数</label>
+            </div>
+            <div class="state-option">
+              <input id="state-early" name="scenario" type="radio" value="early">
+              <label for="state-early">抢先体验无评分</label>
+            </div>
+            <div class="state-option">
+              <input id="state-fallback" name="scenario" type="radio" value="fallback">
+              <label for="state-fallback">回退 IGDB 媒体分</label>
+            </div>
+          </div>
+        </fieldset>
+
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false">
+          <span aria-hidden="true">☀</span>
+          <span id="theme-label">切换到浅色界面</span>
+        </button>
+      </aside>
+
+      <section class="preview-region" id="preview" tabindex="-1" aria-label="NextPlay 手机详情页原型">
+        <div class="phone-shell">
+          <div class="phone">
+            <div class="status-bar" aria-hidden="true">
+              <span>9:41</span>
+              <span class="signal-icons">▮▮▮ ◉ 87%</span>
+            </div>
+            <div class="phone-scroll">
+              <header class="hero">
+                <img
+                  id="hero-image"
+                  src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg"
+                  alt=""
+                  fetchpriority="high"
+                >
+                <nav class="hero-nav" aria-label="详情页操作">
+                  <button class="icon-button" type="button" aria-label="返回">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m15 18-6-6 6-6"></path>
+                    </svg>
+                  </button>
+                  <button class="icon-button" type="button" aria-label="更多操作">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="5" cy="12" r="1"></circle>
+                      <circle cx="12" cy="12" r="1"></circle>
+                      <circle cx="19" cy="12" r="1"></circle>
+                    </svg>
+                  </button>
+                </nav>
+                <div class="hero-copy">
+                  <div class="hero-kicker">
+                    <span class="hero-chip" id="release-chip">2022 · PC</span>
+                    <span class="hero-chip" id="ownership-chip">已拥有</span>
+                  </div>
+                  <h2 class="game-title" id="game-title">ELDEN RING</h2>
+                </div>
+              </header>
+
+              <div class="content">
+                <section class="app-card status-card" aria-labelledby="status-title">
+                  <div>
+                    <div class="status-title" id="status-title">
+                      <svg class="section-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 21V4m0 0h11l-2 4 2 4H5"></path>
+                      </svg>
+                      当前状态
+                    </div>
+                    <p class="status-value">正在游玩</p>
+                  </div>
+                  <button class="status-action" type="button">更改状态</button>
+                </section>
+
+                <section class="app-card quick-actions" aria-label="快捷操作">
+                  <button class="quick-button primary" type="button">
+                    <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M6 4h12v17l-6-4-6 4Z"></path>
+                    </svg>
+                    已加入待玩
+                  </button>
+                  <button class="quick-button" type="button">
+                    <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M14 5h5v5M19 5l-8 8"></path>
+                      <path d="M18 13v6H5V6h6"></path>
+                    </svg>
+                    Steam 页面
+                  </button>
+                </section>
+
+                <section class="app-card metadata-card" aria-labelledby="info-heading">
+                  <h2 class="section-heading" id="info-heading">
+                    <svg class="section-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="12" cy="12" r="9"></circle>
+                      <path d="M12 11v5m0-8h.01"></path>
+                    </svg>
+                    游戏信息
+                  </h2>
+
+                  <article class="rating-card" id="rating-card" data-kind="vgc" aria-labelledby="score-label">
+                    <div class="rating-meta">
+                      <a
+                        class="source-badge"
+                        id="source-badge"
+                        data-source="vgc"
+                        href="https://videogamescritic.com/game/1245620"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <span class="source-dot" aria-hidden="true"></span>
+                        <span id="source-name">VGC SCORE</span>
+                        <span aria-hidden="true">↗</span>
+                        <span class="visually-hidden">（在新窗口打开）</span>
+                      </a>
+                      <div class="rating-utility">
+                        <button class="retry-button" id="retry-button" type="button" hidden>重试</button>
+                        <span class="freshness-badge" id="freshness-badge">
+                          <span aria-hidden="true">●</span>
+                          <span id="freshness-text">8 小时前更新</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="rating-core">
+                      <div class="score-ring">
+                        <span id="score-value" aria-hidden="true">85</span>
+                        <span class="visually-hidden" id="score-accessible">VGC 综合质量分 85 分，满分 100 分</span>
+                      </div>
+                      <div class="score-copy">
+                        <h3 class="score-label" id="score-label">VGC 综合质量分</h3>
+                        <p class="score-definition" id="score-definition">0–100 · 多来源加权</p>
+                        <span class="confidence-badge" id="confidence-badge">高可信度</span>
+                      </div>
+                    </div>
+
+                    <button
+                      class="breakdown-trigger"
+                      id="breakdown-trigger"
+                      type="button"
+                      aria-haspopup="dialog"
+                    >
+                      <span class="breakdown-trigger-copy">
+                        <span class="breakdown-trigger-title" id="breakdown-trigger-title">查看评分构成</span>
+                        <span class="breakdown-trigger-summary" id="breakdown-trigger-summary">5 项 · 当前玩家、历史、媒体</span>
+                      </span>
+                      <svg class="breakdown-trigger-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m9 18 6-6-6-6"></path>
+                      </svg>
+                    </button>
+                  </article>
+
+                  <ul class="metadata-list" aria-label="其他游戏信息">
+                    <li class="metadata-row">
+                      <span class="metadata-label">
+                        <svg class="meta-icon" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M4 6h16v12H4zM8 10h4m-2-2v4m6-2h.01m2 2h.01"></path>
+                        </svg>
+                        游戏类型
+                      </span>
+                      <div class="tag-list" id="genre-tags">
+                        <span class="tag">动作角色扮演</span>
+                        <span class="tag">开放世界</span>
+                        <span class="tag">类魂</span>
+                      </div>
+                    </li>
+                    <li class="metadata-row">
+                      <span class="metadata-label">
+                        <svg class="meta-icon" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M7 3v3m10-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"></path>
+                        </svg>
+                        发布日期
+                      </span>
+                      <div class="tag-list"><span class="tag" id="release-date">2022年2月25日</span></div>
+                    </li>
+                  </ul>
+                </section>
+
+                <section class="app-card description-skeleton" aria-label="后续详情内容示意">
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line"></div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="visually-hidden" id="scenario-announcer" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <dialog class="score-sheet" id="score-sheet" aria-labelledby="sheet-title" closedby="any">
+      <form class="sheet-content" method="dialog">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <header class="sheet-header">
+          <div>
+            <p class="sheet-kicker" id="sheet-kicker">ELDEN RING · VGC SCORE 85</p>
+            <h2 class="sheet-title" id="sheet-title">评分构成</h2>
+          </div>
+          <button class="sheet-close" type="submit" value="close" aria-label="关闭评分构成">×</button>
+        </header>
+
+        <section class="sheet-section" id="current-score-section" aria-labelledby="current-score-title">
+          <h3 class="sheet-section-title" id="current-score-title">当前玩家口碑</h3>
+          <dl class="source-scores" id="current-source-scores">
+            <div class="source-score" data-current="true">
+              <dt>
+                <span class="source-title">当前版本玩家</span>
+                <span class="source-context">补丁后 Steam · 加权好评率</span>
+              </dt>
+              <dd>89<span class="source-unit">%</span></dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="sheet-section" id="reference-score-section" aria-labelledby="reference-score-title">
+          <h3 class="sheet-section-title" id="reference-score-title">历史与外部对照</h3>
+          <dl class="source-scores" id="reference-source-scores">
+            <div class="source-score">
+              <dt>
+                <span class="source-title">Steam 总评</span>
+                <span class="source-context">全部历史评价</span>
+              </dt>
+              <dd>93<span class="source-unit">%</span></dd>
+            </div>
+            <div class="source-score">
+              <dt>
+                <span class="source-title">媒体均分</span>
+                <span class="source-context">OpenCritic</span>
+              </dt>
+              <dd>95<span class="source-unit">/100</span></dd>
+            </div>
+            <div class="source-score">
+              <dt>
+                <span class="source-title">站外玩家</span>
+                <span class="source-context">主机商店 · Metacritic 等</span>
+              </dt>
+              <dd>89<span class="source-unit">/100</span></dd>
+            </div>
+            <div class="source-score">
+              <dt>
+                <span class="source-title">首发评分</span>
+                <span class="source-context">媒体 + 前 12 周 Steam</span>
+              </dt>
+              <dd>81<span class="source-unit">/100</span></dd>
+            </div>
+          </dl>
+        </section>
+
+        <a
+          class="sheet-link"
+          id="sheet-source-link"
+          href="https://videogamescritic.com/game/1245620"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          在 VGC 查看完整数据 <span aria-hidden="true">↗</span>
+          <span class="visually-hidden">（在新窗口打开）</span>
+        </a>
+      </form>
+    </dialog>
+
+    <script>
+      const scenarios = {
+        vgc: {
+          title: "ELDEN RING",
+          hero: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg",
+          releaseChip: "2022 · PC",
+          releaseDate: "2022年2月25日",
+          genres: ["动作角色扮演", "开放世界", "类魂"],
+          kind: "vgc",
+          source: "vgc",
+          sourceName: "VGC SCORE",
+          freshness: "8 小时前更新",
+          score: "85",
+          scoreAria: "VGC 综合质量分 85 分，满分 100 分",
+          label: "VGC 综合质量分",
+          definition: "0–100 · 多来源加权",
+          confidence: "高可信度",
+          triggerTitle: "查看评分构成",
+          triggerSummary: "5 项 · 当前玩家、历史、媒体",
+          sheetKicker: "ELDEN RING · VGC SCORE 85",
+          sheetTitle: "评分构成",
+          currentHeading: "当前玩家口碑",
+          referenceHeading: "历史与外部对照",
+          breakdown: [
+            {
+              label: "当前版本玩家",
+              context: "补丁后 Steam · 加权好评率",
+              value: "89",
+              unit: "%",
+              current: true,
+            },
+            { label: "Steam 总评", context: "全部历史评价", value: "93", unit: "%" },
+            { label: "媒体均分", context: "OpenCritic", value: "95", unit: "/100" },
+            {
+              label: "站外玩家",
+              context: "主机商店 · Metacritic 等",
+              value: "89",
+              unit: "/100",
+            },
+            {
+              label: "首发评分",
+              context: "媒体 + 前 12 周 Steam",
+              value: "81",
+              unit: "/100",
+            },
+          ],
+          sourceUrl: "https://videogamescritic.com/game/1245620",
+          retry: false,
+        },
+        cached: {
+          title: "ELDEN RING",
+          hero: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg",
+          releaseChip: "2022 · PC",
+          releaseDate: "2022年2月25日",
+          genres: ["动作角色扮演", "开放世界", "类魂"],
+          kind: "cached",
+          source: "vgc",
+          sourceName: "VGC SCORE",
+          freshness: "离线缓存 · 2 天前",
+          score: "85",
+          scoreAria: "缓存的 VGC 综合质量分 85 分，满分 100 分",
+          label: "VGC 综合质量分",
+          definition: "0–100 · 缓存数据",
+          confidence: "缓存数据",
+          triggerTitle: "查看缓存评分构成",
+          triggerSummary: "5 项 · 上次成功获取的数据",
+          sheetKicker: "ELDEN RING · VGC SCORE 85",
+          sheetTitle: "缓存评分构成",
+          currentHeading: "缓存的当前口碑",
+          referenceHeading: "历史与外部对照",
+          breakdown: [
+            {
+              label: "当前版本玩家",
+              context: "补丁后 Steam · 加权好评率",
+              value: "89",
+              unit: "%",
+              current: true,
+            },
+            { label: "Steam 总评", context: "全部历史评价", value: "93", unit: "%" },
+            { label: "媒体均分", context: "OpenCritic", value: "95", unit: "/100" },
+            {
+              label: "站外玩家",
+              context: "主机商店 · Metacritic 等",
+              value: "89",
+              unit: "/100",
+            },
+            {
+              label: "首发评分",
+              context: "媒体 + 前 12 周 Steam",
+              value: "81",
+              unit: "/100",
+            },
+          ],
+          sourceUrl: "https://videogamescritic.com/game/1245620",
+          retry: true,
+        },
+        early: {
+          title: "No Rest for the Wicked",
+          hero: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1371980/header.jpg",
+          releaseChip: "抢先体验 · PC",
+          releaseDate: "2024年4月18日",
+          genres: ["动作角色扮演", "类魂", "合作"],
+          kind: "early",
+          source: "vgc",
+          sourceName: "VGC · EA",
+          freshness: "抢先体验",
+          score: "EA",
+          scoreAria: "VGC 尚未为抢先体验游戏评分",
+          label: "VGC 暂不评分",
+          definition: "抢先体验阶段",
+          confidence: "等待 1.0",
+          triggerTitle: "查看抢先体验数据",
+          triggerSummary: "4 项 · 玩家口碑、时长、更新",
+          sheetKicker: "No Rest for the Wicked · VGC EA",
+          sheetTitle: "抢先体验数据",
+          currentHeading: "当前玩家口碑",
+          referenceHeading: "开发与阶段",
+          breakdown: [
+            {
+              label: "当前版本玩家",
+              context: "当前 Steam · 加权好评率",
+              value: "79",
+              unit: "%",
+              current: true,
+            },
+            {
+              label: "Steam 推荐",
+              context: "全部抢先体验评价",
+              value: "80",
+              unit: "%",
+            },
+            { label: "抢先体验时长", context: "距首次发售", value: "2.4", unit: "年" },
+            { label: "近 90 天更新", context: "开发活跃度", value: "0", unit: "次" },
+          ],
+          sourceUrl: "https://videogamescritic.com/game/1371980",
+          retry: false,
+        },
+        fallback: {
+          title: "Baldur's Gate 3",
+          hero: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1086940/header.jpg",
+          releaseChip: "2023 · PC",
+          releaseDate: "2023年8月3日",
+          genres: ["角色扮演", "回合制", "合作"],
+          kind: "fallback",
+          source: "igdb",
+          sourceName: "IGDB MEDIA",
+          freshness: "VGC 暂不可用",
+          score: "96",
+          scoreAria: "IGDB 媒体评分 96 分",
+          label: "IGDB 媒体均分",
+          definition: "0–100 · 非 VGC Score",
+          confidence: "来源回退",
+          triggerTitle: "查看评分来源",
+          triggerSummary: "IGDB 媒体均分",
+          sheetKicker: "Baldur's Gate 3 · IGDB MEDIA 96",
+          sheetTitle: "评分来源",
+          currentHeading: "当前来源",
+          referenceHeading: "",
+          breakdown: [
+            {
+              label: "媒体均分",
+              context: "IGDB · 非 VGC Score",
+              value: "96",
+              unit: "/100",
+              current: true,
+            },
+          ],
+          sourceUrl: "https://www.igdb.com/games/baldurs-gate-3",
+          retry: true,
+        },
+      };
+
+      const elements = {
+        body: document.body,
+        hero: document.querySelector("#hero-image"),
+        title: document.querySelector("#game-title"),
+        releaseChip: document.querySelector("#release-chip"),
+        releaseDate: document.querySelector("#release-date"),
+        genres: document.querySelector("#genre-tags"),
+        card: document.querySelector("#rating-card"),
+        sourceBadge: document.querySelector("#source-badge"),
+        sourceName: document.querySelector("#source-name"),
+        freshness: document.querySelector("#freshness-text"),
+        score: document.querySelector("#score-value"),
+        scoreAccessible: document.querySelector("#score-accessible"),
+        label: document.querySelector("#score-label"),
+        definition: document.querySelector("#score-definition"),
+        confidence: document.querySelector("#confidence-badge"),
+        breakdownTrigger: document.querySelector("#breakdown-trigger"),
+        breakdownTriggerTitle: document.querySelector("#breakdown-trigger-title"),
+        breakdownTriggerSummary: document.querySelector("#breakdown-trigger-summary"),
+        sheet: document.querySelector("#score-sheet"),
+        sheetKicker: document.querySelector("#sheet-kicker"),
+        sheetTitle: document.querySelector("#sheet-title"),
+        sheetSourceLink: document.querySelector("#sheet-source-link"),
+        currentSection: document.querySelector("#current-score-section"),
+        currentTitle: document.querySelector("#current-score-title"),
+        currentScores: document.querySelector("#current-source-scores"),
+        referenceSection: document.querySelector("#reference-score-section"),
+        referenceTitle: document.querySelector("#reference-score-title"),
+        referenceScores: document.querySelector("#reference-source-scores"),
+        retry: document.querySelector("#retry-button"),
+        announcer: document.querySelector("#scenario-announcer"),
+        themeToggle: document.querySelector("#theme-toggle"),
+        themeLabel: document.querySelector("#theme-label"),
+      };
+
+      function createSourceScore(item) {
+        const source = document.createElement("div");
+        const term = document.createElement("dt");
+        const title = document.createElement("span");
+        const context = document.createElement("span");
+        const value = document.createElement("dd");
+        const unit = document.createElement("span");
+        source.className = "source-score";
+        source.dataset.current = String(Boolean(item.current));
+        title.className = "source-title";
+        title.textContent = item.label;
+        context.className = "source-context";
+        context.textContent = item.context;
+        unit.className = "source-unit";
+        unit.textContent = item.unit;
+        term.append(title, context);
+        value.append(item.value, unit);
+        source.append(term, value);
+        return source;
+      }
+
+      function renderScenario(key) {
+        const state = scenarios[key];
+        elements.hero.src = state.hero;
+        elements.title.textContent = state.title;
+        elements.releaseChip.textContent = state.releaseChip;
+        elements.releaseDate.textContent = state.releaseDate;
+        elements.card.dataset.kind = state.kind;
+        elements.sourceBadge.dataset.source = state.source;
+        elements.sourceName.textContent = state.sourceName;
+        elements.freshness.textContent = state.freshness;
+        elements.score.textContent = state.score;
+        elements.scoreAccessible.textContent = state.scoreAria;
+        elements.label.textContent = state.label;
+        elements.definition.textContent = state.definition;
+        elements.confidence.textContent = state.confidence;
+        elements.sourceBadge.href = state.sourceUrl;
+        elements.retry.hidden = !state.retry;
+        elements.breakdownTriggerTitle.textContent = state.triggerTitle;
+        elements.breakdownTriggerSummary.textContent = state.triggerSummary;
+        elements.sheetKicker.textContent = state.sheetKicker;
+        elements.sheetTitle.textContent = state.sheetTitle;
+        elements.sheetSourceLink.href = state.sourceUrl;
+
+        const currentItems = state.breakdown.filter((item) => item.current);
+        const referenceItems = state.breakdown.filter((item) => !item.current);
+        elements.currentSection.hidden = currentItems.length === 0;
+        elements.currentTitle.textContent = state.currentHeading;
+        elements.currentScores.replaceChildren(...currentItems.map(createSourceScore));
+        elements.referenceSection.hidden = referenceItems.length === 0;
+        elements.referenceTitle.textContent = state.referenceHeading;
+        elements.referenceScores.replaceChildren(...referenceItems.map(createSourceScore));
+        elements.genres.replaceChildren(
+          ...state.genres.map((genre) => {
+            const tag = document.createElement("span");
+            tag.className = "tag";
+            tag.textContent = genre;
+            return tag;
+          }),
+        );
+        elements.announcer.textContent = `已切换到${state.label}状态`;
+      }
+
+      document.querySelectorAll('input[name="scenario"]').forEach((input) => {
+        input.addEventListener("change", (event) => renderScenario(event.target.value));
+      });
+
+      elements.breakdownTrigger.addEventListener("click", () => elements.sheet.showModal());
+      elements.retry.addEventListener("click", () => {
+        document.querySelector("#state-vgc").checked = true;
+        renderScenario("vgc");
+      });
+      elements.themeToggle.addEventListener("click", () => {
+        const nextTheme = elements.body.dataset.phoneTheme === "dark" ? "light" : "dark";
+        const isLight = nextTheme === "light";
+        elements.body.dataset.phoneTheme = nextTheme;
+        elements.themeToggle.setAttribute("aria-pressed", String(isLight));
+        elements.themeLabel.textContent = isLight ? "切换到深色界面" : "切换到浅色界面";
+      });
+    </script>
+  </body>
+</html>

@@ -6,8 +6,26 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
+import '../../../domain/models/game/vgc_rating.dart';
 import '../../../data/repository/game_repository.dart';
 import '../../../utils/logger.dart';
+
+const _vgcRatingHosts = {'videogamescritic.com', 'www.videogamescritic.com'};
+const _igdbRatingHosts = {'igdb.com', 'www.igdb.com'};
+
+@visibleForTesting
+Uri? trustedRatingSourceUri(String? sourceUrl, Set<String> allowedHosts) {
+  if (sourceUrl == null || sourceUrl.isEmpty) return null;
+  final uri = Uri.tryParse(sourceUrl);
+  if (uri == null ||
+      uri.scheme != 'https' ||
+      uri.userInfo.isNotEmpty ||
+      (uri.hasPort && uri.port != 443) ||
+      !allowedHosts.contains(uri.host.toLowerCase())) {
+    return null;
+  }
+  return uri;
+}
 
 /// 游戏详情页ViewModel - 管理单个游戏的详细信息和用户操作
 class GameDetailsViewModel extends ChangeNotifier {
@@ -24,6 +42,10 @@ class GameDetailsViewModel extends ChangeNotifier {
   List<Game> _randomRecommendations = [];
   bool _showLocalizedName = true; // 是否显示本地化名字
   bool _isInWishlist = false; // 是否在待玩列表中
+  VgcRating? _vgcRating;
+  bool _isRatingLoading = false;
+  int _ratingRequestId = 0;
+  bool _disposed = false;
 
   // Commands
   late Command<GameStatus, void> updateGameStatusCommand;
@@ -34,6 +56,7 @@ class GameDetailsViewModel extends ChangeNotifier {
   late Command<void, void> toggleNotesEditingCommand;
   late Command<void, void> toggleNameDisplayCommand;
   late Command<void, void> toggleWishlistCommand;
+  late Command<void, void> launchRatingSourceCommand;
 
   // 流订阅
   StreamSubscription? _gameStatusSubscription;
@@ -83,6 +106,12 @@ class GameDetailsViewModel extends ChangeNotifier {
 
   // 待玩相关
   bool get isInWishlist => _isInWishlist;
+  VgcRating? get vgcRating => _vgcRating;
+  bool get isRatingLoading => _isRatingLoading;
+  Uri? get ratingSourceUri =>
+      trustedRatingSourceUri(_vgcRating?.sourceUrl, _vgcRatingHosts) ??
+      trustedRatingSourceUri(_game?.igdbUrl, _igdbRatingHosts);
+  bool get hasRatingSource => ratingSourceUri != null;
 
   /// 初始化Commands
   void _initializeCommands() {
@@ -173,6 +202,24 @@ class GameDetailsViewModel extends ChangeNotifier {
       } catch (e) {
         _setError('打开商店页面失败: $e');
         AppLogger.error('Failed to open Steam store page: $e');
+      }
+    });
+
+    launchRatingSourceCommand = Command.createAsyncNoParamNoResult(() async {
+      final uri = ratingSourceUri;
+      if (uri == null) {
+        AppLogger.warning('Rejected untrusted rating source URL');
+        return;
+      }
+
+      try {
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          AppLogger.warning('Unable to open rating source: $uri');
+        }
+      } catch (e, stackTrace) {
+        AppLogger.error('Failed to open rating source', e, stackTrace);
       }
     });
 
@@ -273,14 +320,37 @@ class GameDetailsViewModel extends ChangeNotifier {
       _userNotes = game.userNotes;
       _randomRecommendations = _generateRandomRecommendations(count: 5);
       _isInWishlist = await _gameRepository.isInPlayQueue(_gameAppId);
+      _vgcRating = null;
+      _isRatingLoading = true;
+      final ratingRequestId = ++_ratingRequestId;
 
       _setLoading(false);
+      unawaited(_loadVgcRating(ratingRequestId));
       AppLogger.info('Game data loaded successfully for ${game.name}');
     } catch (e, stackTrace) {
       _setError('加载游戏数据失败: $e');
       _setLoading(false);
       AppLogger.error('Error loading game data', e, stackTrace);
     }
+  }
+
+  Future<void> _loadVgcRating(int requestId) async {
+    final result = await _gameRepository.getVgcRating(_gameAppId);
+    if (_disposed || requestId != _ratingRequestId) return;
+    result.fold(
+      (rating) {
+        _vgcRating = rating;
+        AppLogger.info('VGC rating loaded for $_gameAppId');
+      },
+      (error) {
+        _vgcRating = null;
+        AppLogger.warning(
+          'VGC rating unavailable for $_gameAppId; using IGDB fallback: $error',
+        );
+      },
+    );
+    _isRatingLoading = false;
+    notifyListeners();
   }
 
   List<Game> _generateRandomRecommendations({int count = 5}) {
@@ -350,6 +420,8 @@ class GameDetailsViewModel extends ChangeNotifier {
   @override
   void dispose() {
     AppLogger.info('Disposing GameDetailsViewModel for game $_gameAppId');
+    _disposed = true;
+    _ratingRequestId += 1;
 
     // 取消流订阅
     _gameStatusSubscription?.cancel();
@@ -364,6 +436,7 @@ class GameDetailsViewModel extends ChangeNotifier {
     toggleNotesEditingCommand.dispose();
     toggleNameDisplayCommand.dispose();
     toggleWishlistCommand.dispose();
+    launchRatingSourceCommand.dispose();
 
     super.dispose();
   }

@@ -20,9 +20,11 @@ trap cleanup EXIT
 check_igdb() {
   local label="$1"
   local base_url="$2"
+  local check_ratings="${3:-false}"
   local health_file="$smoke_tmp/${label}-health.json"
   local games_file="$smoke_tmp/${label}-games.json"
   local localizations_file="$smoke_tmp/${label}-localizations.json"
+  local rating_file="$smoke_tmp/${label}-rating.json"
 
   echo "Checking IGDB ${label}: ${base_url}"
   curl --fail --silent --show-error \
@@ -55,10 +57,36 @@ check_igdb() {
     echo "IGDB ${label} localization contract did not accept Steam app 620." >&2
     return 1
   }
+
+  if [[ "$check_ratings" == "true" ]]; then
+    curl --fail --silent --show-error \
+      --connect-timeout 5 --max-time "$timeout_seconds" \
+      "${base_url}/api/ratings/620" >"$rating_file"
+    rg -q '"steamId"[[:space:]]*:[[:space:]]*620' "$rating_file" || {
+      echo "IGDB ${label} VGC contract did not return Steam app 620." >&2
+      return 1
+    }
+    rg -q '"status"[[:space:]]*:[[:space:]]*"(scored|early_access)"' \
+      "$rating_file" || {
+      echo "IGDB ${label} VGC contract did not return a supported rating state." >&2
+      return 1
+    }
+    rg -q '"sourceUrl"[[:space:]]*:[[:space:]]*"https://videogamescritic\.com/game/620"' \
+      "$rating_file" || {
+      echo "IGDB ${label} VGC contract returned an unexpected source URL." >&2
+      return 1
+    }
+  fi
 }
 
-check_igdb local "$local_url"
+check_igdb local "$local_url" true
 check_igdb public "$public_url"
+
+echo "Checking live VGC scrape with an isolated cache."
+(
+  cd "$repo_root/services/igdb"
+  bun scripts/live-vgc-smoke.ts
+)
 
 if [[ -n "${NEXTPLAY_STEAM_API_KEY:-}" && -n "${NEXTPLAY_STEAM_ID:-}" ]]; then
   echo "Checking Steam owned-games contract with redacted credentials."

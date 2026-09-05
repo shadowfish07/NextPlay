@@ -8,6 +8,7 @@ import '../../domain/models/game/game.dart';
 import '../../domain/models/game/game_status.dart';
 import '../../domain/models/game/igdb_game_data.dart';
 import '../../domain/models/game/sync_progress.dart';
+import '../../domain/models/game/vgc_rating.dart';
 import '../../domain/models/discover/filter_criteria.dart';
 import '../../domain/models/discover/game_recommendation.dart';
 import '../../domain/models/discover/game_activity_stats.dart';
@@ -112,6 +113,9 @@ class GameRepository {
       : _gameCache.values;
 
   RecommendationStats get stats => _stats;
+
+  Future<Result<VgcRating, String>> getVgcRating(int steamId) =>
+      _igdbGameService.getVgcRating(steamId);
 
   /// 获取上次同步时间
   DateTime? get lastSyncTime {

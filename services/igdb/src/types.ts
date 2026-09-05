@@ -49,6 +49,39 @@ export interface ErrorData {
   reason: string;
 }
 
+export type VgcRatingStatus = "scored" | "early_access";
+
+export type VgcRatingComponentKind =
+  | "current_players"
+  | "steam_all_time"
+  | "press"
+  | "player_sentiment"
+  | "launch"
+  | "steam_recommend"
+  | "early_access_duration"
+  | "updates_90_days";
+
+export type VgcRatingUnit = "percent" | "score" | "years" | "count";
+
+export interface VgcRatingComponent {
+  kind: VgcRatingComponentKind;
+  value: number;
+  unit: VgcRatingUnit;
+}
+
+export interface VgcRating {
+  steamId: number;
+  status: VgcRatingStatus;
+  score?: number;
+  confidence?: "low" | "medium" | "high";
+  trend?: string;
+  computedLabel?: string;
+  sourceUrl: string;
+  fetchedAt: string;
+  stale: boolean;
+  components: VgcRatingComponent[];
+}
+
 // IGDB API Types
 export interface IGDBGame {
   id: number;

@@ -282,6 +282,8 @@ capture_key_state_screenshots() {
   local deadline=$((SECONDS + 240))
 
   for screenshot_name in \
+    vgc-rating-breakdown \
+    unavailable-rating \
     official-localization-status \
     localized-library \
     localized-details \
