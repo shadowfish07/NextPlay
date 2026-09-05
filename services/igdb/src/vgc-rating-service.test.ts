@@ -1,4 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { parseVgcRatingPage, VgcRatingService } from "./vgc-rating-service";
 
@@ -103,5 +107,87 @@ describe("VgcRatingService", () => {
     expect(await service.getRating(999999999)).toBeNull();
     expect(fetchCount).toBe(1);
     service.close();
+  });
+
+  test("bounds refresh concurrency across distinct Steam AppIDs", async () => {
+    let activeFetches = 0;
+    let maxActiveFetches = 0;
+    const service = new VgcRatingService({
+      dbPath: ":memory:",
+      maxConcurrentRefreshes: 2,
+      minRefreshIntervalMs: 0,
+      fetcher: (async () => {
+        activeFetches += 1;
+        maxActiveFetches = Math.max(maxActiveFetches, activeFetches);
+        await Bun.sleep(10);
+        activeFetches -= 1;
+        return new Response("not found", { status: 404 });
+      }) as typeof fetch,
+    });
+
+    await Promise.all([1, 2, 3, 4].map((steamId) => service.getRating(steamId)));
+
+    expect(maxActiveFetches).toBe(2);
+    service.close();
+  });
+
+  test("rejects refreshes beyond the bounded queue capacity", async () => {
+    let releaseFirst: (() => void) | undefined;
+    const firstFetch = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let fetchCount = 0;
+    const service = new VgcRatingService({
+      dbPath: ":memory:",
+      maxConcurrentRefreshes: 1,
+      minRefreshIntervalMs: 0,
+      maxPendingRefreshes: 2,
+      fetcher: (async () => {
+        fetchCount += 1;
+        if (fetchCount === 1) await firstFetch;
+        return new Response("not found", { status: 404 });
+      }) as typeof fetch,
+    });
+
+    const active = service.getRating(1);
+    const queued = service.getRating(2);
+    await expect(service.getRating(3)).rejects.toThrow(
+      "VGC refresh capacity exceeded",
+    );
+    releaseFirst?.();
+    await Promise.all([active, queued]);
+
+    expect(fetchCount).toBe(2);
+    service.close();
+  });
+
+  test("prunes old missing entries after reaching the cache bound", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "igdb-vgc-rating-"));
+    const dbPath = join(directory, "ratings.db");
+    const service = new VgcRatingService({
+      dbPath,
+      minRefreshIntervalMs: 0,
+      maxMissingCacheEntries: 2,
+      fetcher: (async () =>
+        new Response("not found", { status: 404 })) as typeof fetch,
+    });
+
+    try {
+      await service.getRating(1);
+      await service.getRating(2);
+      await service.getRating(3);
+      service.close();
+
+      const db = new Database(dbPath);
+      const rows = db
+        .query<{ steam_id: number }, []>(
+          "SELECT steam_id FROM vgc_ratings WHERE found = 0 ORDER BY steam_id",
+        )
+        .all();
+      db.close();
+      expect(rows.map((row) => row.steam_id)).toEqual([2, 3]);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });

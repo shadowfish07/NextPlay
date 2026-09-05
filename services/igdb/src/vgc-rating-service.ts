@@ -13,6 +13,10 @@ const FRESH_TTL_MS = 6 * 60 * 60 * 1000;
 const MISSING_TTL_MS = 24 * 60 * 60 * 1000;
 const STALE_RETRY_TTL_MS = 5 * 60 * 1000;
 const MAX_STALE_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const MAX_CONCURRENT_REFRESHES = 2;
+const MIN_REFRESH_INTERVAL_MS = 250;
+const MAX_PENDING_REFRESHES = 100;
+const MAX_MISSING_CACHE_ENTRIES = 1_000;
 
 interface VgcCacheRow {
   steam_id: number;
@@ -31,6 +35,16 @@ interface VgcRatingServiceOptions {
   dbPath?: string;
   fetcher?: typeof fetch;
   now?: () => number;
+  maxConcurrentRefreshes?: number;
+  minRefreshIntervalMs?: number;
+  maxPendingRefreshes?: number;
+  maxMissingCacheEntries?: number;
+}
+
+interface QueuedRefresh {
+  run: () => Promise<VgcRating | null>;
+  resolve: (rating: VgcRating | null) => void;
+  reject: (error: unknown) => void;
 }
 
 const metricDefinitions = new Map<string, MetricDefinition>([
@@ -152,7 +166,15 @@ export class VgcRatingService {
   private readonly db: Database;
   private readonly fetcher: typeof fetch;
   private readonly now: () => number;
+  private readonly maxConcurrentRefreshes: number;
+  private readonly minRefreshIntervalMs: number;
+  private readonly maxPendingRefreshes: number;
+  private readonly maxMissingCacheEntries: number;
   private readonly inFlight = new Map<number, Promise<VgcRating | null>>();
+  private readonly refreshQueue: QueuedRefresh[] = [];
+  private activeRefreshes = 0;
+  private nextRefreshAt = 0;
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: VgcRatingServiceOptions = {}) {
     this.db = new Database(options.dbPath ?? "./data/vgc-ratings.db", {
@@ -160,6 +182,22 @@ export class VgcRatingService {
     });
     this.fetcher = options.fetcher ?? fetch;
     this.now = options.now ?? Date.now;
+    this.maxConcurrentRefreshes = Math.max(
+      1,
+      options.maxConcurrentRefreshes ?? MAX_CONCURRENT_REFRESHES,
+    );
+    this.minRefreshIntervalMs = Math.max(
+      0,
+      options.minRefreshIntervalMs ?? MIN_REFRESH_INTERVAL_MS,
+    );
+    this.maxPendingRefreshes = Math.max(
+      this.maxConcurrentRefreshes,
+      options.maxPendingRefreshes ?? MAX_PENDING_REFRESHES,
+    );
+    this.maxMissingCacheEntries = Math.max(
+      0,
+      options.maxMissingCacheEntries ?? MAX_MISSING_CACHE_ENTRIES,
+    );
     this.db.run(`
       CREATE TABLE IF NOT EXISTS vgc_ratings (
         steam_id INTEGER PRIMARY KEY,
@@ -187,11 +225,62 @@ export class VgcRatingService {
     const existing = this.inFlight.get(steamId);
     if (existing) return existing;
 
-    const request = this.refreshRating(steamId, cached, now).finally(() => {
+    const request = this.enqueueRefresh(() =>
+      this.refreshRating(steamId, cached, now),
+    ).finally(() => {
       this.inFlight.delete(steamId);
     });
     this.inFlight.set(steamId, request);
     return request;
+  }
+
+  private enqueueRefresh(
+    run: () => Promise<VgcRating | null>,
+  ): Promise<VgcRating | null> {
+    if (
+      this.activeRefreshes + this.refreshQueue.length >=
+      this.maxPendingRefreshes
+    ) {
+      return Promise.reject(new Error("VGC refresh capacity exceeded"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.refreshQueue.push({ run, resolve, reject });
+      this.drainRefreshQueue();
+    });
+  }
+
+  private drainRefreshQueue(): void {
+    if (
+      this.refreshTimer ||
+      this.activeRefreshes >= this.maxConcurrentRefreshes ||
+      this.refreshQueue.length === 0
+    ) {
+      return;
+    }
+
+    const delay = Math.max(0, this.nextRefreshAt - Date.now());
+    if (delay > 0) {
+      this.refreshTimer = setTimeout(() => {
+        this.refreshTimer = null;
+        this.drainRefreshQueue();
+      }, delay);
+      return;
+    }
+
+    const queued = this.refreshQueue.shift();
+    if (!queued) return;
+
+    this.activeRefreshes += 1;
+    this.nextRefreshAt = Date.now() + this.minRefreshIntervalMs;
+    void queued
+      .run()
+      .then(queued.resolve, queued.reject)
+      .finally(() => {
+        this.activeRefreshes -= 1;
+        this.drainRefreshQueue();
+      });
+    this.drainRefreshQueue();
   }
 
   private async refreshRating(
@@ -282,6 +371,17 @@ export class VgcRatingService {
          VALUES (?, 0, NULL, ?, ?)`,
       )
       .run(steamId, fetchedAt, fetchedAt + MISSING_TTL_MS);
+    this.db
+      .query(
+        `DELETE FROM vgc_ratings
+         WHERE steam_id IN (
+           SELECT steam_id FROM vgc_ratings
+           WHERE found = 0
+           ORDER BY fetched_at DESC, steam_id DESC
+           LIMIT -1 OFFSET ?
+         )`,
+      )
+      .run(this.maxMissingCacheEntries);
   }
 
   private deferStaleRetry(steamId: number, failedAt: number): void {
@@ -293,6 +393,7 @@ export class VgcRatingService {
   }
 
   close(): void {
+    if (this.refreshTimer) clearTimeout(this.refreshTimer);
     this.db.close();
   }
 }
