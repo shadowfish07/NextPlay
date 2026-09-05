@@ -82,6 +82,12 @@ check_igdb() {
 check_igdb local "$local_url" true
 check_igdb public "$public_url"
 
+echo "Checking live VGC scrape with an isolated cache."
+(
+  cd "$repo_root/services/igdb"
+  bun scripts/live-vgc-smoke.ts
+)
+
 if [[ -n "${NEXTPLAY_STEAM_API_KEY:-}" && -n "${NEXTPLAY_STEAM_ID:-}" ]]; then
   echo "Checking Steam owned-games contract with redacted credentials."
   steam_file="$smoke_tmp/steam.json"

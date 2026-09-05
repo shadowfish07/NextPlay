@@ -90,7 +90,7 @@ describe("VgcRatingService", () => {
     expect(stale?.stale).toBe(true);
     expect(staleDuringBackoff?.stale).toBe(true);
     expect(fetchCount).toBe(2);
-    service.close();
+    await service.close();
   });
 
   test("caches missing Steam AppIDs for one day", async () => {
@@ -106,7 +106,7 @@ describe("VgcRatingService", () => {
     expect(await service.getRating(999999999)).toBeNull();
     expect(await service.getRating(999999999)).toBeNull();
     expect(fetchCount).toBe(1);
-    service.close();
+    await service.close();
   });
 
   test("bounds refresh concurrency across distinct Steam AppIDs", async () => {
@@ -128,7 +128,7 @@ describe("VgcRatingService", () => {
     await Promise.all([1, 2, 3, 4].map((steamId) => service.getRating(steamId)));
 
     expect(maxActiveFetches).toBe(2);
-    service.close();
+    await service.close();
   });
 
   test("rejects refreshes beyond the bounded queue capacity", async () => {
@@ -158,7 +158,7 @@ describe("VgcRatingService", () => {
     await Promise.all([active, queued]);
 
     expect(fetchCount).toBe(2);
-    service.close();
+    await service.close();
   });
 
   test("drops queued refreshes before the client deadline", async () => {
@@ -187,7 +187,7 @@ describe("VgcRatingService", () => {
     await active;
 
     expect(fetchCount).toBe(1);
-    service.close();
+    await service.close();
   });
 
   test("serves stale cache when the refresh queue is full", async () => {
@@ -223,7 +223,38 @@ describe("VgcRatingService", () => {
     expect(stale?.score).toBe(85);
     expect(stale?.stale).toBe(true);
     expect(fetchCount).toBe(2);
-    service.close();
+    await service.close();
+  });
+
+  test("settles queued work and waits for active refreshes when closing", async () => {
+    let releaseActive: (() => void) | undefined;
+    const activeFetch = new Promise<void>((resolve) => {
+      releaseActive = resolve;
+    });
+    const service = new VgcRatingService({
+      dbPath: ":memory:",
+      maxConcurrentRefreshes: 1,
+      minRefreshIntervalMs: 0,
+      fetcher: (async () => {
+        await activeFetch;
+        return new Response("not found", { status: 404 });
+      }) as typeof fetch,
+    });
+
+    const active = service.getRating(1);
+    const queued = service.getRating(2);
+    const queuedResult = queued.catch((error: unknown) => error);
+    const closing = service.close();
+
+    expect((await queuedResult as Error).message).toBe(
+      "VGC rating service is closed",
+    );
+    await expect(service.getRating(3)).rejects.toThrow(
+      "VGC rating service is closed",
+    );
+    releaseActive?.();
+    await active;
+    await closing;
   });
 
   test("prunes old missing entries after reaching the cache bound", async () => {
@@ -241,7 +272,7 @@ describe("VgcRatingService", () => {
       await service.getRating(1);
       await service.getRating(2);
       await service.getRating(3);
-      service.close();
+      await service.close();
 
       const db = new Database(dbPath);
       const rows = db

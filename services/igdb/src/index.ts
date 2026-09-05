@@ -204,11 +204,21 @@ console.log(`Endpoint: POST http://localhost:${PORT}/api/games`);
 console.log(`Endpoint: POST http://localhost:${PORT}/api/localizations`);
 console.log(`Endpoint: GET http://localhost:${PORT}/api/ratings/:steamId`);
 
-// Graceful shutdown
-process.on("SIGINT", () => {
+let shutdownStarted = false;
+async function shutdown(): Promise<void> {
+  if (shutdownStarted) return;
+  shutdownStarted = true;
   console.log("\nShutting down...");
+  await Promise.all([server.stop(false), vgcRatingService.close()]);
   gameService.close();
-  vgcRatingService.close();
-  server.stop();
   process.exit(0);
-});
+}
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, () => {
+    void shutdown().catch((error) => {
+      console.error("Shutdown failed:", error);
+      process.exit(1);
+    });
+  });
+}

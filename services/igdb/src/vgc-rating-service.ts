@@ -51,6 +51,7 @@ interface QueuedRefresh {
 }
 
 class VgcRefreshQueueError extends Error {}
+class VgcRatingServiceClosedError extends Error {}
 
 const metricDefinitions = new Map<string, MetricDefinition>([
   ["recent sentiment", { kind: "current_players", unit: "percent" }],
@@ -178,9 +179,12 @@ export class VgcRatingService {
   private readonly maxMissingCacheEntries: number;
   private readonly inFlight = new Map<number, Promise<VgcRating | null>>();
   private readonly refreshQueue: QueuedRefresh[] = [];
+  private readonly activeRefreshTasks = new Set<Promise<void>>();
   private activeRefreshes = 0;
   private nextRefreshAt = 0;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private closed = false;
+  private closePromise: Promise<void> | null = null;
 
   constructor(options: VgcRatingServiceOptions = {}) {
     this.db = new Database(options.dbPath ?? "./data/vgc-ratings.db", {
@@ -223,6 +227,9 @@ export class VgcRatingService {
     if (!Number.isSafeInteger(steamId) || steamId <= 0) {
       throw new Error("Steam AppID must be a positive integer");
     }
+    if (this.closed) {
+      throw new VgcRatingServiceClosedError("VGC rating service is closed");
+    }
 
     const cached = this.readCache(steamId);
     const now = this.now();
@@ -264,6 +271,11 @@ export class VgcRatingService {
   private enqueueRefresh(
     run: () => Promise<VgcRating | null>,
   ): Promise<VgcRating | null> {
+    if (this.closed) {
+      return Promise.reject(
+        new VgcRatingServiceClosedError("VGC rating service is closed"),
+      );
+    }
     if (
       this.activeRefreshes + this.refreshQueue.length >=
       this.maxPendingRefreshes
@@ -280,6 +292,10 @@ export class VgcRatingService {
   }
 
   private drainRefreshQueue(): void {
+    if (this.closed) {
+      this.rejectQueuedRefreshes();
+      return;
+    }
     if (this.refreshTimer) return;
 
     const now = Date.now();
@@ -314,7 +330,7 @@ export class VgcRatingService {
 
     this.activeRefreshes += 1;
     this.nextRefreshAt = Date.now() + this.minRefreshIntervalMs;
-    void queued
+    const task = queued
       .run()
       .then(queued.resolve, queued.reject)
       .finally(() => {
@@ -325,6 +341,8 @@ export class VgcRatingService {
         }
         this.drainRefreshQueue();
       });
+    this.activeRefreshTasks.add(task);
+    void task.then(() => this.activeRefreshTasks.delete(task));
     this.drainRefreshQueue();
   }
 
@@ -333,6 +351,16 @@ export class VgcRatingService {
       this.refreshTimer = null;
       this.drainRefreshQueue();
     }, delay);
+  }
+
+  private rejectQueuedRefreshes(): void {
+    while (this.refreshQueue.length > 0) {
+      this.refreshQueue
+        .shift()
+        ?.reject(
+          new VgcRatingServiceClosedError("VGC rating service is closed"),
+        );
+    }
   }
 
   private async refreshRating(
@@ -444,8 +472,19 @@ export class VgcRatingService {
       .run(failedAt + STALE_RETRY_TTL_MS, steamId);
   }
 
-  close(): void {
-    if (this.refreshTimer) clearTimeout(this.refreshTimer);
-    this.db.close();
+  close(): Promise<void> {
+    if (this.closePromise) return this.closePromise;
+
+    this.closed = true;
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+    this.rejectQueuedRefreshes();
+    const activeTasks = [...this.activeRefreshTasks];
+    this.closePromise = Promise.allSettled(activeTasks).then(() => {
+      this.db.close();
+    });
+    return this.closePromise;
   }
 }
