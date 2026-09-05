@@ -10,6 +10,23 @@ import '../../../domain/models/game/vgc_rating.dart';
 import '../../../data/repository/game_repository.dart';
 import '../../../utils/logger.dart';
 
+const _vgcRatingHosts = {'videogamescritic.com', 'www.videogamescritic.com'};
+const _igdbRatingHosts = {'igdb.com', 'www.igdb.com'};
+
+@visibleForTesting
+Uri? trustedRatingSourceUri(String? sourceUrl, Set<String> allowedHosts) {
+  if (sourceUrl == null || sourceUrl.isEmpty) return null;
+  final uri = Uri.tryParse(sourceUrl);
+  if (uri == null ||
+      uri.scheme != 'https' ||
+      uri.userInfo.isNotEmpty ||
+      (uri.hasPort && uri.port != 443) ||
+      !allowedHosts.contains(uri.host.toLowerCase())) {
+    return null;
+  }
+  return uri;
+}
+
 /// 游戏详情页ViewModel - 管理单个游戏的详细信息和用户操作
 class GameDetailsViewModel extends ChangeNotifier {
   final GameRepository _gameRepository;
@@ -91,9 +108,10 @@ class GameDetailsViewModel extends ChangeNotifier {
   bool get isInWishlist => _isInWishlist;
   VgcRating? get vgcRating => _vgcRating;
   bool get isRatingLoading => _isRatingLoading;
-  bool get hasRatingSource =>
-      (_vgcRating?.sourceUrl.isNotEmpty ?? false) ||
-      (_game?.igdbUrl?.isNotEmpty ?? false);
+  Uri? get ratingSourceUri =>
+      trustedRatingSourceUri(_vgcRating?.sourceUrl, _vgcRatingHosts) ??
+      trustedRatingSourceUri(_game?.igdbUrl, _igdbRatingHosts);
+  bool get hasRatingSource => ratingSourceUri != null;
 
   /// 初始化Commands
   void _initializeCommands() {
@@ -188,15 +206,17 @@ class GameDetailsViewModel extends ChangeNotifier {
     });
 
     launchRatingSourceCommand = Command.createAsyncNoParamNoResult(() async {
-      final sourceUrl = _vgcRating?.sourceUrl ?? _game?.igdbUrl;
-      if (sourceUrl == null || sourceUrl.isEmpty) return;
+      final uri = ratingSourceUri;
+      if (uri == null) {
+        AppLogger.warning('Rejected untrusted rating source URL');
+        return;
+      }
 
       try {
-        final uri = Uri.parse(sourceUrl);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         } else {
-          AppLogger.warning('Unable to open rating source: $sourceUrl');
+          AppLogger.warning('Unable to open rating source: $uri');
         }
       } catch (e, stackTrace) {
         AppLogger.error('Failed to open rating source', e, stackTrace);

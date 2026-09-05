@@ -79,10 +79,12 @@ describe("VgcRatingService", () => {
     now += 7 * 60 * 60 * 1000;
     shouldFail = true;
     const stale = await service.getRating(1245620);
+    const staleDuringBackoff = await service.getRating(1245620);
 
     expect(live?.stale).toBe(false);
     expect(stale?.score).toBe(85);
     expect(stale?.stale).toBe(true);
+    expect(staleDuringBackoff?.stale).toBe(true);
     expect(fetchCount).toBe(2);
     service.close();
   });

@@ -90,9 +90,18 @@ void main() {
   });
 
   testWidgets('marks a last-known-good VGC response as cached', (tester) async {
-    await pumpCard(tester, rating: scoredRating(stale: true));
+    await pumpCard(
+      tester,
+      rating: scoredRating(
+        stale: true,
+        fetchedAt: DateTime.now().toUtc().subtract(
+          const Duration(days: 2, hours: 1),
+        ),
+      ),
+    );
 
     expect(find.text('缓存数据'), findsOneWidget);
+    expect(find.text('缓存数据 · 2 天前'), findsOneWidget);
     expect(find.text('查看缓存评分构成'), findsOneWidget);
     expect(find.text('5 项 · 上次成功获取的数据'), findsOneWidget);
 
@@ -102,6 +111,23 @@ void main() {
     expect(find.text('缓存评分构成'), findsOneWidget);
     expect(find.text('缓存的当前口碑'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('keeps stale Early Access data explicitly scoreless', (
+    tester,
+  ) async {
+    await pumpCard(
+      tester,
+      rating: earlyAccessRating().copyWith(
+        stale: true,
+        fetchedAt: DateTime.now().toUtc().subtract(const Duration(days: 1)),
+      ),
+    );
+
+    expect(find.text('EA'), findsOneWidget);
+    expect(find.text('VGC 暂不评分'), findsOneWidget);
+    expect(find.text('抢先体验 · 缓存数据'), findsOneWidget);
+    expect(find.text('0–100 · 缓存数据'), findsNothing);
   });
 
   testWidgets('labels the existing IGDB score as a fallback', (tester) async {
@@ -130,7 +156,7 @@ void main() {
   });
 }
 
-VgcRating scoredRating({bool stale = false}) => VgcRating(
+VgcRating scoredRating({bool stale = false, DateTime? fetchedAt}) => VgcRating(
   steamId: 1245620,
   status: VgcRatingStatus.scored,
   score: 85,
@@ -138,7 +164,7 @@ VgcRating scoredRating({bool stale = false}) => VgcRating(
   trend: 'stable',
   computedLabel: '14h ago',
   sourceUrl: 'https://videogamescritic.com/game/1245620',
-  fetchedAt: DateTime.utc(2026, 9, 4),
+  fetchedAt: fetchedAt ?? DateTime.utc(2026, 9, 4),
   stale: stale,
   components: const [
     VgcRatingComponent(

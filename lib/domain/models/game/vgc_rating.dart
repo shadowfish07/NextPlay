@@ -65,6 +65,8 @@ enum VgcRatingUnit {
   String toJson() => name;
 }
 
+const _notProvided = Object();
+
 class VgcRatingComponent {
   const VgcRatingComponent({
     required this.kind,
@@ -95,21 +97,42 @@ class VgcRatingComponent {
     'value': value,
     'unit': unit.toJson(),
   };
+
+  VgcRatingComponent copyWith({
+    VgcRatingComponentKind? kind,
+    double? value,
+    VgcRatingUnit? unit,
+  }) => VgcRatingComponent(
+    kind: kind ?? this.kind,
+    value: value ?? this.value,
+    unit: unit ?? this.unit,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VgcRatingComponent &&
+          kind == other.kind &&
+          value == other.value &&
+          unit == other.unit;
+
+  @override
+  int get hashCode => Object.hash(kind, value, unit);
 }
 
 class VgcRating {
-  const VgcRating({
+  VgcRating({
     required this.steamId,
     required this.status,
     required this.sourceUrl,
     required this.fetchedAt,
     required this.stale,
-    required this.components,
+    required List<VgcRatingComponent> components,
     this.score,
     this.confidence,
     this.trend,
     this.computedLabel,
-  });
+  }) : components = List.unmodifiable(components);
 
   final int steamId;
   final VgcRatingStatus status;
@@ -185,4 +208,73 @@ class VgcRating {
     'stale': stale,
     'components': components.map((component) => component.toJson()).toList(),
   };
+
+  VgcRating copyWith({
+    int? steamId,
+    VgcRatingStatus? status,
+    Object? score = _notProvided,
+    Object? confidence = _notProvided,
+    Object? trend = _notProvided,
+    Object? computedLabel = _notProvided,
+    String? sourceUrl,
+    DateTime? fetchedAt,
+    bool? stale,
+    List<VgcRatingComponent>? components,
+  }) => VgcRating(
+    steamId: steamId ?? this.steamId,
+    status: status ?? this.status,
+    score: identical(score, _notProvided) ? this.score : score as double?,
+    confidence: identical(confidence, _notProvided)
+        ? this.confidence
+        : confidence as String?,
+    trend: identical(trend, _notProvided) ? this.trend : trend as String?,
+    computedLabel: identical(computedLabel, _notProvided)
+        ? this.computedLabel
+        : computedLabel as String?,
+    sourceUrl: sourceUrl ?? this.sourceUrl,
+    fetchedAt: fetchedAt ?? this.fetchedAt,
+    stale: stale ?? this.stale,
+    components: components ?? this.components,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VgcRating &&
+          steamId == other.steamId &&
+          status == other.status &&
+          score == other.score &&
+          confidence == other.confidence &&
+          trend == other.trend &&
+          computedLabel == other.computedLabel &&
+          sourceUrl == other.sourceUrl &&
+          fetchedAt == other.fetchedAt &&
+          stale == other.stale &&
+          _componentsEqual(components, other.components);
+
+  @override
+  int get hashCode => Object.hash(
+    steamId,
+    status,
+    score,
+    confidence,
+    trend,
+    computedLabel,
+    sourceUrl,
+    fetchedAt,
+    stale,
+    Object.hashAll(components),
+  );
+}
+
+bool _componentsEqual(
+  List<VgcRatingComponent> left,
+  List<VgcRatingComponent> right,
+) {
+  if (identical(left, right)) return true;
+  if (left.length != right.length) return false;
+  for (var index = 0; index < left.length; index += 1) {
+    if (left[index] != right[index]) return false;
+  }
+  return true;
 }

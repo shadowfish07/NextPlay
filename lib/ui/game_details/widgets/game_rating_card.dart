@@ -597,7 +597,7 @@ class _RatingPresentation {
         .map((component) => _RatingItem.from(component, earlyAccess))
         .toList();
     final freshness = rating.stale
-        ? '缓存数据 · ${_localizedAge(rating.computedLabel)}'
+        ? '缓存数据 · ${_localizedCacheAge(rating.fetchedAt)}'
         : earlyAccess
         ? '抢先体验'
         : '${_localizedAge(rating.computedLabel)}更新';
@@ -619,10 +619,12 @@ class _RatingPresentation {
           : 'VGC 综合质量分 $score 分，满分 100 分',
       freshnessLabel: freshness,
       title: earlyAccess ? 'VGC 暂不评分' : 'VGC 综合质量分',
-      subtitle: rating.stale
+      subtitle: earlyAccess
+          ? rating.stale
+                ? '抢先体验 · 缓存数据'
+                : '抢先体验阶段'
+          : rating.stale
           ? '0–100 · 缓存数据'
-          : earlyAccess
-          ? '抢先体验阶段'
           : '0–100 · 多来源加权',
       confidenceLabel: rating.stale ? '缓存数据' : confidence,
       triggerTitle: rating.stale
@@ -665,6 +667,17 @@ class _RatingPresentation {
       _ => '',
     };
     return '$amount $unit前';
+  }
+
+  static String _localizedCacheAge(DateTime fetchedAt) {
+    final age = DateTime.now().toUtc().difference(fetchedAt.toUtc());
+    if (age.isNegative || age.inMinutes < 1) return '刚刚';
+    if (age.inHours < 1) return '${age.inMinutes} 分钟前';
+    if (age.inDays < 1) return '${age.inHours} 小时前';
+    if (age.inDays < 7) return '${age.inDays} 天前';
+    if (age.inDays < 30) return '${age.inDays ~/ 7} 周前';
+    if (age.inDays < 365) return '${age.inDays ~/ 30} 个月前';
+    return '${age.inDays ~/ 365} 年前';
   }
 }
 

@@ -11,6 +11,7 @@ import type {
 const VGC_BASE_URL = "https://videogamescritic.com";
 const FRESH_TTL_MS = 6 * 60 * 60 * 1000;
 const MISSING_TTL_MS = 24 * 60 * 60 * 1000;
+const STALE_RETRY_TTL_MS = 5 * 60 * 1000;
 const MAX_STALE_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 interface VgcCacheRow {
@@ -178,7 +179,9 @@ export class VgcRatingService {
     const cached = this.readCache(steamId);
     const now = this.now();
     if (cached && cached.expires_at > now) {
-      return this.parseCached(cached, false);
+      const stale =
+        cached.found === 1 && cached.fetched_at + FRESH_TTL_MS <= now;
+      return this.parseCached(cached, stale);
     }
 
     const existing = this.inFlight.get(steamId);
@@ -232,6 +235,7 @@ export class VgcRatingService {
         cached.data &&
         cached.fetched_at >= fetchedAt - MAX_STALE_AGE_MS
       ) {
+        this.deferStaleRetry(steamId, this.now());
         console.warn(
           `[VGC] Live refresh failed for Steam ID ${steamId}; serving stale cache`,
         );
@@ -278,6 +282,14 @@ export class VgcRatingService {
          VALUES (?, 0, NULL, ?, ?)`,
       )
       .run(steamId, fetchedAt, fetchedAt + MISSING_TTL_MS);
+  }
+
+  private deferStaleRetry(steamId: number, failedAt: number): void {
+    this.db
+      .query(
+        "UPDATE vgc_ratings SET expires_at = ? WHERE steam_id = ? AND found = 1",
+      )
+      .run(failedAt + STALE_RETRY_TTL_MS, steamId);
   }
 
   close(): void {
