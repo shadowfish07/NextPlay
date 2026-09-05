@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nextplay/domain/models/game/game.dart';
 import 'package:nextplay/domain/models/game/vgc_rating.dart';
 import 'package:nextplay/ui/core/app_keys.dart';
-import 'package:nextplay/ui/game_details/widgets/game_rating_card.dart';
+import 'package:nextplay/ui/game_details/widgets/game_metadata_card.dart';
 
 void main() {
   Future<void> pumpCard(
@@ -23,15 +23,15 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: GameRatingCard(
+            child: GameMetadataCard(
               game: Game(
                 appId: 1245620,
                 name: 'ELDEN RING',
                 aggregatedRating: igdbScore,
               ),
-              rating: rating,
-              isLoading: isLoading,
-              onOpenSource: () {},
+              vgcRating: rating,
+              isRatingLoading: isLoading,
+              onOpenRatingSource: () {},
             ),
           ),
         ),
@@ -153,6 +153,18 @@ void main() {
 
     expect(find.text('正在获取 VGC 评分…'), findsOneWidget);
     expect(find.text('IGDB 媒体均分'), findsNothing);
+  });
+
+  testWidgets('preserves an explicit unavailable state without either score', (
+    tester,
+  ) async {
+    await pumpCard(tester, igdbScore: 0);
+
+    expect(find.byKey(AppKeys.detailsRating), findsOneWidget);
+    expect(find.text('暂无评分'), findsOneWidget);
+    expect(find.text('VGC 与 IGDB 均无可用数据'), findsOneWidget);
+    expect(find.text('评分不可用'), findsOneWidget);
+    expect(find.byKey(AppKeys.detailsRatingBreakdown), findsNothing);
   });
 }
 

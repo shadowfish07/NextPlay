@@ -305,6 +305,30 @@ void main() {
     await _waitFor(tester, find.byKey(AppKeys.libraryScreen));
     await tester.enterText(find.byKey(AppKeys.librarySearch), '');
     await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.enterText(find.byKey(AppKeys.librarySearch), 'Hollow Knight');
+    await tester.pump(const Duration(milliseconds: 300));
+    final unratedItem = find.byKey(AppKeys.libraryItem(367520));
+    await Scrollable.ensureVisible(tester.element(unratedItem), alignment: 0.5);
+    await tester.tap(
+      find.descendant(of: unratedItem, matching: find.byType(InkWell)),
+    );
+    await _waitFor(tester, find.byKey(AppKeys.detailsScreen));
+    final unavailableRating = find.text('暂无评分');
+    await _waitFor(tester, unavailableRating);
+    expect(find.text('VGC 与 IGDB 均无可用数据'), findsOneWidget);
+    expect(find.text('评分不可用'), findsOneWidget);
+    if (_captureVisualEvidence) {
+      await tester.ensureVisible(unavailableRating);
+      await tester.pump(const Duration(milliseconds: 500));
+      await _holdForScreenshot(tester, 'unavailable-rating');
+    }
+
+    expect(await tester.binding.handlePopRoute(), isTrue);
+    await tester.pump(const Duration(milliseconds: 300));
+    await _waitFor(tester, find.byKey(AppKeys.libraryScreen));
+    await tester.enterText(find.byKey(AppKeys.librarySearch), '');
+    await tester.pump(const Duration(milliseconds: 300));
     await _tapAndWait(tester, AppKeys.settingsDestination);
     await _waitFor(tester, find.byKey(AppKeys.settingsScreen));
     expect(find.byKey(AppKeys.settingsSync), findsOneWidget);

@@ -27,15 +27,14 @@ class IgdbGameService {
     if (steamId <= 0) return const Failure('Invalid Steam AppID');
 
     try {
-      final response = await _dio.get(
-        '/api/ratings/$steamId',
-        options: Options(
-          receiveTimeout: const Duration(seconds: 15),
-          validateStatus: (status) =>
-              status != null &&
-              ((status >= 200 && status < 300) || status == 404),
-        ),
-      );
+      final request = Options(
+        receiveTimeout: const Duration(seconds: 15),
+        validateStatus: (status) =>
+            status != null &&
+            ((status >= 200 && status < 300) || status == 404),
+      ).compose(_dio.options, '/api/ratings/$steamId');
+      request.connectTimeout = const Duration(seconds: 5);
+      final response = await _dio.fetch<dynamic>(request);
       final statusCode = response.statusCode ?? 0;
       if (statusCode == 404) return const Failure(vgcRatingNotFoundError);
       if (statusCode < 200 || statusCode >= 300) {

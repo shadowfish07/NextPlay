@@ -283,6 +283,7 @@ capture_key_state_screenshots() {
 
   for screenshot_name in \
     vgc-rating-breakdown \
+    unavailable-rating \
     official-localization-status \
     localized-library \
     localized-details \

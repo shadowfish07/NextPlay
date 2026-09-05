@@ -23,7 +23,6 @@ class GameRatingCard extends StatelessWidget {
     if (isLoading) return const _RatingLoadingCard();
 
     final presentation = _RatingPresentation.from(game, rating);
-    if (presentation == null) return const SizedBox.shrink();
     final theme = Theme.of(context);
     final color = _scoreColor(theme, presentation.numericScore);
 
@@ -559,9 +558,28 @@ class _RatingPresentation {
   final String sourceActionLabel;
   final List<_RatingItem> items;
 
-  static _RatingPresentation? from(Game game, VgcRating? rating) {
+  static _RatingPresentation from(Game game, VgcRating? rating) {
     if (rating == null) {
-      if (game.aggregatedRating <= 0) return null;
+      if (game.aggregatedRating <= 0) {
+        return _RatingPresentation(
+          sourceLabel: 'NO SCORE',
+          scoreText: '—',
+          numericScore: null,
+          semanticLabel: 'VGC 与 IGDB 均暂无可用评分',
+          freshnessLabel: '评分不可用',
+          title: '暂无评分',
+          subtitle: 'VGC 与 IGDB 均无可用数据',
+          confidenceLabel: '稍后重试',
+          triggerTitle: '',
+          triggerSummary: '',
+          sheetKicker: '',
+          sheetTitle: '',
+          currentHeading: '',
+          referenceHeading: '',
+          sourceActionLabel: '',
+          items: const [],
+        );
+      }
       final score = game.aggregatedRating.round();
       return _RatingPresentation(
         sourceLabel: 'IGDB MEDIA',

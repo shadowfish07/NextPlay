@@ -25,16 +25,16 @@ class GameMetadataCard extends StatelessWidget {
 
     final rows = <Widget>[];
 
-    if (isRatingLoading || vgcRating != null || game.aggregatedRating > 0) {
-      rows.add(
-        GameRatingCard(
-          game: game,
-          rating: vgcRating,
-          isLoading: isRatingLoading,
-          onOpenSource: onOpenRatingSource,
-        ),
-      );
-    }
+    rows.add(
+      GameRatingCard(
+        game: game,
+        rating: vgcRating,
+        isLoading: isRatingLoading,
+        onOpenSource: vgcRating != null || game.aggregatedRating > 0
+            ? onOpenRatingSource
+            : null,
+      ),
+    );
 
     if (game.genres.isNotEmpty) {
       rows.add(
