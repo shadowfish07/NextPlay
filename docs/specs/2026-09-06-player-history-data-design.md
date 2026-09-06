@@ -168,3 +168,7 @@
 - [Steam ISteamUserStats](https://partner.steamgames.com/doc/webapi/ISteamUserStats)：个人成就、统计及游戏定义接口。
 - [Microsoft Graph upload session](https://learn.microsoft.com/en-us/graph/api/driveitem-createuploadsession?view=graph-rest-1.0)：OneDrive 文件上传与续传，方案讨论时已核对。
 - [OneDrive Files On-Demand for Mac](https://support.microsoft.com/en-us/onedrive/save-disk-space-with-onedrive-files-on-demand-for-mac)：仅联机文件与释放本地空间的区别，方案讨论时已核对。
+
+## 2026-09-07 交互修正
+
+App 历史功能复用现有后端与已保存的 Steam 凭据，自动完成账号认证和上传。设置页只提供状态与立即同步，不要求填写服务地址或历史令牌。服务端将 Steam ID 与显式配置的凭据一并校验，不能仅凭公开账号 ID 读取历史。旧手动连接配置在启动时清理。

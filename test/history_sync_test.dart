@@ -1,10 +1,10 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nextplay/data/service/game_database_service.dart';
 import 'package:nextplay/data/service/history_sync_service.dart';
 import 'support/host_database.dart';
+import 'support/fake_services.dart';
 
 class _Storage implements HistoryConnectionStorage {
   String? value;
@@ -24,7 +24,7 @@ class _Storage implements HistoryConnectionStorage {
 void main() {
   initializeHostDatabase();
   test(
-    'connect validates binding; failed uploads and account switches preserve events',
+    'automatic sync uses existing backend and rejects mismatched accounts',
     () async {
       final dir = await Directory.systemTemp.createTemp('history-sync-');
       var account = '76561198000000000';
@@ -40,9 +40,13 @@ void main() {
         InterceptorsWrapper(
           onRequest: (options, handler) {
             requests++;
-            if (options.path.endsWith('/status')) {
+            expect(Uri.parse(options.path).host, 'igdb.zqydev.me');
+            if (options.path.endsWith('/session')) {
               handler.resolve(
-                Response(requestOptions: options, data: {'steamId': account}),
+                Response(
+                  requestOptions: options,
+                  data: {'steamId': '76561198000000000', 'token': 'a' * 32},
+                ),
               );
             } else if (fail) {
               handler.reject(DioException(requestOptions: options));
@@ -65,28 +69,28 @@ void main() {
         database: db,
         account: () => account,
         storage: storage,
+        apiKeyStorage: FakeApiKeyStorage(value: 'existing-steam-key'),
         dio: dio,
       );
       await db.updateUserGameStatus(1, 'playing');
-      await expectLater(
-        sync.connect('http://unsafe', 'a' * 32),
-        throwsFormatException,
-      );
-      await sync.connect('https://history.example', 'a' * 32);
-      expect(sync.connected, isTrue);
+      storage.value = '{"endpoint":"https://obsolete.example","token":"old"}';
+      await sync.start();
+      expect(sync.connected, isFalse);
       expect(await db.pendingHistory(account), isNotEmpty);
-      expect(jsonDecode(storage.value!)['account'], account);
+      expect(storage.value, isNull);
       final old = account;
       account = '76561198000000001';
       final before = requests;
       await sync.sync();
-      expect(requests, before);
+      expect(requests, before + 1);
       expect(await db.pendingHistory(old), isNotEmpty);
       account = old;
       fail = false;
       await sync.sync();
       expect(await db.pendingHistory(old), isEmpty);
-      await sync.disconnect();
+      account = '';
+      await sync.sync();
+      expect(sync.connected, isFalse);
       expect(storage.value, isNull);
       sync.dispose();
       await db.close();

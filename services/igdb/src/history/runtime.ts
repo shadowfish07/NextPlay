@@ -161,6 +161,21 @@ export class HistoryRuntime {
   async handle(req: Request): Promise<Response | null> {
     const url = new URL(req.url);
     if (!url.pathname.startsWith("/api/history/")) return null;
+    // Bootstrap only an explicitly configured account with its existing Steam
+    // credential. A public Steam ID alone never authorizes private history.
+    if (url.pathname === "/api/history/session" && req.method === "POST") {
+      const key = req.headers.get("authorization")?.replace(/^SteamKey /, "") ?? "";
+      const bound = this.accounts.find((a) =>
+        a.steamId === req.headers.get("x-steam-id") &&
+        req.headers.get("authorization")?.startsWith("SteamKey ") &&
+        Buffer.byteLength(key) === Buffer.byteLength(a.apiKey) &&
+        timingSafeEqual(Buffer.from(key), Buffer.from(a.apiKey)),
+      );
+      return Response.json(bound ? { steamId: bound.steamId, token: bound.token } : { error: "Unauthorized" }, {
+        status: bound ? 200 : 401,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
     const token =
       req.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
     const account = this.accounts.find(

@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'game_database_service.dart';
+import 'api_key_storage.dart';
+import '../../config/backend.dart';
 
 abstract interface class HistoryConnectionStorage {
   Future<String?> read();
@@ -28,6 +29,7 @@ class HistorySyncService extends ChangeNotifier {
   HistorySyncService({
     required this.database,
     required this.account,
+    required this.apiKeyStorage,
     this.storage,
     Dio? dio,
   }) : _dio =
@@ -41,6 +43,7 @@ class HistorySyncService extends ChangeNotifier {
            );
   final GameDatabaseService database;
   final String Function() account;
+  final ApiKeyStorage apiKeyStorage;
   final HistoryConnectionStorage? storage;
   final Dio _dio;
   Map<String, dynamic>? _connection;
@@ -48,16 +51,14 @@ class HistorySyncService extends ChangeNotifier {
   bool _busy = false;
   Completer<void>? _idle;
   bool _disposed = false;
-  String message = '操作历史保存在本机，连接服务后可自动上传';
+  String message = '操作历史会自动同步到 NextPlay';
   bool get connected => _connection != null;
   bool get busy => _busy;
 
   Future<void> start() async {
     try {
-      final saved = await storage?.read();
-      if (saved != null) {
-        _connection = jsonDecode(saved) as Map<String, dynamic>;
-      }
+      // Discard obsolete user-entered endpoints. Credentials never go to a saved URL.
+      await storage?.delete();
       await sync();
     } catch (_) {
       message = '历史连接读取失败，本机记录仍保留';
@@ -71,66 +72,43 @@ class HistorySyncService extends ChangeNotifier {
     }
   }
 
-  Future<void> connect(String endpoint, String token) async {
-    final uri = Uri.tryParse(endpoint.trim());
-    if (uri == null ||
-        uri.scheme != 'https' ||
-        uri.host.isEmpty ||
-        uri.userInfo.isNotEmpty ||
-        uri.hasQuery ||
-        uri.hasFragment ||
-        token.trim().length < 32) {
-      throw const FormatException('请填写 HTTPS 服务地址和有效访问令牌');
-    }
-    if (account().isEmpty || storage == null) {
-      throw const FormatException('请先连接 Steam 账号');
-    }
-    final current = account();
-    final base = endpoint.trim().replaceFirst(RegExp(r'/+$'), '');
-    final response = await _dio.get(
-      '$base/api/history/status',
-      options: Options(headers: {'Authorization': 'Bearer ${token.trim()}'}),
-    );
-    if (response.data['steamId'] != current || account() != current) {
-      throw const FormatException('历史服务绑定的 Steam 账号与当前账号不一致');
-    }
-    final connection = {
-      'endpoint': base,
-      'token': token.trim(),
-      'account': current,
-    };
-    await storage!.write(jsonEncode(connection));
-    _connection = connection;
-    await sync();
-  }
-
-  Future<void> disconnect() async {
-    await storage?.delete();
-    _connection = null;
-    message = '已断开上传连接，本机记录仍保留；服务端采集需在服务端停用';
-    if (!_disposed) notifyListeners();
-  }
-
   Future<void> sync() async {
-    if (_busy || _disposed || _connection == null) return;
-    final connection = Map<String, dynamic>.from(_connection!);
-    final bound = connection['account'] as String;
-    if (account() != bound) {
-      message = '当前 Steam 账号与历史连接不一致，已暂停上传';
+    if (_busy || _disposed) return;
+    final bound = account();
+    if (bound.isEmpty) {
+      _connection = null;
+      message = '连接 Steam 账号后，操作历史会自动同步';
       if (!_disposed) notifyListeners();
       return;
     }
     _busy = true;
     _idle = Completer<void>();
     try {
+      final key = await apiKeyStorage.read();
+      if (key == null || key.isEmpty || account() != bound) return;
+      final response = await _dio.post(
+        '$backendBaseUrl/api/history/session',
+        options: Options(
+          headers: {'Authorization': 'SteamKey $key', 'X-Steam-Id': bound},
+        ),
+      );
+      if (response.data['steamId'] != bound ||
+          account() != bound ||
+          _disposed) {
+        throw const FormatException('History account changed');
+      }
+      final token = response.data['token'];
+      if (token is! String || token.length < 32) {
+        throw const FormatException('Invalid history session');
+      }
+      _connection = {'account': bound};
       final events = await database.pendingHistory(bound);
+      if (_disposed || account() != bound) return;
       if (events.isNotEmpty) {
         final response = await _dio.post(
-          '${connection['endpoint']}/api/history/events',
+          '$backendBaseUrl/api/history/events',
           data: {'events': events},
-          options: Options(
-            headers: {'Authorization': 'Bearer ${connection['token']}'},
-          ),
+          options: Options(headers: {'Authorization': 'Bearer $token'}),
         );
         final accepted = (response.data['accepted'] as List).cast<String>();
         final sent = events.map((event) => event['id']).toSet();
@@ -142,7 +120,8 @@ class HistorySyncService extends ChangeNotifier {
       final remaining = await database.pendingHistory(bound);
       message = remaining.isEmpty ? '本机操作记录已同步' : '仍有操作记录等待上传';
     } catch (_) {
-      message = '上传暂时失败，操作记录已保留，将自动重试';
+      _connection = null;
+      message = '暂时无法同步，操作记录已保留，将自动重试';
     } finally {
       _busy = false;
       _idle?.complete();

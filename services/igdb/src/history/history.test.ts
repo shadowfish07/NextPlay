@@ -191,6 +191,21 @@ test("private routes reject anonymous access and never select account from reque
   roots.push(root);
   const rt = new HistoryRuntime([account], root, {});
   stores.push(rt.store);
+  for (const [id, key, status] of [
+    [account.steamId, account.apiKey, 200],
+    [account.steamId, "wrong", 401],
+    ["76561198000000001", account.apiKey, 401],
+    [account.steamId, "", 401],
+  ] as const) {
+    const session = (await rt.handle(new Request("http://local/api/history/session", {
+      method: "POST",
+      headers: { Authorization: `SteamKey ${key}`, "X-Steam-Id": id },
+    })))!;
+    expect(session.status).toBe(status);
+    expect(session.headers.get("cache-control")).toBe("no-store");
+    const body = await session.json() as any;
+    expect(body.token).toBe(status === 200 ? account.token : undefined);
+  }
   expect(
     (await rt.handle(new Request("http://local/api/history/status")))!.status,
   ).toBe(401);

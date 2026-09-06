@@ -35,3 +35,7 @@ The client SHALL atomically record supported user mutations with an account-boun
 #### Scenario: Offline mutation and restart
 - **WHEN** the user changes game state offline and restarts
 - **THEN** both the changed state and its pending event survive and can later be delivered without duplicates.
+
+#### Scenario: Automatic existing backend authentication
+- **WHEN** the app has a configured Steam account and its securely stored API key
+- **THEN** it authenticates against the existing NextPlay backend without a separate service configuration form, and mismatched credentials or account IDs cannot authorize history access.

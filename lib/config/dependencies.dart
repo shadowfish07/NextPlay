@@ -102,6 +102,7 @@ class AppDependencies {
       database: database,
       account: () => sharedPreferences.getString('steam_id') ?? '',
       storage: historyConnectionStorage,
+      apiKeyStorage: apiKeyStorage,
     );
     if (historyConnectionStorage != null) unawaited(historySync.start());
 

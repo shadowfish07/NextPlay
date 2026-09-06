@@ -591,7 +591,7 @@ errors and uncertain results remain visible rather than replacing values with
 zero. Initial values are baselines, not newly earned playtime. API playtime
 samples describe observation intervals, not precise sessions or daily totals.
 
-Private endpoints require `Authorization: Bearer <account-history-token>` and
+Private data endpoints require `Authorization: Bearer <account-history-token>` and
 return `Cache-Control: no-store`. The token selects the account; query parameters
 cannot select another account.
 
@@ -608,13 +608,24 @@ cannot select another account.
   Repeated identical IDs are acknowledged; conflicting IDs or mismatched
   accounts are rejected atomically. A paused account returns 409.
 
-In Android Settings → 游玩档案, connect the HTTPS service URL and the account's
-history token. The connection is kept in secure storage, separately from the
-Steam API key. User state/notes/tags and queue mutations append events in the
-same SQLite transaction. Offline events survive restart; account switching
-pauses mismatched uploads. Disconnecting the app's upload connection does not
-stop server collection. A preexisting local state is imported as a baseline;
-this does not reconstruct older operations. There is no new trend screen yet.
+The app automatically uses the same `https://igdb.zqydev.me` backend as metadata.
+`POST /api/history/session` takes `Authorization: SteamKey <existing-steam-api-key>`
+and `X-Steam-Id`. Both must match one explicitly configured tracking account;
+it returns that account's `steamId` and history `token` with `Cache-Control: no-store`.
+A Steam ID alone is insufficient. The app reads the existing key only through
+`ApiKeyStorage`, uses HTTPS without redirects, and keeps the returned token in
+memory for the upload. There is no server address or history token form.
+Obsolete saved history connections are deleted on startup.
+
+Android Settings → 游玩档案 shows automatic sync status and an immediate sync
+button. User state/notes/tags and queue mutations append events in the same
+SQLite transaction. Offline events survive restart; account changes require
+fresh authentication. Backend collection still requires operator configuration.
+A preexisting local state is imported as a baseline; this does not reconstruct
+older operations. There is no new trend screen yet. The old `history.connect`,
+`history.endpoint`, `history.token`, `history.save`, `history.error` and
+`history.disconnect` selectors are retained as constants for compatibility but
+have no corresponding controls; `history.status` and `history.sync` remain active.
 
 ### OneDrive authorization and retention
 

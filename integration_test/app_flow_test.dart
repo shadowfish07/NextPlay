@@ -21,6 +21,7 @@ import 'package:nextplay/ui/discover/widgets/new_game_recommendation_card.dart';
 import 'package:nextplay/ui/settings/view_models/settings_view_model.dart';
 
 import '../test/support/fixtures.dart';
+import '../test/support/fake_services.dart';
 import '../test/support/test_app.dart';
 
 const _captureVisualEvidence = bool.fromEnvironment(
@@ -337,16 +338,14 @@ void main() {
     await _waitFor(tester, find.byKey(AppKeys.settingsScreen));
     expect(find.byKey(AppKeys.settingsSync), findsOneWidget);
 
-    final historyConnect = find.byKey(AppKeys.historyConnect);
-    await tester.ensureVisible(historyConnect);
-    await tester.tap(historyConnect);
+    await Scrollable.ensureVisible(
+      tester.element(find.byKey(AppKeys.historyStatus)),
+      alignment: 0.4,
+    );
     await tester.pumpAndSettle();
-    expect(find.byKey(AppKeys.historyEndpoint), findsOneWidget);
-    await tester.tap(find.byKey(AppKeys.historySave));
-    await tester.pumpAndSettle();
-    expect(find.byKey(AppKeys.historyError), findsOneWidget);
-    await tester.tap(find.text('取消'));
-    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.historySync), findsOneWidget);
+    expect(find.byKey(AppKeys.historyConnect), findsNothing);
+    expect(find.byKey(AppKeys.historyEndpoint), findsNothing);
     final historyDatabase = Provider.of<GameDatabaseService>(
       tester.element(find.byKey(AppKeys.settingsScreen)),
       listen: false,
@@ -371,8 +370,13 @@ void main() {
     );
     historyServer.listen((request) async {
       request.response.headers.contentType = ContentType.json;
-      if (request.uri.path.endsWith('/status')) {
-        request.response.write(jsonEncode({'steamId': TestFixtures.steamId}));
+      if (request.uri.path.endsWith('/session')) {
+        request.response.write(
+          jsonEncode({
+            'steamId': TestFixtures.steamId,
+            'token': 'test-history-token-00000000000000000000',
+          }),
+        );
       } else {
         final body = jsonDecode(await utf8.decoder.bind(request).join());
         request.response.write(
@@ -399,20 +403,17 @@ void main() {
       database: historyDatabase,
       account: () => TestFixtures.steamId,
       storage: historyStorage,
+      apiKeyStorage: FakeApiKeyStorage(value: TestFixtures.apiKey),
       dio: historyTransport,
     );
     try {
-      await historySync.connect(
-        'https://history.example',
-        'test-history-token-00000000000000000000',
-      );
+      await historySync.start();
       expect(historySync.connected, isTrue);
-      expect(await historyStorage.read(), isNotNull);
+      expect(await historyStorage.read(), isNull);
       expect(
         await historyDatabase.pendingHistory(TestFixtures.steamId),
         isEmpty,
       );
-      await historySync.disconnect();
       expect(await historyStorage.read(), isNull);
     } finally {
       await historySync.close();
