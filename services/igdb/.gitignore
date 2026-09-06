@@ -8,3 +8,4 @@ data/*.db-wal
 .cursor/
 CLAUDE.md
 dist/
+data/history/

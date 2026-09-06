@@ -2,6 +2,15 @@ import 'package:flutter/foundation.dart';
 
 /// Stable identifiers shared by Flutter tests and Android accessibility tools.
 abstract final class AppKeys {
+  static const historyStatus = Key('history.status');
+  static const historyConnect = Key('history.connect');
+  static const historySync = Key('history.sync');
+  static const historyDisconnect = Key('history.disconnect');
+  static const historyEndpoint = Key('history.endpoint');
+  static const historyToken = Key('history.token');
+  static const historySave = Key('history.save');
+  static const historyError = Key('history.error');
+
   static const onboardingScreen = ValueKey('onboarding.screen');
   static const onboardingNext = ValueKey('onboarding.next');
   static const onboardingPrevious = ValueKey('onboarding.previous');

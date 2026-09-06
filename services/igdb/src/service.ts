@@ -18,8 +18,9 @@ export class GameService {
     clientId: string,
     clientSecret: string,
     localizer?: GameLocalizer,
+    fetcher: typeof fetch = fetch,
   ) {
-    this.igdbClient = new IGDBClient(clientId, clientSecret);
+    this.igdbClient = new IGDBClient(clientId, clientSecret, fetcher);
     this.cache = new CacheManager();
     this.localizer = localizer;
   }

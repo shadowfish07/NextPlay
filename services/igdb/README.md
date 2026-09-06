@@ -565,3 +565,125 @@ igdb_service/
 ## License
 
 MIT
+
+## Private player history (opt-in)
+
+History is disabled unless `NEXTPLAY_HISTORY_ENABLED=true`. It has a separate
+SQLite database and compressed raw files under `NEXTPLAY_HISTORY_DIR` (default
+`data/history`). Configure only in ignored `services/igdb/.env` or the process
+environment. Never place API keys, history tokens or Microsoft tokens in root
+committed configuration, URLs or logs.
+
+`NEXTPLAY_HISTORY_ACCOUNTS` is a JSON array of objects with `id`, `steamId`,
+`apiKeyEnv`, `tokenEnv`, and optional IANA `timeZone` (default `Asia/Shanghai`).
+`apiKeyEnv` and `tokenEnv` name environment variables; the token must be unique
+and at least 32 characters. Generate a cryptographically random token. The
+operator binds this configuration to an account; the public API does not allow
+self-enrollment using an arbitrary Steam ID. Stop the service before changing
+account bindings. Never reuse an internal tracking ID for another Steam user.
+
+The service records hourly library/recent-games observations, per-game
+achievements/stats every six hours for recently active games and weekly for the
+remaining games, weekly schemas and metadata, and daily rating checks. Source
+raw responses retain unknown fields. Actual upstream metadata responses are
+archived separately from cache/service views. Every attempt has a durable job;
+errors and uncertain results remain visible rather than replacing values with
+zero. Initial values are baselines, not newly earned playtime. API playtime
+samples describe observation intervals, not precise sessions or daily totals.
+
+Private endpoints require `Authorization: Bearer <account-history-token>` and
+return `Cache-Control: no-store`. The token selects the account; query parameters
+cannot select another account.
+
+- `GET /api/history/status`: bound Steam ID, tracking state, collection coverage,
+  source quality, archive state and disk pause status.
+- `GET /api/history/playtime?appid=<app-id>&after=<UTC-ms>`: up to 1,000 ordered
+  samples with cumulative minutes, nullable delta and quality. Advance `after`
+  to the last returned observation time. Missing, baseline and correction
+  samples must not be rendered as zero activity.
+- `POST /api/history/events`: `{ "events": [...] }`, at most 100 events and 1 MB.
+  Events contain `id`, `account` (Steam user ID), `device`, `sequence`,
+  `occurredAt` (UTC milliseconds), `version: 1`, `type`, `before`, `after`, and
+  optional `batchId`. Response `accepted` lists durably recorded event IDs.
+  Repeated identical IDs are acknowledged; conflicting IDs or mismatched
+  accounts are rejected atomically. A paused account returns 409.
+
+In Android Settings → 游玩档案, connect the HTTPS service URL and the account's
+history token. The connection is kept in secure storage, separately from the
+Steam API key. User state/notes/tags and queue mutations append events in the
+same SQLite transaction. Offline events survive restart; account switching
+pauses mismatched uploads. Disconnecting the app's upload connection does not
+stop server collection. A preexisting local state is imported as a baseline;
+this does not reconstruct older operations. There is no new trend screen yet.
+
+### OneDrive authorization and retention
+
+Register a Microsoft public-client application with the appropriate supported
+account type and enable public client flows. Set `NEXTPLAY_ONEDRIVE_CLIENT_ID`,
+`NEXTPLAY_ONEDRIVE_TENANT` (`consumers` for personal accounts, `organizations` or
+your tenant for work/school), and `NEXTPLAY_ONEDRIVE_FOLDER_ID` for a dedicated
+folder. The service uses delegated `Files.ReadWrite` and `offline_access`.
+The folder confines this implementation's destinations, not the OAuth grant's
+permission scope.
+
+Run `tool/service.sh history login` when ready to sign in. It displays Microsoft's
+short-lived device login instructions and saves tokens in a mode-600 file under
+the private history directory. A public client does not need a client secret.
+The operator must complete browser authorization; this command cannot bypass it.
+See [Microsoft's device flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code)
+and [upload sessions](https://learn.microsoft.com/en-us/graph/api/driveitem-createuploadsession?view=graph-rest-1.0).
+
+The archive worker runs on startup and hourly, sealing up to 500 new payloads per
+account per pass into immutable JSONL/gzip packs with embedded manifests. It
+uploads through Graph, persists resumable upload sessions, and downloads each
+pack to verify its SHA-256 and every payload hash. Only verified packs older
+than seven days may release local raw content. The active SQLite database stays
+outside OneDrive's desktop sync directory. Network, quota or authorization
+failure retains local data. Below `NEXTPLAY_HISTORY_MIN_FREE_BYTES` (default
+512 MiB free), external collection pauses; pending work remains visible.
+
+A verified database recovery pack is uploaded daily. It contains a consistent
+SQLite image and any raw content not yet verified in cloud archives. The newest
+30 backups plus the newest backup in each of the newest 12 represented months
+are retained; raw archives are not rotated with backups. This is daily recovery
+coverage, not a zero-data-loss guarantee.
+
+### Operator commands
+
+Run all commands from the repository root:
+
+```bash
+tool/service.sh history status
+tool/service.sh history collect
+tool/service.sh history archive
+tool/service.sh history pause <tracking-id>
+tool/service.sh history resume <tracking-id>
+tool/service.sh history backup <new-output-directory>
+tool/service.sh history export <new-output-directory>
+tool/service.sh history restore <archive-id>
+tool/service.sh history recover <backup-remote-id> <sha256> <new-directory>
+```
+
+`collect` executes one due job, with its result in `status`. `restore` downloads
+and verifies one raw pack using the existing database index. `recover` restores
+a database recovery pack into a new directory, rewrites local paths and applies
+remote account-deletion markers; tracking stays paused for inspection. Then set
+`NEXTPLAY_HISTORY_DIR` to the restored directory and resume the intended
+accounts. Credentials are provisioned separately and are not in backups.
+Local export contains a consistent database, cloud archive references, available
+raw files and a completion marker; an export with cloud references still needs
+those cloud objects. Keep exports outside Git.
+
+`tool/service.sh history delete-account <tracking-id>` is a destructive operator
+command: it pauses tracking, writes and verifies a permanent remote deletion
+marker, removes that account's cloud raw packs and local history, and leaves the
+ID disabled. Old database backups expire by the retention policy; recovery
+applies the marker before data is made available. Use a new tracking ID if the
+user later chooses to start a new archive. App-local records must separately be
+removed on the user's device when deleting all copies of their data.
+
+Use `tool/service.sh build` and `tool/service.sh start-compiled` for the compiled
+runtime. `tool/service.sh verify` runs deterministic tests and compiles it;
+`tool/verify_fast.sh` verifies both the service and Flutter. Real OneDrive
+upload/read-back/recovery acceptance requires a configured and authorized
+account; fake-remote tests do not establish live connectivity.

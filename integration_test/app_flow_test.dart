@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:convert';
+import 'package:dio/dio.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +12,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:nextplay/data/repository/onboarding/onboarding_repository.dart';
 import 'package:nextplay/data/service/api_key_storage.dart';
+import 'package:nextplay/data/service/game_database_service.dart';
+import 'package:nextplay/data/service/history_sync_service.dart';
 import 'package:nextplay/domain/models/game/game.dart';
 import 'package:nextplay/domain/models/game/igdb_game_data.dart';
 import 'package:nextplay/ui/core/app_keys.dart';
@@ -332,6 +336,89 @@ void main() {
     await _tapAndWait(tester, AppKeys.settingsDestination);
     await _waitFor(tester, find.byKey(AppKeys.settingsScreen));
     expect(find.byKey(AppKeys.settingsSync), findsOneWidget);
+
+    final historyConnect = find.byKey(AppKeys.historyConnect);
+    await tester.ensureVisible(historyConnect);
+    await tester.tap(historyConnect);
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.historyEndpoint), findsOneWidget);
+    await tester.tap(find.byKey(AppKeys.historySave));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.historyError), findsOneWidget);
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    final historyDatabase = Provider.of<GameDatabaseService>(
+      tester.element(find.byKey(AppKeys.settingsScreen)),
+      listen: false,
+    );
+    await historyDatabase.updateUserGameNotes(
+      620,
+      'offline history acceptance',
+    );
+    final historyBefore = await historyDatabase.pendingHistory(
+      TestFixtures.steamId,
+    );
+    expect(historyBefore, isNotEmpty);
+    await historyDatabase.close();
+    expect(
+      await historyDatabase.pendingHistory(TestFixtures.steamId),
+      historyBefore,
+    );
+    // Real Android sockets and secure storage, with an explicitly local fake backend.
+    final historyServer = await HttpServer.bind(
+      InternetAddress.loopbackIPv4,
+      0,
+    );
+    historyServer.listen((request) async {
+      request.response.headers.contentType = ContentType.json;
+      if (request.uri.path.endsWith('/status')) {
+        request.response.write(jsonEncode({'steamId': TestFixtures.steamId}));
+      } else {
+        final body = jsonDecode(await utf8.decoder.bind(request).join());
+        request.response.write(
+          jsonEncode({
+            'accepted': (body['events'] as List).map((e) => e['id']).toList(),
+          }),
+        );
+      }
+      await request.response.close();
+    });
+    final historyTransport = Dio();
+    historyTransport.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          options.path =
+              'http://127.0.0.1:${historyServer.port}${Uri.parse(options.path).path}';
+          handler.next(options);
+        },
+      ),
+    );
+    final historyStorage = SecureHistoryConnectionStorage();
+    await historyStorage.delete();
+    final historySync = HistorySyncService(
+      database: historyDatabase,
+      account: () => TestFixtures.steamId,
+      storage: historyStorage,
+      dio: historyTransport,
+    );
+    try {
+      await historySync.connect(
+        'https://history.example',
+        'test-history-token-00000000000000000000',
+      );
+      expect(historySync.connected, isTrue);
+      expect(await historyStorage.read(), isNotNull);
+      expect(
+        await historyDatabase.pendingHistory(TestFixtures.steamId),
+        isEmpty,
+      );
+      await historySync.disconnect();
+      expect(await historyStorage.read(), isNull);
+    } finally {
+      await historySync.close();
+      await historyStorage.delete();
+      await historyServer.close(force: true);
+    }
 
     final languageSetting = find.byKey(AppKeys.settingsLanguageChinese);
     await tester.scrollUntilVisible(
