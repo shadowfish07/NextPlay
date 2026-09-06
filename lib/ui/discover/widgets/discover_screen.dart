@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+
 import '../view_models/discover_view_model.dart';
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../../domain/models/discover/play_queue_item.dart';
+import '../../../domain/models/discover/discover_state.dart';
 import '../../core/ui/common_widgets.dart' as common_widgets;
 import '../../core/ui/sync_status_indicator.dart';
 import '../../core/theme.dart';
@@ -294,9 +296,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     viewModel.addToPlayQueueCommand.execute(game.appId);
     // 加入待玩后自动刷新推荐
     viewModel.generateRecommendationsCommand.execute();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('${game.displayName} 已加入待玩队列')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('${game.displayName} 已加入待玩队列')));
   }
 
   /// 处理状态变更
@@ -306,9 +307,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     GameStatus status,
   ) {
     viewModel.updateGameStatusCommand.execute((game.appId, status));
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('${game.displayName} 状态已更新')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('${game.displayName} 状态已更新')));
   }
 }
 
@@ -458,7 +458,7 @@ class _WishlistGameListState extends State<_WishlistGameList> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: _reorderableItems.length,
-        onReorder: _onReorder,
+        onReorderItem: _onReorder,
         proxyDecorator: _proxyDecorator,
         itemBuilder: (context, index) {
           final item = _reorderableItems[index];
@@ -484,9 +484,6 @@ class _WishlistGameListState extends State<_WishlistGameList> {
 
   void _onReorder(int oldIndex, int newIndex) {
     setState(() {
-      if (newIndex > oldIndex) {
-        newIndex -= 1;
-      }
       final item = _reorderableItems.removeAt(oldIndex);
       _reorderableItems.insert(newIndex, item);
     });

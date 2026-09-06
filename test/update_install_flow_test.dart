@@ -29,8 +29,7 @@ void main() {
         releaseNotes: 'Updater integration fixture',
         releaseUrl:
             'https://github.com/shadowfish07/NextPlay/releases/tag/v1.6.0',
-        apkUrl:
-            'https://github.com/shadowfish07/NextPlay/releases/download/v1.6.0/nextplay.apk',
+        apkUrl: 'https://github.com/shadowfish07/NextPlay/releases/download/v1.6.0/nextplay.apk',
         apkName: 'nextplay.apk',
         sha256:
             '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',

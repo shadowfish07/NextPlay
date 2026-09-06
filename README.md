@@ -30,8 +30,8 @@ Agent/Codex development, verification, Android E2E, and live-service instruction
 
 ### 环境要求
 
-- Flutter SDK >= 3.9.0
-- Dart SDK >= 3.9.0
+- Flutter SDK >= 3.47.1
+- Dart SDK >= 3.13.1（使用 Flutter SDK 内置版本）
 - Bun 1.x（服务端与完整验证）
 
 ### 安装

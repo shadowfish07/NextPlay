@@ -43,7 +43,7 @@ enum MoodFilter {
 
 /// 筛选条件
 @freezed
-class FilterCriteria with _$FilterCriteria {
+abstract class FilterCriteria with _$FilterCriteria {
   const factory FilterCriteria({
     @Default(TimeFilter.any) TimeFilter timeFilter,
     @Default(SessionTime.medium) SessionTime sessionTime,

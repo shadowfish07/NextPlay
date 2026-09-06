@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../view_models/batch_status_view_model.dart';
 import '../../../domain/models/game_status/batch_operation_state.dart';
 import '../../../domain/models/game/game.dart';

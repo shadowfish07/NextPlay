@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+
 import '../view_models/library_view_model.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/ui/common_widgets.dart' as common_widgets;
@@ -337,9 +338,8 @@ class _LibraryScreenState extends State<LibraryScreen>
   /// 处理批量状态更新
   void _handleBatchStatusUpdate(LibraryViewModel viewModel, GameStatus status) {
     if (viewModel.selectedGamesCount == 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先选择要更新的游戏')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('请先选择要更新的游戏')));
       return;
     }
 

@@ -1,12 +1,13 @@
 import 'dart:convert';
+
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as path;
+
 import '../../utils/logger.dart';
 
 /// 游戏数据库服务 - 管理本地 SQLite 存储
 class GameDatabaseService {
-  GameDatabaseService({String databaseName = 'nextplay.db'})
-    : _databaseName = databaseName;
+  GameDatabaseService({this._databaseName = 'nextplay.db'});
 
   final String _databaseName;
   static const int _databaseVersion = 5;

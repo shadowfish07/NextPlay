@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../shared/settings_card.dart';
 import '../../view_models/settings_view_model.dart';
 import '../../../core/app_keys.dart';

@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_command/flutter_command.dart';
 
@@ -40,8 +41,7 @@ class DiscoverViewModel extends ChangeNotifier {
   StreamSubscription? _gameStatusSubscription;
   StreamSubscription? _playQueueSubscription;
 
-  DiscoverViewModel({required GameRepository gameRepository})
-    : _gameRepository = gameRepository {
+  DiscoverViewModel({required this._gameRepository}) {
     _initializeCommands();
     _subscribeToStreams();
     _initializeState();

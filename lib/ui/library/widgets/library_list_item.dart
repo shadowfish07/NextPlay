@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+
 import '../../../domain/models/game/game.dart';
 import '../../../domain/models/game/game_status.dart';
 import '../../core/theme.dart';

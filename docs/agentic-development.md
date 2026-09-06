@@ -4,7 +4,7 @@ NextPlay exposes one deterministic path for each verification layer so Codex and
 
 ## Prerequisites
 
-- Flutter `3.35.1` and Dart from that Flutter SDK.
+- Flutter `3.47.1` and its bundled Dart `3.13.1` (also pinned in CI).
 - Java 17 and an Android SDK with `adb`, `emulator`, accepted licenses, and a dedicated Pixel emulator. Local default: `Pixel_7_Pro_API_36`.
 - `curl` and `rg` for live contract checks.
 - Bun 1.x for `services/igdb` tests and builds.

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+
 import 'package:result_dart/result_dart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -64,14 +65,11 @@ class GameRepository {
   late final Future<void> ready;
 
   GameRepository({
-    required SharedPreferences prefs,
-    required SteamApiService steamApiService,
-    required IgdbGameService igdbGameService,
-    required GameDatabaseService databaseService,
-  }) : _prefs = prefs,
-       _steamApiService = steamApiService,
-       _igdbGameService = igdbGameService,
-       _databaseService = databaseService {
+    required this._prefs,
+    required this._steamApiService,
+    required this._igdbGameService,
+    required this._databaseService,
+  }) {
     ready = _loadFromDatabase();
   }
 
@@ -201,9 +199,8 @@ class GameRepository {
     try {
       if (statusStr.startsWith('{')) {
         // 处理旧格式 {runtimeType: statusName} (Dart toString() 输出，非有效 JSON)
-        final legacyMatch = RegExp(
-          r'\{runtimeType:\s*(\w+)\}',
-        ).firstMatch(statusStr);
+        final legacyMatch = RegExp(r'\{runtimeType:\s*(\w+)\}')
+            .firstMatch(statusStr);
         if (legacyMatch != null) {
           final statusName = legacyMatch.group(1)!;
           return _statusFromName(statusName);

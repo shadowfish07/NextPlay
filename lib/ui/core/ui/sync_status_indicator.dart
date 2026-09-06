@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../settings/view_models/settings_view_model.dart';
 
 /// 同步状态指示器 - 在 AppBar 右上角显示同步进度
