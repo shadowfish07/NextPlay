@@ -1,3 +1,5 @@
+import '../../config/backend.dart';
+
 import 'package:dio/dio.dart';
 import 'package:result_dart/result_dart.dart';
 
@@ -8,7 +10,7 @@ import '../../utils/logger.dart';
 /// IGDB 游戏服务 - 从 igdb.zqydev.me 获取游戏详情
 class IgdbGameService {
   final Dio _dio;
-  static const String _baseUrl = 'https://igdb.zqydev.me';
+  static const String _baseUrl = backendBaseUrl;
 
   IgdbGameService({Dio? dio}) : _dio = dio ?? Dio() {
     _dio.options.baseUrl = _baseUrl;

@@ -1,3 +1,4 @@
+import { historyFromEnvironment } from "./history/runtime";
 import { GameService } from "./service";
 import { SteamStoreMetadataService } from "./steam-store-service";
 import { VgcRatingService } from "./vgc-rating-service";
@@ -13,17 +14,35 @@ if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) {
   process.exit(1);
 }
 
+const history = historyFromEnvironment();
+
 const gameService = new GameService(
   TWITCH_CLIENT_ID,
   TWITCH_CLIENT_SECRET,
-  new SteamStoreMetadataService(),
+  new SteamStoreMetadataService({
+    fetchStore: history?.observeFetch("steam_metadata"),
+  }),
+  history?.observeFetch("igdb"),
 );
-const vgcRatingService = new VgcRatingService();
+const vgcRatingService = new VgcRatingService({
+  fetcher: history?.observeFetch("vgc"),
+});
+if (history)
+  history.collector.metadata = async (source, target) =>
+    source === "rating"
+      ? await vgcRatingService.getRating(target)
+      : await gameService.getGames({
+          steamIds: [target],
+          forceRefresh: true,
+          language: "en",
+        });
 
 const server = Bun.serve({
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url);
+    const historyResponse = await history?.handle(req);
+    if (historyResponse) return historyResponse;
 
     // CORS headers
     const headers = {
@@ -169,7 +188,9 @@ const server = Bun.serve({
           )
         ) {
           return new Response(
-            JSON.stringify({ error: "All Steam IDs must be positive integers" }),
+            JSON.stringify({
+              error: "All Steam IDs must be positive integers",
+            }),
             { status: 400, headers },
           );
         }
@@ -199,6 +220,8 @@ const server = Bun.serve({
   },
 });
 
+history?.start();
+
 console.log(`Server running at http://localhost:${PORT}`);
 console.log(`Endpoint: POST http://localhost:${PORT}/api/games`);
 console.log(`Endpoint: POST http://localhost:${PORT}/api/localizations`);
@@ -209,7 +232,11 @@ async function shutdown(): Promise<void> {
   if (shutdownStarted) return;
   shutdownStarted = true;
   console.log("\nShutting down...");
-  await Promise.all([server.stop(false), vgcRatingService.close()]);
+  await Promise.all([
+    server.stop(false),
+    vgcRatingService.close(),
+    history?.close(),
+  ]);
   gameService.close();
   process.exit(0);
 }

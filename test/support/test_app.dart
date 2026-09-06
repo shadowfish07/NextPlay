@@ -60,7 +60,10 @@ Future<AppDependencies> createTestDependencies({
       gamesByLanguage: igdbGamesByLanguage,
       ratings: vgcRatings ?? TestFixtures.vgcRatings,
     ),
-    gameDatabaseService: GameDatabaseService(databaseName: databaseName),
+    gameDatabaseService: GameDatabaseService(
+      databaseName: databaseName,
+      historyAccount: () => prefs.getString('steam_id') ?? '',
+    ),
   );
   await dependencies.gameRepository.ready;
   return dependencies;

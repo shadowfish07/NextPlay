@@ -6,7 +6,7 @@ export class IGDBClient {
   private accessToken: string | null = null;
   private tokenExpiresAt: number = 0;
 
-  constructor(clientId: string, clientSecret: string) {
+  constructor(clientId: string, clientSecret: string, private readonly fetcher: typeof fetch = fetch) {
     this.clientId = clientId;
     this.clientSecret = clientSecret;
   }
@@ -46,7 +46,7 @@ export class IGDBClient {
     await this.ensureToken();
 
     const url = `https://api.igdb.com/v4/${endpoint}`;
-    const response = await fetch(url, {
+    const response = await this.fetcher(url, {
       method: "POST",
       headers: {
         "Client-ID": this.clientId,

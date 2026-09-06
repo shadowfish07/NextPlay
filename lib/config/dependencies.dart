@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/repository/game_repository.dart';
 import '../data/repository/onboarding/onboarding_repository.dart';
 import '../data/service/api_key_storage.dart';
+import '../data/service/history_sync_service.dart';
 import '../data/service/game_database_service.dart';
 import '../data/service/igdb_game_service.dart';
 import '../data/service/steam_api_service.dart';
@@ -27,6 +28,7 @@ import '../ui/settings/view_models/settings_view_model.dart';
 class AppDependencies {
   AppDependencies._({
     required this.sharedPreferences,
+    required this.historySyncService,
     required this.apiKeyStorage,
     required this.steamApiService,
     required this.igdbGameService,
@@ -38,6 +40,7 @@ class AppDependencies {
   });
 
   final SharedPreferences sharedPreferences;
+  final HistorySyncService historySyncService;
   final ApiKeyStorage apiKeyStorage;
   final SteamApiService steamApiService;
   final IgdbGameService igdbGameService;
@@ -57,6 +60,7 @@ class AppDependencies {
     return create(
       sharedPreferences: prefs,
       apiKeyStorage: SecureApiKeyStorage(),
+      historyConnectionStorage: SecureHistoryConnectionStorage(),
       releaseUpdater: releaseUpdater,
     );
   }
@@ -68,10 +72,15 @@ class AppDependencies {
     SteamApiService? steamApiService,
     IgdbGameService? igdbGameService,
     GameDatabaseService? gameDatabaseService,
+    HistoryConnectionStorage? historyConnectionStorage,
   }) async {
     final steam = steamApiService ?? SteamApiService();
     final igdb = igdbGameService ?? IgdbGameService();
-    final database = gameDatabaseService ?? GameDatabaseService();
+    final database =
+        gameDatabaseService ??
+        GameDatabaseService(
+          historyAccount: () => sharedPreferences.getString('steam_id') ?? '',
+        );
     unawaited(releaseUpdater.start());
     final validation = SteamValidationService(steamApiService: steam);
     final games = GameRepository(
@@ -88,8 +97,17 @@ class AppDependencies {
     );
 
     await onboarding.ready;
+    await database.initializeHistory();
+    final historySync = HistorySyncService(
+      database: database,
+      account: () => sharedPreferences.getString('steam_id') ?? '',
+      storage: historyConnectionStorage,
+      apiKeyStorage: apiKeyStorage,
+    );
+    if (historyConnectionStorage != null) unawaited(historySync.start());
 
     return AppDependencies._(
+      historySyncService: historySync,
       sharedPreferences: sharedPreferences,
       apiKeyStorage: apiKeyStorage,
       steamApiService: steam,
@@ -103,6 +121,7 @@ class AppDependencies {
   }
 
   List<SingleChildWidget> get providers => [
+    ChangeNotifierProvider<HistorySyncService>.value(value: historySyncService),
     Provider<SharedPreferences>.value(value: sharedPreferences),
     Provider<SteamApiService>.value(value: steamApiService),
     Provider<IgdbGameService>.value(value: igdbGameService),
@@ -136,6 +155,7 @@ class AppDependencies {
       MultiProvider(providers: providers, child: child);
 
   Future<void> dispose() async {
+    await historySyncService.close();
     onboardingRepository.dispose();
     gameRepository.dispose();
     releaseUpdater.dispose();

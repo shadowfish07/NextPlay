@@ -48,12 +48,14 @@ usage() {
 Usage: tool/service.sh <command>
 
 Commands:
+  history   Private history operator commands (use history for usage).
   install   Install the locked Bun dependencies.
   verify    Install dependencies, run service tests, and compile the binary.
   test      Run service tests.
   build     Compile the production service binary.
   dev       Start the service with Bun hot reload.
   start     Start the service in the foreground.
+  start-compiled  Run the previously built production binary.
   deploy    Build and start/reload the PM2 service from this monorepo.
   status    Show the PM2 service status.
   logs      Tail the PM2 service logs.
@@ -61,6 +63,10 @@ EOF
 }
 
 case "${1:-}" in
+  history)
+    require_bun
+    run_in_service bun src/history/cli.ts "${@:2}"
+    ;;
   install) install_dependencies ;;
   verify) verify_service ;;
   test)
@@ -75,6 +81,10 @@ case "${1:-}" in
     require_bun
     require_runtime_credentials
     run_in_service bun run dev
+    ;;
+  start-compiled)
+    require_runtime_credentials
+    run_in_service ./dist/igdb-service
     ;;
   start)
     require_bun
