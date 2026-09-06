@@ -5,7 +5,7 @@ part 'game_status.g.dart';
 
 /// 游戏状态枚举
 @freezed
-class GameStatus with _$GameStatus {
+abstract class GameStatus with _$GameStatus {
   const factory GameStatus.notStarted() = _NotStarted;
   const factory GameStatus.playing() = _Playing;
   const factory GameStatus.completed() = _Completed;

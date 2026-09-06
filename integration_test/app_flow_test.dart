@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import 'package:flutter/material.dart';
@@ -592,6 +593,7 @@ Future<void> _tapAndWait(WidgetTester tester, Key key) async {
   final finder = find.byKey(key);
   await _waitFor(tester, finder);
   await tester.ensureVisible(finder);
+  await _waitFor(tester, finder.hitTestable());
   await tester.tap(finder);
   await tester.pump(const Duration(milliseconds: 300));
 }

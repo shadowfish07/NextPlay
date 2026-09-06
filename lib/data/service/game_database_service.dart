@@ -1,15 +1,16 @@
 import 'dart:convert';
+
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as path;
+
 import '../../utils/logger.dart';
 
 /// 游戏数据库服务 - 管理本地 SQLite 存储
 class GameDatabaseService {
   GameDatabaseService({
-    String databaseName = 'nextplay.db',
-    String Function()? historyAccount,
-  }) : _databaseName = databaseName,
-       _historyAccount = historyAccount;
+    this._databaseName = 'nextplay.db',
+    this._historyAccount,
+  });
 
   final String _databaseName;
   static const int _databaseVersion = 6;
@@ -558,9 +559,8 @@ class GameDatabaseService {
   }
 
   static Future<String> _historyId(DatabaseExecutor db) async =>
-      (await db.rawQuery(
-            'SELECT lower(hex(randomblob(16))) AS id',
-          )).single['id']
+      (await db.rawQuery('SELECT lower(hex(randomblob(16))) AS id'))
+              .single['id']
           as String;
 
   static Future<void> _createHistoryTables(DatabaseExecutor db) async {

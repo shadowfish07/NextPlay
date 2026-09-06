@@ -20,8 +20,8 @@ analyzer:
     - primary-constructors
 ```
 
-NextPlay is currently verified with Dart 3.9.0, so do not apply this migration
-there unless the repository's locked toolchain is explicitly upgraded first.
+NextPlay uses Flutter 3.47.1 with Dart 3.13.1. Apply constructor migrations
+only when they are part of the requested change.
 After any supported NextPlay migration, run `tool/verify_fast.sh`.
 *   **Dart 3.11 and earlier**: Primary constructors are not supported.
 

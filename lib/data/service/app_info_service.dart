@@ -1,5 +1,6 @@
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:result_dart/result_dart.dart';
+
 import '../../utils/exceptions.dart';
 import '../../utils/logger.dart';
 

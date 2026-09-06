@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_command/flutter_command.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -62,11 +63,8 @@ class GameDetailsViewModel extends ChangeNotifier {
   StreamSubscription? _gameStatusSubscription;
   StreamSubscription? _gameLibrarySubscription;
 
-  GameDetailsViewModel({
-    required GameRepository gameRepository,
-    required int gameAppId,
-  }) : _gameRepository = gameRepository,
-       _gameAppId = gameAppId {
+  GameDetailsViewModel({required this._gameRepository, required int gameAppId})
+    : _gameAppId = gameAppId {
     _initializeCommands();
     _subscribeToStreams();
     unawaited(_loadGameData());

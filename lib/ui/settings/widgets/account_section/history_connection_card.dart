@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../data/service/history_sync_service.dart';
 import '../../../core/app_keys.dart';
 import '../shared/settings_card.dart';

@@ -1,6 +1,8 @@
 import '../../config/backend.dart';
+
 import 'package:dio/dio.dart';
 import 'package:result_dart/result_dart.dart';
+
 import '../../domain/models/game/igdb_game_data.dart';
 import '../../domain/models/game/vgc_rating.dart';
 import '../../utils/logger.dart';

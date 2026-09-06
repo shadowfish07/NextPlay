@@ -1,11 +1,12 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+
 import 'game.dart';
 
 part 'game_library.freezed.dart';
 part 'game_library.g.dart';
 
 @freezed
-class GameLibrary with _$GameLibrary {
+abstract class GameLibrary with _$GameLibrary {
   const factory GameLibrary({
     required String steamId,
     required List<Game> games,

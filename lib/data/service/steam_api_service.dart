@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:result_dart/result_dart.dart';
+
 import '../../../utils/logger.dart';
 import '../../../domain/models/game/game.dart';
 

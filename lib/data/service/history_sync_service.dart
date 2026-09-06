@@ -1,7 +1,9 @@
 import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'game_database_service.dart';
 import 'api_key_storage.dart';
 import '../../config/backend.dart';

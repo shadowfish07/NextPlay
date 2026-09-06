@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_command/flutter_command.dart';
 
@@ -19,8 +20,7 @@ class BatchStatusViewModel extends ChangeNotifier {
   late Command<void, void> initializeCommand;
   late Command<(int, GameStatus), void> updateGameStatusCommand;
 
-  BatchStatusViewModel({required GameRepository gameRepository})
-    : _gameRepository = gameRepository {
+  BatchStatusViewModel({required this._gameRepository}) {
     _initializeCommands();
 
     // 监听GameRepository数据变化，自动重新初始化

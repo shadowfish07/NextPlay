@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'config/dependencies.dart';
 import 'routing/router.dart';
 import 'ui/core/theme.dart';

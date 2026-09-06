@@ -5,7 +5,7 @@ part 'discover_state.g.dart';
 
 /// 发现页状态枚举
 @freezed
-class DiscoverState with _$DiscoverState {
+abstract class DiscoverState with _$DiscoverState {
   const factory DiscoverState.loading() = _Loading;
   const factory DiscoverState.loaded() = _Loaded;
   const factory DiscoverState.error(String message) = _Error;

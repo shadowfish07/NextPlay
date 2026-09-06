@@ -1,4 +1,5 @@
 import 'package:result_dart/result_dart.dart';
+
 import 'steam_api_service.dart';
 
 enum SteamValidationError {
