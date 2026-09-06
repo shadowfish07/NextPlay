@@ -1,3 +1,4 @@
+import { dashboard } from "./dashboard";
 import { test, expect, afterEach } from "bun:test";
 import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -215,6 +216,13 @@ test("private routes reject anonymous access and never select account from reque
     }),
   );
   expect(response!.status).toBe(200);
+  for (const [query, status] of [["range=7", 200], ["range=1", 400], ["appid=-1", 400], ["range=30&account=bob", 200]] as const) {
+    const result = (await rt.handle(new Request(`http://local/api/history/dashboard?${query}`, {headers: {Authorization: `Bearer ${account.token}`}})))!;
+    expect(result.status).toBe(status);
+    expect(result.headers.get("cache-control")).toBe("no-store");
+    if (status === 200) expect((await result.json() as any).firstObserved).toBeNull();
+  }
+  expect((await rt.handle(new Request("http://local/api/history/dashboard")))!.status).toBe(401);
   expect(() =>
     loadAccounts({
       NEXTPLAY_HISTORY_ACCOUNTS: JSON.stringify([
@@ -353,4 +361,52 @@ test("persisted account binding rejects configuration that would mix two Steam h
       .query("SELECT steam_id FROM account_bindings WHERE account='alice'")
       .get(),
   ).toEqual({ steam_id: "76561198000000000" });
+});
+
+test("dashboard retains baseline, gaps, corrections, timezone dates and account isolation", () => {
+  const s = store();
+  const start = Date.parse("2026-09-01T15:00:00Z");
+  const sample = (at: number, minutes: number, who = "alice") => {
+    const games = [{ appid: 620, name: "Portal 2", playtime_forever: minutes }];
+    const id = s.record(who, "library", 0, { games }, "complete", at);
+    s.projectLibrary(id, who, games, at);
+  };
+  sample(start, 100);
+  let result = dashboard(s, "alice", "Asia/Shanghai", 7, null, start);
+  expect(result.added).toBeNull();
+  expect(result.total).toBe(100);
+  expect(result.days.at(-1)?.date).toBe("2026-09-01");
+  sample(start + HOUR, 120);
+  sample(start + 5 * HOUR, 300); // gap delta must not be assigned to this day
+  sample(start + 6 * HOUR, 200); // correction is not negative activity
+  sample(start + 7 * HOUR, 215);
+  s.register("bob");
+  sample(start + HOUR, 99999, "bob");
+  result = dashboard(s, "alice", "Asia/Shanghai", 7, null, start + 8 * HOUR);
+  expect(result.added).toBe(35);
+  expect(result.total).toBe(215);
+  expect(result.games[0]?.added).toBe(35);
+  expect(result.days.at(-1)?.quality).toBe("partial");
+  expect(result.days[0]?.added).toBeNull();
+  expect(result.previousAdded).toBeNull();
+  expect(dashboard(s, "alice", "Asia/Shanghai", 0, 999, start + 8 * HOUR).firstObserved).toBeNull();
+  result = dashboard(s, "alice", "Asia/Shanghai", 0, 620, start + 8 * HOUR);
+  expect(result.days).toHaveLength(2);
+  expect(result.name).toBe("Portal 2");
+});
+
+test("dashboard aggregates more than one thousand hourly game rows and compares covered days", () => {
+  const s = store();
+  const start = Date.parse("2026-08-20T00:00:00Z");
+  for (let hour = 0; hour <= 24 * 17; hour++) {
+    const games = Array.from({ length: 4 }, (_, i) => ({ appid: i + 1, name: `Game ${i}`, playtime_forever: 100 + hour }));
+    const id = s.record("alice", "library", 0, { games }, "complete", start + hour * HOUR);
+    s.projectLibrary(id, "alice", games, start + hour * HOUR);
+  }
+  const result = dashboard(s, "alice", "UTC", 7, null, start + 24 * 17 * HOUR);
+  expect(result.days).toHaveLength(7);
+  expect(result.added).toBe(4 * (6 * 24 + 1));
+  expect(result.previousAdded).toBe(4 * 6 * 24);
+  expect(result.comparisonAdded).toBe(result.previousAdded);
+  expect(result.games).toHaveLength(4);
 });

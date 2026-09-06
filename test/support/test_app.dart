@@ -1,3 +1,5 @@
+import 'package:nextplay/data/service/playtime_history_service.dart';
+import 'history_fixture.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_release_updater/flutter_release_updater.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,6 +35,7 @@ Future<AppDependencies> createTestDependencies({
   bool resetDatabase = true,
   ApiKeyStorage? apiKeyStorage,
   ReleaseUpdater? releaseUpdater,
+  PlaytimeHistoryService? playtimeHistoryService,
 }) async {
   if (preferencesInstance == null) {
     SharedPreferences.setMockInitialValues(preferences);
@@ -44,6 +47,8 @@ Future<AppDependencies> createTestDependencies({
   final prefs = preferencesInstance ?? await SharedPreferences.getInstance();
   final dependencies = await AppDependencies.create(
     sharedPreferences: prefs,
+    playtimeHistoryService:
+        playtimeHistoryService ?? FakePlaytimeHistoryService(),
     apiKeyStorage: apiKeyStorage ?? FakeApiKeyStorage(),
     releaseUpdater: releaseUpdater ?? FakeReleaseUpdater(),
     steamApiService: FakeSteamApiService(

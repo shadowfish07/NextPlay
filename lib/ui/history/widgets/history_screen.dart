@@ -1,0 +1,571 @@
+import 'dart:math' as math;
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../../data/service/playtime_history_service.dart';
+import '../../../domain/models/history/playtime_history.dart';
+import '../../core/app_keys.dart';
+
+class HistoryScreen extends StatefulWidget {
+  const HistoryScreen({super.key, this.appId, this.initialRange = 7});
+  final int? appId;
+  final int initialRange;
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen>
+    with WidgetsBindingObserver {
+  late int _range;
+  bool _cumulative = false;
+  late Future<PlaytimeHistory> _data;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _range = [0, 7, 30].contains(widget.initialRange) ? widget.initialRange : 7;
+    _reload();
+  }
+
+  void _reload() {
+    _data = context.read<PlaytimeHistoryService>().load(
+      range: _range,
+      appId: widget.appId,
+    );
+    // The next frame attaches FutureBuilder; handle early failures meanwhile.
+    _data.ignore();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) setState(_reload);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: AppKeys.historyScreen,
+      appBar: AppBar(title: Text(widget.appId == null ? '游玩记录' : '游戏游玩记录')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+            child: Row(
+              children: [
+                for (final range in [7, 30, 0])
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ChoiceChip(
+                        key: AppKeys.historyRange(range),
+                        label: Center(
+                          child: Text(range == 0 ? '全部' : '最近 $range 天'),
+                        ),
+                        selected: _range == range,
+                        showCheckmark: false,
+                        onSelected: (_) => setState(() {
+                          _range = range;
+                          _reload();
+                        }),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: FutureBuilder<PlaytimeHistory>(
+              future: _data,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Center(
+                    key: AppKeys.historyLoading,
+                    child: CircularProgressIndicator(),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.cloud_off_outlined, size: 40),
+                          const SizedBox(height: 16),
+                          const Text(
+                            '暂时无法读取游玩记录',
+                            style: TextStyle(fontSize: 18),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text('请稍后重试，已记录的数据会保留。'),
+                          const SizedBox(height: 16),
+                          FilledButton.tonal(
+                            key: AppKeys.historyRetry,
+                            onPressed: () => setState(_reload),
+                            child: const Text('重新加载'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                final data = snapshot.requireData;
+                if (data.firstObserved == null) {
+                  return const Center(
+                    key: AppKeys.historyEmpty,
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.insights_rounded, size: 56),
+                          SizedBox(height: 20),
+                          Text(
+                            '等待第一条游玩记录',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            '数据会在后台自动记录。开始积累后，你可以在这里查看时长的变化。',
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                  children: [
+                    if (data.name != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          data.name!,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ),
+                    _summary(data),
+                    const SizedBox(height: 24),
+                    Text(
+                      '时长趋势',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(
+                          value: false,
+                          label: Text('每日新增', key: AppKeys.historyDaily),
+                          icon: Icon(Icons.bar_chart),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          label: Text('累计时长', key: AppKeys.historyCumulative),
+                          icon: Icon(Icons.show_chart),
+                        ),
+                      ],
+                      selected: {_cumulative},
+                      onSelectionChanged: (value) =>
+                          setState(() => _cumulative = value.first),
+                    ),
+                    const SizedBox(height: 16),
+                    _HistoryChart(
+                      days: data.days,
+                      cumulative: _cumulative,
+                      onDay: (day) => _showDay(day, data),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _cumulative
+                          ? '每日最后一次有效记录 · 点击日期查看明细'
+                          : '按采样差值估算 · 点击柱状图查看当天游戏',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '浅色表示记录不完整，— 表示暂无数据。日期按 ${data.timezone}。',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      widget.appId == null ? '时间花在哪里' : '这段时间',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (data.games.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Text('这段时间还没有记录到新增游玩时长。'),
+                      ),
+                    for (final game in data.games)
+                      _gameTile(
+                        game,
+                        data.added ?? 0,
+                        canOpen: widget.appId == null,
+                      ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Text(
+                        '记录从首次采集开始，无法还原此前每天的游玩情况。跨越采集缺口的增量和时长修正不计入每日新增。',
+                        style: TextStyle(fontSize: 12, height: 1.6),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summary(PlaytimeHistory data) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colors.primaryContainer,
+            colors.primaryContainer.withValues(alpha: .55),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            data.partial ? '这段时间 · 已记录新增' : '这段时间 · 新增游玩',
+            style: TextStyle(color: colors.onPrimaryContainer),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            historyDuration(data.added),
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: colors.onPrimaryContainer,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            data.added == null
+                ? '记录积累中，首次时长作为起点'
+                : '玩过 ${data.games.length} 款游戏${data.partial ? ' · 含未完整记录的日期' : ''}',
+            style: TextStyle(color: colors.onPrimaryContainer),
+          ),
+          if (data.previousAdded != null && data.comparisonAdded != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              '已结束日期较前期${data.comparisonAdded! >= data.previousAdded! ? '多' : '少'} ${historyDuration((data.comparisonAdded! - data.previousAdded!).abs())}',
+            ),
+          ],
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: Divider(),
+          ),
+          Text(
+            '累计游玩  ${historyDuration(data.total)}',
+            style: TextStyle(color: colors.onPrimaryContainer),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _gameTile(
+    HistoryGame game,
+    int total, {
+    bool canOpen = true,
+    VoidCallback? open,
+  }) {
+    final share = total > 0 ? game.added / total : 0.0;
+    return ListTile(
+      key: AppKeys.historyGame(game.appId),
+      contentPadding: EdgeInsets.zero,
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          'https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/header.jpg',
+          width: 64,
+          height: 44,
+          fit: BoxFit.cover,
+          errorBuilder: (_, error, stack) => Container(
+            width: 64,
+            height: 44,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: const Icon(Icons.sports_esports_outlined),
+          ),
+        ),
+      ),
+      title: Text(game.name, maxLines: 2, overflow: TextOverflow.ellipsis),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${historyDuration(game.added)} · ${(share * 100).round()}%'),
+          const SizedBox(height: 6),
+          LinearProgressIndicator(
+            value: share.clamp(0, 1),
+            minHeight: 3,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ],
+      ),
+      trailing: canOpen ? const Icon(Icons.chevron_right) : null,
+      onTap: canOpen
+          ? (open ??
+                () => context.pushNamed(
+                  'history',
+                  queryParameters: {
+                    'appid': '${game.appId}',
+                    'range': '$_range',
+                  },
+                ))
+          : null,
+    );
+  }
+
+  void _showDay(HistoryDay day, PlaytimeHistory data) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          key: AppKeys.historyDaySheet,
+          height: MediaQuery.sizeOf(sheetContext).height * .6,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            children: [
+              Text(day.date, style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 8),
+              Text(
+                '已记录新增 ${historyDuration(day.added)}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              Text('累计 ${historyDuration(day.total)}'),
+              if (day.quality != 'complete')
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text('当天记录不完整，不能据此判断完整游玩时长。'),
+                ),
+              const SizedBox(height: 16),
+              if (day.games.isEmpty)
+                Text(day.added == 0 ? '已观测时段内没有新增时长。' : '暂无可分配到当天的新增记录。'),
+              for (final game in [
+                ...day.games,
+              ]..sort((a, b) => b.added.compareTo(a.added)))
+                _gameTile(
+                  game,
+                  day.added ?? 0,
+                  canOpen: widget.appId == null,
+                  open: () {
+                    Navigator.pop(sheetContext);
+                    context.pushNamed(
+                      'history',
+                      queryParameters: {
+                        'appid': '${game.appId}',
+                        'range': '$_range',
+                      },
+                    );
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HistoryChart extends StatelessWidget {
+  const _HistoryChart({
+    required this.days,
+    required this.cumulative,
+    required this.onDay,
+  });
+  final List<HistoryDay> days;
+  final bool cumulative;
+  final ValueChanged<HistoryDay> onDay;
+  @override
+  Widget build(BuildContext context) {
+    final values = days.map((d) => cumulative ? d.total : d.added).toList();
+    final maxValue = values.fold<int>(1, (m, v) => math.max(m, v ?? 0));
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '最高 ${historyDuration(values.every((v) => v == null) ? null : values.whereType<int>().fold<int>(0, math.max))}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = math.max(constraints.maxWidth, days.length * 44.0);
+            final cell = width / math.max(days.length, 1);
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              reverse: true,
+              child: SizedBox(
+                width: width,
+                height: 188,
+                child: Stack(
+                  children: [
+                    if (cumulative)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        height: 152,
+                        child: CustomPaint(
+                          painter: _TrendPainter(
+                            values,
+                            days,
+                            colors.primary,
+                            maxValue,
+                          ),
+                        ),
+                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        for (var i = 0; i < days.length; i++)
+                          SizedBox(
+                            width: cell,
+                            child: Semantics(
+                              label:
+                                  '${days[i].date} ${historyDuration(values[i])}${days[i].quality == 'complete' ? '' : ' 记录不完整'}',
+                              button: true,
+                              child: InkWell(
+                                key: AppKeys.historyDay(days[i].date),
+                                onTap: () => onDay(days[i]),
+                                child: Column(
+                                  children: [
+                                    SizedBox(
+                                      height: 152,
+                                      child: Align(
+                                        alignment: Alignment.bottomCenter,
+                                        child: values[i] == null
+                                            ? const Padding(
+                                                padding: EdgeInsets.only(
+                                                  bottom: 8,
+                                                ),
+                                                child: Text('—'),
+                                              )
+                                            : cumulative
+                                            ? const SizedBox.expand()
+                                            : Container(
+                                                width: math.min(28, cell - 12),
+                                                height: math.max(
+                                                  3,
+                                                  144 * values[i]! / maxValue,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      days[i].quality ==
+                                                          'complete'
+                                                      ? colors.primary
+                                                      : colors.primary
+                                                            .withValues(
+                                                              alpha: .35,
+                                                            ),
+                                                  borderRadius:
+                                                      const BorderRadius.vertical(
+                                                        top: Radius.circular(5),
+                                                      ),
+                                                ),
+                                              ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      days[i].date
+                                          .substring(5)
+                                          .replaceAll('-', '/'),
+                                      style: const TextStyle(fontSize: 10),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.clip,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _TrendPainter extends CustomPainter {
+  _TrendPainter(this.values, this.days, this.color, this.maximum);
+  final List<HistoryDay> days;
+  final List<int?> values;
+  final Color color;
+  final int maximum;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke;
+    Offset? previous;
+    for (var i = 0; i < values.length; i++) {
+      final value = values[i];
+      if (value == null) {
+        previous = null;
+        continue;
+      }
+      final point = Offset(
+        (i + .5) * size.width / values.length,
+        size.height - 4 - value / maximum * (size.height - 12),
+      );
+      paint.color =
+          days[i].quality == 'complete' &&
+              (i == 0 || days[i - 1].quality == 'complete')
+          ? color
+          : color.withValues(alpha: .35);
+      if (previous != null) canvas.drawLine(previous, point, paint);
+      canvas.drawCircle(point, 3, Paint()..color = color);
+      previous = point;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrendPainter oldDelegate) =>
+      oldDelegate.values != values || oldDelegate.color != color;
+}

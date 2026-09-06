@@ -1,3 +1,4 @@
+import '../data/service/playtime_history_service.dart';
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
@@ -29,6 +30,7 @@ class AppDependencies {
   AppDependencies._({
     required this.sharedPreferences,
     required this.historySyncService,
+    required this.playtimeHistoryService,
     required this.apiKeyStorage,
     required this.steamApiService,
     required this.igdbGameService,
@@ -41,6 +43,7 @@ class AppDependencies {
 
   final SharedPreferences sharedPreferences;
   final HistorySyncService historySyncService;
+  final PlaytimeHistoryService playtimeHistoryService;
   final ApiKeyStorage apiKeyStorage;
   final SteamApiService steamApiService;
   final IgdbGameService igdbGameService;
@@ -73,6 +76,7 @@ class AppDependencies {
     IgdbGameService? igdbGameService,
     GameDatabaseService? gameDatabaseService,
     HistoryConnectionStorage? historyConnectionStorage,
+    PlaytimeHistoryService? playtimeHistoryService,
   }) async {
     final steam = steamApiService ?? SteamApiService();
     final igdb = igdbGameService ?? IgdbGameService();
@@ -108,6 +112,12 @@ class AppDependencies {
 
     return AppDependencies._(
       historySyncService: historySync,
+      playtimeHistoryService:
+          playtimeHistoryService ??
+          PlaytimeHistoryService(
+            account: () => sharedPreferences.getString('steam_id') ?? '',
+            apiKeyStorage: apiKeyStorage,
+          ),
       sharedPreferences: sharedPreferences,
       apiKeyStorage: apiKeyStorage,
       steamApiService: steam,
@@ -121,6 +131,7 @@ class AppDependencies {
   }
 
   List<SingleChildWidget> get providers => [
+    Provider<PlaytimeHistoryService>.value(value: playtimeHistoryService),
     Provider<SharedPreferences>.value(value: sharedPreferences),
     Provider<SteamApiService>.value(value: steamApiService),
     Provider<IgdbGameService>.value(value: igdbGameService),
@@ -155,6 +166,7 @@ class AppDependencies {
 
   Future<void> dispose() async {
     await historySyncService.close();
+    playtimeHistoryService.dispose();
     onboardingRepository.dispose();
     gameRepository.dispose();
     releaseUpdater.dispose();

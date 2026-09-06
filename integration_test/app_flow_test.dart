@@ -32,6 +32,78 @@ const _captureVisualEvidence = bool.fromEnvironment(
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
+  testWidgets('playtime history library, range, day and game navigation', (
+    tester,
+  ) async {
+    final dependencies = await createTestDependencies(
+      preferences: {
+        'onboarding_completed': true,
+        'api_key': TestFixtures.apiKey,
+        'steam_id': TestFixtures.steamId,
+      },
+      databaseName: 'nextplay_history_dashboard_e2e.db',
+    );
+    await dependencies.gameRepository.syncGameLibrary(
+      apiKey: TestFixtures.apiKey,
+      steamId: TestFixtures.steamId,
+    );
+    await tester.pumpWidget(buildTestApp(dependencies));
+    await _waitFor(tester, find.byKey(AppKeys.discoverScreen));
+    await _tapAndWait(tester, AppKeys.libraryDestination);
+    await _tapAndWait(tester, AppKeys.historyEntry);
+    await _waitFor(tester, find.byKey(AppKeys.historyDaily));
+    expect(find.text('8 小时 40 分钟'), findsOneWidget);
+    await _tapAndWait(tester, AppKeys.historyRange(30));
+    await _waitFor(tester, find.byKey(AppKeys.historyDaily));
+    await _tapAndWait(tester, AppKeys.historyRange(7));
+    await _waitFor(tester, find.byKey(AppKeys.historyDaily));
+    await _tapAndWait(tester, AppKeys.historyDay('2026-09-07'));
+    await _waitFor(tester, find.byKey(AppKeys.historyDaySheet));
+    final dayGame = find.descendant(
+      of: find.byKey(AppKeys.historyDaySheet),
+      matching: find.byKey(AppKeys.historyGame(620)),
+    );
+    await tester.ensureVisible(dayGame);
+    await tester.tap(dayGame);
+    await tester.pumpAndSettle();
+    await _waitFor(tester, find.text('游戏游玩记录'));
+    await _waitFor(tester, find.text('Portal 2'));
+    await _tapAndWait(tester, AppKeys.historyCumulative);
+    expect(find.textContaining('每日最后一次有效记录'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('游玩记录'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.libraryScreen), findsOneWidget);
+    final item = find.byKey(AppKeys.libraryItem(620));
+    await tester.ensureVisible(item);
+    await tester.tap(item);
+    await _waitFor(tester, find.byKey(AppKeys.detailsScreen));
+    await tester.pumpAndSettle();
+    final detailsEntry = find.descendant(
+      of: find.byKey(AppKeys.detailsScreen),
+      matching: find.byKey(AppKeys.historyEntry),
+    );
+    await tester.scrollUntilVisible(
+      detailsEntry,
+      250,
+      scrollable: find.descendant(
+        of: find.byKey(AppKeys.detailsScreen),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              widget.axisDirection == AxisDirection.down,
+        ),
+      ),
+    );
+    await tester.tap(detailsEntry);
+    await tester.pumpAndSettle();
+    await _waitFor(tester, find.text('游戏游玩记录'));
+    await disposeTestApp(tester);
+    await dependencies.dispose();
+  });
+
   testWidgets('migrates a released API key with Android secure storage', (
     tester,
   ) async {

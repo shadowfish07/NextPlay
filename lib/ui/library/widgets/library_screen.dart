@@ -60,6 +60,21 @@ class _LibraryScreenState extends State<LibraryScreen>
               // 应用栏
               _buildSliverAppBar(context, viewModel),
 
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Card.filled(
+                    child: ListTile(
+                      key: AppKeys.historyEntry,
+                      leading: const Icon(Icons.bar_chart_rounded),
+                      title: const Text('游玩记录'),
+                      subtitle: const Text('看看最近的时间花在哪里'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.pushNamed('history'),
+                    ),
+                  ),
+                ),
+              ),
               // 筛选器
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),

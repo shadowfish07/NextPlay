@@ -719,3 +719,9 @@ runtime. `tool/service.sh verify` runs deterministic tests and compiles it;
 `tool/verify_fast.sh` verifies both the service and Flutter. Real OneDrive
 upload/read-back/recovery acceptance requires a configured and authorized
 account; fake-remote tests do not establish live connectivity.
+
+### Playtime dashboard
+
+`GET /api/history/dashboard?range=7&appid=620` uses the same private bearer session as the event API. `range` is `7`, `30`, or `0` (all recorded dates); omit `appid` for the library. Dates use the configured account `timeZone` (default Asia/Shanghai). The response includes `firstObserved`, `lastObserved`, latest complete-snapshot `total`, observed-interval `added`, daily `days` (`date`, nullable `added`/`total`, `quality`, game breakdown), and period `games` ranked by increment. The service aggregates hourly records rather than truncating to 1000 samples.
+
+The app opens this read-only view from the library or a game's details, supports range selection, daily bars/cumulative curves and day-to-game drilldown, and reloads on foreground entry. No manual collection controls are added. Baselines, counter corrections and gap-spanning deltas are excluded from daily increments; missing days remain null. Partial days show only recorded increments. `comparisonAdded`/`previousAdded` compare completed dates (excluding today) with the corresponding preceding window, and are null unless both are covered. Screenshots/tests use explicit fixture services; production always reads the existing authorized backend.
