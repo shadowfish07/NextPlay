@@ -32,4 +32,4 @@
 - 实际 Android 生产组件截图（显式演示数据）：`.artifacts/history-visual/history-overview.png`、`history-day.png`、`history-game.png`；均已人工查看，图表/文字/安全区无溢出。临时截图等待钩子已从最终测试移除。
 - 首轮 Android 失败是选中图标被框架替换导致标识消失，已移到稳定文字；后续定位歧义通过限定弹层和详情页面范围修正。原失败日志保留在本机 /tmp，最终无跳过断言。
 - OpenSpec CLI 本机不可用，已检查规范结构，未声称通过 CLI strict validation。
-- 公共新增接口部署与真实数据读取：待部署确认。
+- 公共新增接口已从主 checkout 通过 `tool/service.sh deploy` 部署。既有账号 session、真实历史 7/30/all/单游戏读取、时区和 no-store、匿名与非法参数拒绝均通过；`tool/live_smoke.sh` 原有线上契约通过。验收没有记录或公开个人数据。
