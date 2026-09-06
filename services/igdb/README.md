@@ -618,6 +618,21 @@ this does not reconstruct older operations. There is no new trend screen yet.
 
 ### OneDrive authorization and retention
 
+If the service machine already has an authorized rclone OneDrive remote, set
+`NEXTPLAY_ONEDRIVE_RCLONE_REMOTE=onedrive:NextPlay/history` and, when needed,
+`NEXTPLAY_RCLONE_BINARY=/opt/homebrew/bin/rclone`. Leave the Microsoft client ID
+empty. The service account must be able to read rclone's existing configuration;
+tokens stay managed by rclone and `history login` is unnecessary. The destination
+must include a dedicated directory. Only NextPlay archive filenames can be
+accessed. Transfers use temporary private files, immutable uploads and the same
+download/checksum verification as the direct Graph transport. Failed transfers
+retry the whole object on the next archive pass; rclone does not persist our
+Graph upload sessions. Do not change transports or the destination for an
+existing history database: its remote references belong to that destination.
+See [rclone copyto](https://rclone.org/commands/rclone_copyto/).
+
+Alternatively, use direct Microsoft authorization:
+
 Register a Microsoft public-client application with the appropriate supported
 account type and enable public client flows. Set `NEXTPLAY_ONEDRIVE_CLIENT_ID`,
 `NEXTPLAY_ONEDRIVE_TENANT` (`consumers` for personal accounts, `organizations` or
@@ -635,7 +650,7 @@ and [upload sessions](https://learn.microsoft.com/en-us/graph/api/driveitem-crea
 
 The archive worker runs on startup and hourly, sealing up to 500 new payloads per
 account per pass into immutable JSONL/gzip packs with embedded manifests. It
-uploads through Graph, persists resumable upload sessions, and downloads each
+uploads through the selected transport (direct Graph persists resumable upload sessions), and downloads each
 pack to verify its SHA-256 and every payload hash. Only verified packs older
 than seven days may release local raw content. The active SQLite database stays
 outside OneDrive's desktop sync directory. Network, quota or authorization

@@ -1,4 +1,5 @@
 import { withArchiveLease } from "./lease";
+import { RcloneRemote } from "./rclone";
 import { rotateBackups } from "./lifecycle";
 import { backupHistory } from "./backup";
 import { statfsSync } from "node:fs";
@@ -58,7 +59,14 @@ export class HistoryRuntime {
       env.TWITCH_CLIENT_ID,
       env.TWITCH_CLIENT_SECRET,
     ].filter((s): s is string => !!s);
-    if (env.NEXTPLAY_ONEDRIVE_CLIENT_ID && env.NEXTPLAY_ONEDRIVE_FOLDER_ID)
+    if (env.NEXTPLAY_ONEDRIVE_RCLONE_REMOTE && env.NEXTPLAY_ONEDRIVE_CLIENT_ID)
+      throw new Error("Choose either rclone or direct Microsoft authorization");
+    if (env.NEXTPLAY_ONEDRIVE_RCLONE_REMOTE)
+      this.archiver = new HistoryArchiver(this.store, new RcloneRemote(
+        env.NEXTPLAY_ONEDRIVE_RCLONE_REMOTE,
+        env.NEXTPLAY_RCLONE_BINARY ?? "rclone",
+      ));
+    else if (env.NEXTPLAY_ONEDRIVE_CLIENT_ID && env.NEXTPLAY_ONEDRIVE_FOLDER_ID)
       this.archiver = new HistoryArchiver(
         this.store,
         new OneDriveRemote(

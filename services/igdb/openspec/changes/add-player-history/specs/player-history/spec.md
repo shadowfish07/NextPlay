@@ -25,6 +25,10 @@ The service SHALL retain immutable raw archives, read back and verify cloud cont
 - **WHEN** an upload fails or downloaded bytes do not match the package hash
 - **THEN** the local content remains available and the archive is not marked verified.
 
+#### Scenario: Reuse authorized personal OneDrive
+- **WHEN** the operator selects an existing authorized rclone remote and a dedicated directory
+- **THEN** the service uses rclone without copying its tokens, confines operations to NextPlay object names, and performs the same cloud read-back verification before local eviction.
+
 ### Requirement: Preserve client events
 The client SHALL atomically record supported user mutations with an account-bound outbox, and the server SHALL ingest event identifiers idempotently.
 

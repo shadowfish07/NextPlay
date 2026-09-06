@@ -11,7 +11,7 @@
 - [x] Fast verification and real local build.
 - [x] Android event persistence/upload acceptance.
 - [x] Authorized Steam live contract checks.
-- [ ] Authorized OneDrive upload, read-back and recovery acceptance.
+- [x] Authorized OneDrive upload, read-back and recovery acceptance.
 
 ## Evidence and remaining external dependency
 
@@ -21,8 +21,13 @@
 - Compiled service collected the configured Steam library and per-game details;
   anonymous private access rejected; repository live smoke passed.
 - OneDrive remote tests cover interrupted upload continuation, read-back corruption,
-  eviction, cloud recovery and deletion markers. Real Microsoft authorization has
-  not been supplied, so live OneDrive acceptance remains unchecked.
+  eviction, cloud recovery and deletion markers. Personal OneDrive acceptance
+  passed using the existing rclone authorization: compiled service collection,
+  archive upload/read-back, SQLite recovery with tracking paused, and raw payload
+  restoration with SHA-256 checks. Temporary cloud acceptance objects were removed.
+  Direct Graph device login remains covered by deterministic tests only.
+- Rclone integration fast verification passed: 34 service tests, compiled build,
+  47 Flutter tests and 42.91% coverage. No Flutter code changed in this follow-up.
 - Production continuous collection has not been enabled or deployed.
 - Optional standalone TypeScript checking reports existing fetch/preconnect casts
   in vgc-rating-service.test.ts; no new history-file type errors remain.
