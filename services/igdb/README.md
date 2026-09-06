@@ -617,15 +617,21 @@ A Steam ID alone is insufficient. The app reads the existing key only through
 memory for the upload. There is no server address or history token form.
 Obsolete saved history connections are deleted on startup.
 
-Android Settings → 游玩档案 shows automatic sync status and an immediate sync
-button. User state/notes/tags and queue mutations append events in the same
-SQLite transaction. Offline events survive restart; account changes require
-fresh authentication. Backend collection still requires operator configuration.
+History has no configuration, status card or manual sync control in the app.
+User state/notes/tags and queue mutations append events in the same SQLite
+transaction; only after commit does the background worker receive a wake-up.
+Uploads do not block editing. New writes during an upload and remaining batches
+are drained automatically; failed or unacknowledged events stay in SQLite.
+The worker retries every minute while the app runs, on startup and on foreground
+resume. Android may suspend or kill the app: this is not a guaranteed scheduled
+OS background job. Server Steam collection continues independently of the app.
+Account changes require fresh authentication. Backend collection still requires operator configuration.
 A preexisting local state is imported as a baseline; this does not reconstruct
 older operations. There is no new trend screen yet. The old `history.connect`,
 `history.endpoint`, `history.token`, `history.save`, `history.error` and
 `history.disconnect` selectors are retained as constants for compatibility but
-have no corresponding controls; `history.status` and `history.sync` remain active.
+have no corresponding controls. `history.status` and `history.sync` are also
+retained constants with no UI controls; tests assert these controls are absent.
 
 ### OneDrive authorization and retention
 

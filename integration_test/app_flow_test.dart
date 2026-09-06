@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 
@@ -339,11 +340,11 @@ void main() {
     expect(find.byKey(AppKeys.settingsSync), findsOneWidget);
 
     await Scrollable.ensureVisible(
-      tester.element(find.byKey(AppKeys.historyStatus)),
-      alignment: 0.4,
+      tester.element(find.byKey(AppKeys.settingsSync)),
+      alignment: 0.2,
     );
-    await tester.pumpAndSettle();
-    expect(find.byKey(AppKeys.historySync), findsOneWidget);
+    expect(find.byKey(AppKeys.historySync), findsNothing);
+    expect(find.byKey(AppKeys.historyStatus), findsNothing);
     expect(find.byKey(AppKeys.historyConnect), findsNothing);
     expect(find.byKey(AppKeys.historyEndpoint), findsNothing);
     final historyDatabase = Provider.of<GameDatabaseService>(
@@ -364,6 +365,7 @@ void main() {
       historyBefore,
     );
     // Real Android sockets and secure storage, with an explicitly local fake backend.
+    final automaticUpload = Completer<void>();
     final historyServer = await HttpServer.bind(
       InternetAddress.loopbackIPv4,
       0,
@@ -379,6 +381,14 @@ void main() {
         );
       } else {
         final body = jsonDecode(await utf8.decoder.bind(request).join());
+        if ((body['events'] as List).any(
+              (e) =>
+                  e['after'] is Map &&
+                  e['after']['user_notes'] == 'automatic mutation acceptance',
+            ) &&
+            !automaticUpload.isCompleted) {
+          automaticUpload.complete();
+        }
         request.response.write(
           jsonEncode({
             'accepted': (body['events'] as List).map((e) => e['id']).toList(),
@@ -415,6 +425,11 @@ void main() {
         isEmpty,
       );
       expect(await historyStorage.read(), isNull);
+      await historyDatabase.updateUserGameNotes(
+        620,
+        'automatic mutation acceptance',
+      );
+      await automaticUpload.future.timeout(const Duration(seconds: 10));
     } finally {
       await historySync.close();
       await historyStorage.delete();

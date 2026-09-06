@@ -39,3 +39,7 @@ The client SHALL atomically record supported user mutations with an account-boun
 #### Scenario: Automatic existing backend authentication
 - **WHEN** the app has a configured Steam account and its securely stored API key
 - **THEN** it authenticates against the existing NextPlay backend without a separate service configuration form, and mismatched credentials or account IDs cannot authorize history access.
+
+#### Scenario: Invisible operation-triggered history delivery
+- **WHEN** an app mutation commits its local state and outbox event
+- **THEN** a background worker attempts delivery without a manual sync control or waiting on network in the mutation, drains later committed batches, and preserves failed events for retry while running or on the next startup/resume.

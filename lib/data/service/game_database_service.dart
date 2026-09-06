@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as path;
 import '../../utils/logger.dart';
@@ -16,6 +17,10 @@ class GameDatabaseService {
   final String Function()? _historyAccount;
 
   Database? _database;
+  final _historyCommitted = StreamController<void>.broadcast();
+
+  /// Emitted only after a transaction durably adds history to the outbox.
+  Stream<void> get historyCommitted => _historyCommitted.stream;
 
   /// 获取数据库实例
   Future<Database> get database async {
@@ -584,6 +589,7 @@ class GameDatabaseService {
     Future<void> Function(Transaction) action,
   ) async {
     final db = await database;
+    var appended = false;
     await db.transaction((txn) async {
       final account = _historyAccount?.call() ?? '';
       if (account.isEmpty) {
@@ -601,6 +607,7 @@ class GameDatabaseService {
         whereArgs: ['baseline'],
       );
       if (baseline.isEmpty) {
+        appended = true;
         for (final row in before) {
           await _appendHistory(txn, account, 'baseline', null, row, null);
         }
@@ -621,6 +628,7 @@ class GameDatabaseService {
       for (final row in after) {
         final old = previous[row['app_id']];
         if (jsonEncode(old) != jsonEncode(row)) {
+          appended = true;
           await _appendHistory(
             txn,
             account,
@@ -633,6 +641,7 @@ class GameDatabaseService {
       }
       final queueAfter = await txn.query('play_queue', orderBy: 'position, id');
       if (jsonEncode(queueBefore) != jsonEncode(queueAfter)) {
+        appended = true;
         await _appendHistory(
           txn,
           account,
@@ -643,6 +652,7 @@ class GameDatabaseService {
         );
       }
     });
+    if (appended) _historyCommitted.add(null);
   }
 
   Future<void> _appendHistory(

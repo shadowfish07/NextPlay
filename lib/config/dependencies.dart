@@ -121,7 +121,6 @@ class AppDependencies {
   }
 
   List<SingleChildWidget> get providers => [
-    ChangeNotifierProvider<HistorySyncService>.value(value: historySyncService),
     Provider<SharedPreferences>.value(value: sharedPreferences),
     Provider<SteamApiService>.value(value: steamApiService),
     Provider<IgdbGameService>.value(value: igdbGameService),
