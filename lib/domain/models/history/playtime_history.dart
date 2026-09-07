@@ -1,3 +1,13 @@
+class HistoryDistributionGame {
+  HistoryDistributionGame.fromJson(Map<String, dynamic> json)
+    : appId = json['appid'] as int,
+      name = json['name'] as String,
+      minutes = json['minutes'] as int;
+  final int appId;
+  final String name;
+  final int minutes;
+}
+
 class HistoryGame {
   HistoryGame.fromJson(Map<String, dynamic> json)
     : appId = json['appid'] as int,
@@ -31,6 +41,12 @@ class PlaytimeHistory {
       firstObserved = json['firstObserved'] as int?,
       lastObserved = json['lastObserved'] as int?,
       total = json['total'] as int?,
+      distribution = (json['distribution'] as List?)
+          ?.map(
+            (e) =>
+                HistoryDistributionGame.fromJson(Map<String, dynamic>.from(e)),
+          )
+          .toList(),
       added = json['added'] as int?,
       previousAdded = json['previousAdded'] as int?,
       comparisonAdded = json['comparisonAdded'] as int?,
@@ -41,6 +57,7 @@ class PlaytimeHistory {
       games = (json['games'] as List)
           .map((e) => HistoryGame.fromJson(Map<String, dynamic>.from(e)))
           .toList();
+  final List<HistoryDistributionGame>? distribution;
   final String? name;
   final String timezone;
   final int? firstObserved,

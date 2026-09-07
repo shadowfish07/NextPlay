@@ -45,6 +45,14 @@ Map<String, dynamic> historyFixture({int range = 7, int? appId}) {
     ).subtract(Duration(days: count - 2)).millisecondsSinceEpoch,
     'lastObserved': 1788739200000,
     'total': accumulated,
+    'distribution': [
+      {
+        'appid': appId ?? 620,
+        'name': 'Portal 2',
+        'minutes': appId == null ? accumulated - 120 : accumulated,
+      },
+      if (appId == null) {'appid': 570, 'name': 'Dota 2', 'minutes': 120},
+    ],
     'added': added,
     'previousAdded': null,
     'comparisonAdded': null,
@@ -61,12 +69,14 @@ class FakePlaytimeHistoryService extends PlaytimeHistoryService {
     : super(account: () => 'fixture', apiKeyStorage: FakeApiKeyStorage());
   bool fail = false;
   bool empty = false;
+  Map<String, dynamic> overrides = {};
   final List<(int, int?)> requests = [];
   @override
   Future<PlaytimeHistory> load({int range = 7, int? appId}) async {
     requests.add((range, appId));
     if (fail) throw StateError('Fixture unavailable');
     final data = historyFixture(range: range, appId: appId);
+    data.addAll(overrides);
     if (empty) data['firstObserved'] = null;
     return PlaytimeHistory.fromJson(data);
   }

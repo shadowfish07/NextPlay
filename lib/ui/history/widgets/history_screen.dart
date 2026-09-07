@@ -285,7 +285,7 @@ class _HistoryScreenState extends State<HistoryScreen>
               const SizedBox(height: 12),
               const Text('空心或 — 表示暂无数据，描边或淡色表示记录不完整。'),
               const SizedBox(height: 12),
-              const Text('仅展示开始采集后的记录。'),
+              const Text('新增和趋势仅展示开始采集后的记录；历史总时长和分布来自最近一次完整游戏库采集，不受日期筛选影响。'),
             ],
           ),
         ),
@@ -342,10 +342,93 @@ class _HistoryScreenState extends State<HistoryScreen>
             child: Divider(),
           ),
           Text(
-            '累计游玩  ${historyDuration(data.total)}',
+            '历史总时长  ${historyDuration(data.total)}',
             style: TextStyle(color: colors.onPrimaryContainer),
           ),
+          if (widget.appId == null)
+            TextButton.icon(
+              key: AppKeys.historyDistribution,
+              onPressed: () => _showDistribution(data),
+              icon: const Icon(Icons.pie_chart_outline),
+              label: const Text('查看分布'),
+            ),
         ],
+      ),
+    );
+  }
+
+  void _showDistribution(PlaytimeHistory data) {
+    final games = data.distribution;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          key: AppKeys.historyDistributionSheet,
+          height: MediaQuery.sizeOf(sheetContext).height * .75,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '游戏时长分布',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                    IconButton(
+                      key: AppKeys.historyDistributionClose,
+                      tooltip: '关闭分布',
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                child: Text(
+                  '历史总时长 ${historyDuration(data.total)}${games == null ? '' : ' · ${games.length} 款游戏'}',
+                ),
+              ),
+              Expanded(
+                child: games == null || data.total == null
+                    ? const Center(child: Text('暂时无法读取时长分布'))
+                    : games.isEmpty
+                    ? const Center(child: Text('还没有累计游玩时长'))
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                        itemCount: games.length,
+                        itemBuilder: (_, index) {
+                          final game = games[index];
+                          return _gameTile(
+                            HistoryGame.fromJson({
+                              'appid': game.appId,
+                              'name': game.name,
+                              'added': game.minutes,
+                            }),
+                            data.total!,
+                            open: () {
+                              Navigator.pop(sheetContext);
+                              context.pushNamed(
+                                'history',
+                                queryParameters: {
+                                  'appid': '${game.appId}',
+                                  'range': '$_range',
+                                },
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -384,7 +467,9 @@ class _HistoryScreenState extends State<HistoryScreen>
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${historyDuration(game.added)} · ${(share * 100).round()}%'),
+          Text(
+            '${historyDuration(game.added)} · ${share > 0 && share < .001 ? '<0.1' : (share * 100).toStringAsFixed(1)}%',
+          ),
           const SizedBox(height: 6),
           LinearProgressIndicator(
             value: share.clamp(0, 1),
