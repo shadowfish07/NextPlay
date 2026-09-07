@@ -109,6 +109,20 @@ void main() {
     },
   );
 
+  test('concurrent reads stay with their initiating accounts', () async {
+    await database.updateUserGameNotes(1, 'alice private note');
+    account = 'bob';
+    await database.updateUserGameNotes(1, 'bob private note');
+    account = 'alice';
+    await database.getOrCreateUserGameData(1);
+    final aliceRead = database.getOrCreateUserGameData(1);
+    account = 'bob';
+    final bobRead = database.getOrCreateUserGameData(1);
+    final rows = await Future.wait([aliceRead, bobRead]);
+    expect(rows[0]['user_notes'], 'alice private note');
+    expect(rows[1]['user_notes'], 'bob private note');
+  });
+
   test('failed mutation rolls back data and event together', () async {
     await database.updateUserGameStatus(1, 'playing');
     final before = await database.pendingHistory('alice');

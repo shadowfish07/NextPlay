@@ -179,6 +179,12 @@ void main() {
         'alice-private',
       );
       expect(await db.getPlayQueue(), [1]);
+      final aliceRead = db.getOrCreateUserGameData(1);
+      await prefs.setString('steam_id', 'bob');
+      final bobRead = db.getOrCreateUserGameData(1);
+      final concurrent = await Future.wait([aliceRead, bobRead]);
+      expect(concurrent[0]['user_notes'], 'alice-private');
+      expect(concurrent[1]['user_notes'], 'bob-private');
     } finally {
       await dependencies.dispose();
     }

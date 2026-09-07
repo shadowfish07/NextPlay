@@ -1,4 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:result_dart/result_dart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:nextplay/data/service/game_database_service.dart';
+import 'package:nextplay/domain/models/game/game.dart';
 import 'package:nextplay/config/dependencies.dart';
 import 'package:nextplay/data/repository/game_repository.dart';
 import 'package:nextplay/domain/models/game/game_status.dart';
@@ -10,6 +16,23 @@ import 'support/fixtures.dart';
 import 'support/host_database.dart';
 import 'support/test_app.dart';
 
+class _HeldSteam extends FakeSteamApiService {
+  final entered = Completer<void>();
+  final release = Completer<void>();
+  @override
+  Future<Result<List<Game>, String>> getOwnedGames({
+    required String apiKey,
+    required String steamId,
+    bool includeAppInfo = true,
+    bool includePlayedFreeGames = true,
+    int maxRetries = 3,
+  }) async {
+    entered.complete();
+    await release.future;
+    return super.getOwnedGames(apiKey: apiKey, steamId: steamId);
+  }
+}
+
 void main() {
   setUpAll(initializeHostDatabase);
 
@@ -18,6 +41,63 @@ void main() {
   tearDown(() async {
     await dependencies.dispose();
   });
+
+  test(
+    'an in-flight old-account sync cannot overwrite the new account library',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'steam_id': TestFixtures.steamId,
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final db = GameDatabaseService(
+        databaseName: 'account_sync_race.db',
+        historyAccount: () => prefs.getString('steam_id') ?? '',
+      );
+      await db.clearSteamGames();
+      await db.upsertSteamGames([
+        {'app_id': 620, 'name': 'Alice library'},
+      ]);
+      await db.updateUserGameNotes(620, 'Alice private');
+      final steam = _HeldSteam();
+      dependencies = await AppDependencies.create(
+        sharedPreferences: prefs,
+        apiKeyStorage: FakeApiKeyStorage(),
+        releaseUpdater: FakeReleaseUpdater(),
+        steamApiService: steam,
+        igdbGameService: FakeIgdbGameService(),
+        gameDatabaseService: db,
+      );
+      await dependencies.gameRepository.ready;
+      final sync = dependencies.gameRepository.syncGameLibrary(
+        apiKey: TestFixtures.apiKey,
+        steamId: TestFixtures.steamId,
+      );
+      try {
+        await steam.entered.future;
+        await dependencies.onboardingRepository.saveSteamIdWithoutValidation(
+          '76561198000000001',
+        );
+        await db.upsertSteamGames([
+          {'app_id': 620, 'name': 'Bob library'},
+        ]);
+        await db.updateUserGameNotes(620, 'Bob private');
+        steam.release.complete();
+        expect((await sync).isSuccess(), isFalse);
+        expect((await db.getAllSteamGames()).single['name'], 'Bob library');
+        expect(
+          (await db.getOrCreateUserGameData(620))['user_notes'],
+          'Bob private',
+        );
+        expect(
+          dependencies.gameRepository.getGameNotes(620),
+          isNot('Alice private'),
+        );
+      } finally {
+        if (!steam.release.isCompleted) steam.release.complete();
+        await sync;
+      }
+    },
+  );
 
   test(
     'sync persists fixture games and applies automatic status updates',

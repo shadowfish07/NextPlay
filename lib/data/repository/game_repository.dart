@@ -62,6 +62,9 @@ class GameRepository {
   OfficialLocalizationProgress _officialLocalizationProgress =
       const OfficialLocalizationProgress.idle();
   bool _disposed = false;
+  String? _loadedAccount;
+  String get _account => _prefs.getString('steam_id') ?? '';
+  bool get _cacheIsCurrent => _loadedAccount == _account;
   late final Future<void> ready;
 
   GameRepository({
@@ -103,10 +106,13 @@ class GameRepository {
 
   bool get excludeSoftware => _prefs.getBool(excludeSoftwarePreference) ?? true;
 
-  int get softwareGamesCount =>
-      _gameCache.values.where((game) => game.isSoftware).length;
+  int get softwareGamesCount => _cacheIsCurrent
+      ? _gameCache.values.where((game) => game.isSoftware).length
+      : 0;
 
-  Iterable<Game> get _visibleGames => excludeSoftware
+  Iterable<Game> get _visibleGames => !_cacheIsCurrent
+      ? const <Game>[]
+      : excludeSoftware
       ? _gameCache.values.where((game) => !game.isSoftware)
       : _gameCache.values;
 
@@ -125,15 +131,27 @@ class GameRepository {
   RecommendationResult? get currentRecommendations => _currentRecommendations;
 
   /// 从数据库加载数据到内存缓存
-  Future<void> _loadFromDatabase({
+  Future<void> _loadFromDatabase({bool startOfficialLocalization = true}) =>
+      _databaseService.withCurrentAccount(
+        () => _loadBoundLibrary(
+          startOfficialLocalization: startOfficialLocalization,
+        ),
+      );
+
+  Future<void> _loadBoundLibrary({
     bool startOfficialLocalization = true,
   }) async {
     try {
       AppLogger.info('Loading game data from database...');
 
-      final steamGames = await _databaseService.getAllSteamGames();
-      final igdbGames = await _databaseService.getAllIgdbGames();
-      final userData = await _databaseService.getAllUserGameData();
+      final account = _databaseService.boundAccount ?? _account;
+      if (_account != account) return;
+      final snapshot = await _databaseService.readLibrarySnapshot();
+      if (_disposed || _account != account) return;
+      final steamGames = snapshot.steam;
+      final igdbGames = snapshot.igdb;
+      final userData = snapshot.user;
+      _loadedAccount = account;
 
       // 构建 IGDB 数据映射
       final igdbMap = <int, Map<String, dynamic>>{};
@@ -188,9 +206,24 @@ class GameRepository {
     }
   }
 
+  /// Invalidates old-account work and publishes the new account's local library.
+  Future<void> refreshAccount() async {
+    _currentSyncId++;
+    _currentLocalizationSyncId++;
+    _loadedAccount = null;
+    _gameCache.clear();
+    _gameStatusCache.clear();
+    _currentRecommendations = null;
+    _gameLibraryController.add([]);
+    _gameStatusController.add({});
+    _playQueueController.add([]);
+    await _loadFromDatabase();
+  }
+
   /// 获取游戏状态
   GameStatus _getGameStatus(int appId) {
-    return _gameStatusCache[appId] ?? const GameStatus.notStarted();
+    return (_cacheIsCurrent ? _gameStatusCache[appId] : null) ??
+        const GameStatus.notStarted();
   }
 
   /// 解析状态字符串为 GameStatus
@@ -403,10 +436,13 @@ class GameRepository {
 
   /// 通知待玩队列变更
   Future<void> _notifyPlayQueueChanged() async {
-    final queue = await _databaseService.getPlayQueue();
-    if (_disposed) return;
-    final games = queue.map(getGameByAppId).whereType<Game>().toList();
-    _playQueueController.add(games);
+    return _databaseService.withCurrentAccount(() async {
+      final account = _databaseService.boundAccount ?? _account;
+      final queue = await _databaseService.getPlayQueue();
+      if (_disposed || _account != account || !_cacheIsCurrent) return;
+      final games = queue.map(getGameByAppId).whereType<Game>().toList();
+      _playQueueController.add(games);
+    });
   }
 
   /// 自动状态联动处理
@@ -468,6 +504,13 @@ class GameRepository {
   Future<Result<List<Game>, String>> syncGameLibrary({
     required String apiKey,
     required String steamId,
+  }) => _databaseService.withCurrentAccount(
+    () => _syncBoundLibrary(apiKey: apiKey, steamId: steamId),
+  );
+
+  Future<Result<List<Game>, String>> _syncBoundLibrary({
+    required String apiKey,
+    required String steamId,
   }) async {
     // 生成新的同步任务 ID，自动使之前的任务失效
     final syncId = ++_currentSyncId;
@@ -476,7 +519,9 @@ class GameRepository {
     );
 
     // 检查任务是否被取消的辅助函数
-    bool isCancelled() => _currentSyncId != syncId;
+    final account = _databaseService.boundAccount ?? _account;
+    bool isCancelled() =>
+        _disposed || _currentSyncId != syncId || _account != account;
 
     try {
       AppLogger.info('Starting full game library sync...');
@@ -615,8 +660,8 @@ class GameRepository {
         };
       }).toList();
 
-      await _databaseService.clearSteamGames();
-      await _databaseService.upsertSteamGames(steamDataList);
+      if (isCancelled()) return const Failure(syncCancelledError);
+      await _databaseService.replaceSteamGames(steamDataList);
 
       // 检查任务是否被取消
       if (isCancelled()) {
@@ -892,10 +937,20 @@ class GameRepository {
   Future<void> syncOfficialLocalizations(
     List<int> steamIds, {
     required String language,
+  }) => _databaseService.withCurrentAccount(
+    () => _syncBoundLocalizations(steamIds, language: language),
+  );
+
+  Future<void> _syncBoundLocalizations(
+    List<int> steamIds, {
+    required String language,
   }) async {
     final localizationSyncId = ++_currentLocalizationSyncId;
+    final account = _databaseService.boundAccount ?? _account;
     bool isCancelled() =>
-        _disposed || _currentLocalizationSyncId != localizationSyncId;
+        _disposed ||
+        _currentLocalizationSyncId != localizationSyncId ||
+        _account != account;
 
     final remaining = steamIds.toSet();
     final total = remaining.length;
@@ -1060,11 +1115,13 @@ class GameRepository {
     int appId,
     GameStatus status,
   ) async {
+    final account = _databaseService.boundAccount ?? _account;
     try {
       await _databaseService.updateUserGameStatus(
         appId,
         jsonEncode(status.toJson()),
       );
+      if (_account != account || !_cacheIsCurrent) return const Success(());
       // 更新内存缓存
       _gameStatusCache[appId] = status;
       _gameStatusController.add(gameStatuses);
@@ -1079,9 +1136,11 @@ class GameRepository {
 
   /// 更新用户游戏笔记
   Future<Result<void, String>> updateGameNotes(int appId, String notes) async {
+    final account = _databaseService.boundAccount ?? _account;
     try {
       await _databaseService.updateUserGameNotes(appId, notes);
 
+      if (_account != account || !_cacheIsCurrent) return const Success(());
       // 更新内存缓存
       final game = _gameCache[appId];
       if (game != null) {
@@ -1100,6 +1159,7 @@ class GameRepository {
 
   /// 根据 AppId 获取游戏
   Game? getGameByAppId(int appId) {
+    if (!_cacheIsCurrent) return null;
     final game = _gameCache[appId];
     if (game == null || (excludeSoftware && game.isSoftware)) return null;
     return game;
@@ -1107,14 +1167,16 @@ class GameRepository {
 
   /// 获取游戏用户笔记
   String getGameNotes(int appId) {
-    return _gameCache[appId]?.userNotes ?? '';
+    return getGameByAppId(appId)?.userNotes ?? '';
   }
 
   // ==================== 待玩队列操作 ====================
 
   /// 获取待玩队列
   Future<List<Game>> get playQueue async {
+    final account = _databaseService.boundAccount ?? _account;
     final queue = await _databaseService.getPlayQueue();
+    if (_account != account || !_cacheIsCurrent) return [];
     return queue.map(getGameByAppId).whereType<Game>().toList();
   }
 
@@ -1175,7 +1237,9 @@ class GameRepository {
 
   /// 获取待玩队列详情（包含加入时间）
   Future<List<PlayQueueItem>> getPlayQueueWithDetails() async {
+    final account = _databaseService.boundAccount ?? _account;
     final details = await _databaseService.getPlayQueueWithDetails();
+    if (_account != account || !_cacheIsCurrent) return [];
     return details
         .map((item) {
           final appId = item['app_id'] as int;

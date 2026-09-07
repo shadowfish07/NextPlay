@@ -170,6 +170,7 @@ class OnboardingRepository {
     try {
       AppLogger.info('Saving Steam ID without validation');
       await _prefs.setString('steam_id', steamId);
+      await _gameRepository.refreshAccount();
 
       _currentState = _currentState.copyWith(
         steamId: steamId,
@@ -246,6 +247,7 @@ class OnboardingRepository {
 
       if (result.isSuccess()) {
         await _prefs.setString('steam_id', steamId);
+        await _gameRepository.refreshAccount();
         _currentState = _currentState.copyWith(
           isSteamIdValid: true,
           isLoading: false,
@@ -392,6 +394,7 @@ class OnboardingRepository {
     await _apiKeyStorage.delete();
     await _prefs.remove(legacyApiKeyPreference);
     await _prefs.remove('steam_id');
+    await _gameRepository.refreshAccount();
     _currentState = _currentState.copyWith(
       apiKey: '',
       steamId: '',
