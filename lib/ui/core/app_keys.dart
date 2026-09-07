@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 
 /// Stable identifiers shared by Flutter tests and Android accessibility tools.
 abstract final class AppKeys {
+  static const historyHeatmap = Key('history.heatmap');
+  static const historyHeatmapScroll = Key('history.heatmap.scroll');
   static const historyEntry = Key('history.entry');
   static const historyScreen = Key('history.screen');
   static const historyLoading = Key('history.loading');

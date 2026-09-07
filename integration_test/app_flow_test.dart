@@ -53,6 +53,21 @@ void main() {
     await _tapAndWait(tester, AppKeys.historyEntry);
     await _waitFor(tester, find.byKey(AppKeys.historyDaily));
     expect(find.text('8 小时 40 分钟'), findsOneWidget);
+    await _tapAndWait(tester, AppKeys.historyHeatmap);
+    await _waitFor(tester, find.byKey(AppKeys.historyHeatmapScroll));
+    await tester.ensureVisible(find.byKey(AppKeys.historyHeatmapScroll));
+    await tester.drag(
+      find.byKey(AppKeys.historyHeatmapScroll),
+      const Offset(160, 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(AppKeys.historyDay('2026-09-07')));
+    await _tapAndWait(tester, AppKeys.historyDay('2026-09-07'));
+    await _waitFor(tester, find.byKey(AppKeys.historyDaySheet));
+    Navigator.of(tester.element(find.byKey(AppKeys.historyDaySheet))).pop();
+    await tester.pumpAndSettle();
+    await _tapAndWait(tester, AppKeys.historyDaily);
+
     await _tapAndWait(tester, AppKeys.historyRange(30));
     await _waitFor(tester, find.byKey(AppKeys.historyDaily));
     await _tapAndWait(tester, AppKeys.historyRange(7));

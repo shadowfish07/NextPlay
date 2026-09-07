@@ -32,6 +32,18 @@ void main() {
       await tester.tap(find.byKey(AppKeys.historyRange(30)));
       await tester.pumpAndSettle();
       expect(service.requests.last, (30, null));
+      await tester.ensureVisible(find.byKey(AppKeys.historyHeatmap));
+      await tester.tap(find.byKey(AppKeys.historyHeatmap));
+      await tester.pumpAndSettle();
+      expect(service.requests.last, (365, null));
+      expect(find.byKey(AppKeys.historyHeatmapScroll), findsOneWidget);
+      final today = find.byKey(AppKeys.historyDay('2026-09-07'));
+      await tester.ensureVisible(today);
+      await tester.tap(today);
+      await tester.pumpAndSettle();
+      expect(find.byKey(AppKeys.historyDaySheet), findsOneWidget);
+      Navigator.of(tester.element(find.byKey(AppKeys.historyDaySheet))).pop();
+      await tester.pumpAndSettle();
       service.fail = true;
       await tester.tap(find.byKey(AppKeys.historyRange(0)));
       await tester.pumpAndSettle();

@@ -3,17 +3,29 @@ import 'package:nextplay/domain/models/history/playtime_history.dart';
 import 'fake_services.dart';
 
 Map<String, dynamic> historyFixture({int range = 7, int? appId}) {
-  final count = range == 30 ? 30 : 7;
+  final count = range == 365
+      ? 365
+      : range == 30
+      ? 30
+      : 7;
+  var accumulated = 12000;
+  var added = 0;
   final days = List.generate(count, (i) {
     final date = DateTime.utc(2026, 9, 7)
         .subtract(Duration(days: count - 1 - i))
         .toIso8601String()
         .substring(0, 10);
-    final minutes = [40, 90, 0, 125, 55, 180, 70][i % 7];
+    final minutes = range == 365
+        ? (i % 5 == 0 ? 0 : (i * 37) % 240)
+        : [40, 90, 0, 125, 55, 180, 70][i % 7];
+    if (i > 0) {
+      accumulated += minutes;
+      added += minutes;
+    }
     return {
       'date': date,
       'added': i == 0 ? null : minutes,
-      'total': i == 0 ? null : 12000 + i * 120,
+      'total': i == 0 ? null : accumulated,
       'quality': i == 0 ? 'missing' : (i == count - 1 ? 'partial' : 'complete'),
       'games': minutes == 0 || i == 0
           ? <Map<String, dynamic>>[]
@@ -25,16 +37,20 @@ Map<String, dynamic> historyFixture({int range = 7, int? appId}) {
   return {
     'name': appId == null ? null : 'Portal 2',
     'timezone': 'Asia/Shanghai',
-    'firstObserved': 1788192000000,
+    'firstObserved': DateTime.utc(
+      2026,
+      9,
+      7,
+    ).subtract(Duration(days: count - 2)).millisecondsSinceEpoch,
     'lastObserved': 1788739200000,
-    'total': 12720,
-    'added': 520,
+    'total': accumulated,
+    'added': added,
     'previousAdded': null,
     'comparisonAdded': null,
     'partial': true,
     'days': days,
     'games': [
-      {'appid': appId ?? 620, 'name': 'Portal 2', 'added': 520},
+      {'appid': appId ?? 620, 'name': 'Portal 2', 'added': added},
     ],
   };
 }

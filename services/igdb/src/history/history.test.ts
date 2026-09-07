@@ -216,7 +216,7 @@ test("private routes reject anonymous access and never select account from reque
     }),
   );
   expect(response!.status).toBe(200);
-  for (const [query, status] of [["range=7", 200], ["range=1", 400], ["appid=-1", 400], ["range=30&account=bob", 200]] as const) {
+  for (const [query, status] of [["range=7", 200], ["range=365", 200], ["range=1", 400], ["appid=-1", 400], ["range=30&account=bob", 200]] as const) {
     const result = (await rt.handle(new Request(`http://local/api/history/dashboard?${query}`, {headers: {Authorization: `Bearer ${account.token}`}})))!;
     expect(result.status).toBe(status);
     expect(result.headers.get("cache-control")).toBe("no-store");
@@ -386,6 +386,10 @@ test("dashboard retains baseline, gaps, corrections, timezone dates and account 
   expect(result.added).toBe(35);
   expect(result.total).toBe(215);
   expect(result.games[0]?.added).toBe(35);
+  const year = dashboard(s, "alice", "Asia/Shanghai", 365, null, start + 8 * HOUR);
+  expect(year.days).toHaveLength(365);
+  expect(year.days[0]?.added).toBeNull();
+  expect(year.added).toBe(35);
   expect(result.days.at(-1)?.quality).toBe("partial");
   expect(result.days[0]?.added).toBeNull();
   expect(result.previousAdded).toBeNull();

@@ -1,3 +1,4 @@
+import 'history_heatmap.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -17,13 +18,16 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen>
     with WidgetsBindingObserver {
   late int _range;
-  bool _cumulative = false;
+  String _chart = 'daily';
+  bool get _cumulative => _chart == 'cumulative';
   late Future<PlaytimeHistory> _data;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _range = [0, 7, 30].contains(widget.initialRange) ? widget.initialRange : 7;
+    _range = [0, 7, 30, 365].contains(widget.initialRange)
+        ? widget.initialRange
+        : 7;
     _reload();
   }
 
@@ -58,14 +62,20 @@ class _HistoryScreenState extends State<HistoryScreen>
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
             child: Row(
               children: [
-                for (final range in [7, 30, 0])
+                for (final range in [7, 30, 365, 0])
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: ChoiceChip(
                         key: AppKeys.historyRange(range),
                         label: Center(
-                          child: Text(range == 0 ? '全部' : '最近 $range 天'),
+                          child: Text(
+                            range == 0
+                                ? '全部'
+                                : range == 365
+                                ? '一年'
+                                : '$range 天',
+                          ),
                         ),
                         selected: _range == range,
                         showCheckmark: false,
@@ -163,39 +173,59 @@ class _HistoryScreenState extends State<HistoryScreen>
                       ),
                     ),
                     const SizedBox(height: 12),
-                    SegmentedButton<bool>(
+                    SegmentedButton<String>(
+                      showSelectedIcon: false,
                       segments: const [
                         ButtonSegment(
-                          value: false,
+                          value: 'daily',
                           label: Text('每日新增', key: AppKeys.historyDaily),
                           icon: Icon(Icons.bar_chart),
                         ),
                         ButtonSegment(
-                          value: true,
+                          value: 'cumulative',
                           label: Text('累计时长', key: AppKeys.historyCumulative),
                           icon: Icon(Icons.show_chart),
                         ),
+                        ButtonSegment(
+                          value: 'calendar',
+                          label: Text('游玩日历', key: AppKeys.historyHeatmap),
+                        ),
                       ],
-                      selected: {_cumulative},
-                      onSelectionChanged: (value) =>
-                          setState(() => _cumulative = value.first),
+                      selected: {_chart},
+                      onSelectionChanged: (value) => setState(() {
+                        _chart = value.first;
+                        if (_chart == 'calendar' && _range != 365) {
+                          _range = 365;
+                          _reload();
+                        }
+                      }),
                     ),
                     const SizedBox(height: 16),
-                    _HistoryChart(
-                      days: data.days,
-                      cumulative: _cumulative,
-                      onDay: (day) => _showDay(day, data),
-                    ),
+                    if (_chart == 'calendar')
+                      HistoryHeatmap(
+                        days: data.days,
+                        onDay: (day) => _showDay(day, data),
+                      )
+                    else
+                      _HistoryChart(
+                        days: data.days,
+                        cumulative: _cumulative,
+                        onDay: (day) => _showDay(day, data),
+                      ),
                     const SizedBox(height: 10),
                     Text(
-                      _cumulative
+                      _chart == 'calendar'
+                          ? '颜色越亮，游玩越久 · 点击格子查看当天游戏'
+                          : _cumulative
                           ? '每日最后一次有效记录 · 点击日期查看明细'
                           : '按采样差值估算 · 点击柱状图查看当天游戏',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '浅色表示记录不完整，— 表示暂无数据。日期按 ${data.timezone}。',
+                      _chart == 'calendar'
+                          ? '按采样差值估算，日期按 ${data.timezone}。'
+                          : '浅色表示记录不完整，— 表示暂无数据。日期按 ${data.timezone}。',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),

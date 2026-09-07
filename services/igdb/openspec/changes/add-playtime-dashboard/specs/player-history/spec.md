@@ -13,3 +13,14 @@ The system SHALL display collected daily increments, cumulative snapshots, perio
 #### Scenario: Network failure
 - **WHEN** the history request fails or the account changes in flight
 - **THEN** no previous account's results are displayed and a retryable read error is shown.
+
+### Requirement: Playtime calendar
+The system SHALL offer a GitHub-like calendar with day cells, weekly columns, month labels and a 365-day range, reusing the authenticated observations.
+
+#### Scenario: Calendar exploration
+- **WHEN** the user selects the calendar
+- **THEN** the page selects the past year, colors cells by observed minutes and opens the existing day breakdown on tap.
+
+#### Scenario: Unknown versus inactive
+- **WHEN** a day has no observations or only partial coverage
+- **THEN** unknown days have a distinct outline, partial days have a distinct border, and only positive observed increments contribute to the displayed active-day count.
