@@ -60,21 +60,6 @@ class _LibraryScreenState extends State<LibraryScreen>
               // 应用栏
               _buildSliverAppBar(context, viewModel),
 
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Card.filled(
-                    child: ListTile(
-                      key: AppKeys.historyEntry,
-                      leading: const Icon(Icons.bar_chart_rounded),
-                      title: const Text('游玩记录'),
-                      subtitle: const Text('看看最近的时间花在哪里'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.pushNamed('history'),
-                    ),
-                  ),
-                ),
-              ),
               // 筛选器
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -178,7 +163,16 @@ class _LibraryScreenState extends State<LibraryScreen>
     BuildContext context,
     LibraryViewModel viewModel,
   ) {
-    return const [SyncStatusIndicator()];
+    return [
+      TextButton.icon(
+        key: AppKeys.historyEntry,
+        onPressed: () => context.pushNamed('history'),
+        icon: const Icon(Icons.bar_chart_rounded, size: 20),
+        label: const Text('记录'),
+      ),
+      const SyncStatusIndicator(),
+      const SizedBox(width: 8),
+    ];
   }
 
   /// 构建游戏列表
