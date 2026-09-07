@@ -67,7 +67,6 @@ export function dashboard(store: HistoryStore, account: string, timezone: string
   const awaitingFirstPoll = current.quality === "missing" && previous !== null && now - previous <= GAP;
   const currentHasGap = current.quality !== "complete" && !awaitingFirstPoll;
   if (current.quality === "complete") current.quality = "partial";
-  const gameDays: GameDay[] = [];
   // Bun SQLite has no JavaScript scalar-function API. Resolve civil-day
   // boundaries with Intl, then let indexed SQL aggregate each day's games.
   const boundary = (date: string) => {
@@ -78,19 +77,26 @@ export function dashboard(store: HistoryStore, account: string, timezone: string
     }
     return high;
   };
-  const query = store.db.query(`SELECT appid,
-    COALESCE(json_extract(fields,'$.name'),'Game '||appid) AS name,
-    SUM(CASE WHEN quality='observed_interval' THEN delta ELSE 0 END) AS added,
-    MAX(observed) AS latest FROM playtime WHERE account=? AND observed>=? AND observed<? AND observed<=?
-    AND (? IS NULL OR appid=?) GROUP BY appid HAVING added>0`);
+  const boundaries: { date: string; start: number; end: number }[] = [];
   let dayStart = boundary(start);
   for (const date of byDay.keys()) {
     if (date < start) continue;
     const dayEnd = boundary(shift(date, 1));
-    const rows = query.all(account, dayStart, dayEnd, now, appid, appid) as Omit<GameDay, "date">[];
-    gameDays.push(...rows.map(row => ({...row, date})));
+    boundaries.push({ date, start: dayStart, end: dayEnd });
     dayStart = dayEnd;
   }
+  // One indexed join keeps hourly records inside SQLite, including for all history.
+  const gameDays = store.db.query(`WITH dates AS (
+    SELECT json_extract(value,'$.date') AS date,
+      json_extract(value,'$.start') AS day_start, json_extract(value,'$.end') AS day_end
+    FROM json_each(?)
+  ) SELECT dates.date,p.appid,
+    COALESCE(json_extract(p.fields,'$.name'),'Game '||p.appid) AS name,
+    SUM(CASE WHEN p.quality='observed_interval' THEN p.delta ELSE 0 END) AS added,
+    MAX(p.observed) AS latest
+    FROM dates JOIN playtime p ON p.account=? AND p.observed>=dates.day_start AND p.observed<dates.day_end
+    WHERE p.observed<=? AND (? IS NULL OR p.appid=?)
+    GROUP BY dates.date,p.appid HAVING added>0`).all(JSON.stringify(boundaries), account, now, appid, appid) as GameDay[];
   const ranking = new Map<number, GameDay>();
   for (const game of gameDays) {
     const day = byDay.get(game.date);

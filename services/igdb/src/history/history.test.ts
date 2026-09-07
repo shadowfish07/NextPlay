@@ -431,4 +431,23 @@ test("dashboard aggregates more than one thousand hourly game rows and compares 
   expect(beforeNextPoll.days.at(-1)?.quality).toBe("missing");
   expect(beforeNextPoll.partial).toBe(false);
   expect(dashboard(s, "alice", "UTC", 7, null, start + 408.75 * HOUR).partial).toBe(true);
+  // The number of native SQLite result queries must not grow with civil days.
+  let resultQueries = 0;
+  const counted = { db: { query(sql: string) {
+    const statement = s.db.query(sql);
+    return new Proxy(statement, { get(target, key) {
+      const value = Reflect.get(target, key);
+      if (key === "all") return (...args: unknown[]) => {
+        resultQueries++;
+        return value.apply(target, args);
+      };
+      return typeof value === "function" ? value.bind(target) : value;
+    }});
+  }}} as unknown as HistoryStore;
+  for (const range of [365, 0]) {
+    resultQueries = 0;
+    const bounded = dashboard(counted, "alice", "UTC", range, null, start + 408.25 * HOUR);
+    expect(bounded.games).toHaveLength(4);
+    expect(resultQueries).toBeLessThanOrEqual(2);
+  }
 });
