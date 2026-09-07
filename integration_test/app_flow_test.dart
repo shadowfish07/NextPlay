@@ -190,6 +190,7 @@ void main() {
         steamId: 'bob',
       );
       expect(synced.isSuccess(), isTrue);
+      await db.addToPlayQueue(1);
 
       await prefs.setString('steam_id', 'alice');
       expect(
@@ -202,12 +203,15 @@ void main() {
       expect(restored.summary, 'Alice title summary');
       expect(restored.coverUrl, 'https://example.com/alice.jpg');
 
+      final toggle = dependencies.gameRepository.togglePlayQueue(1);
       final aliceRead = db.getOrCreateUserGameData(1);
       await prefs.setString('steam_id', 'bob');
       final bobRead = db.getOrCreateUserGameData(1);
       final concurrent = await Future.wait([aliceRead, bobRead]);
       expect(concurrent[0]['user_notes'], 'alice-private');
       expect(concurrent[1]['user_notes'], 'bob-private');
+      expect((await toggle).isSuccess(), isFalse);
+      expect(await db.getPlayQueue(), [1]);
       await (await db.database).execute('DROP TABLE steam_games');
       final reload = await dependencies.gameRepository.refreshAccount();
       expect(reload.isSuccess(), isFalse);

@@ -42,6 +42,26 @@ void main() {
     await dependencies.dispose();
   });
 
+  test('queue toggle cancels when account changes during its lookup', () async {
+    dependencies = await createTestDependencies(
+      preferences: {'steam_id': 'alice'},
+      databaseName: 'account_queue_toggle.db',
+    );
+    final db = dependencies.gameDatabaseService;
+    final prefs = dependencies.sharedPreferences;
+    await db.addToPlayQueue(620);
+    await prefs.setString('steam_id', 'bob');
+    await db.addToPlayQueue(620);
+    await prefs.setString('steam_id', 'alice');
+    await dependencies.gameRepository.refreshAccount();
+    final toggle = dependencies.gameRepository.togglePlayQueue(620);
+    await prefs.setString('steam_id', 'bob');
+    expect((await toggle).isSuccess(), isFalse);
+    expect(await db.getPlayQueue(), [620]);
+    await prefs.setString('steam_id', 'alice');
+    expect(await db.getPlayQueue(), [620]);
+  });
+
   test('sync keeps metadata for another account library', () async {
     dependencies = await createTestDependencies(
       preferences: {'steam_id': 'alice'},

@@ -397,6 +397,17 @@ test("dashboard retains baseline, gaps, corrections, timezone dates and account 
   result = dashboard(s, "alice", "Asia/Shanghai", 0, 620, start + 8 * HOUR);
   expect(result.days).toHaveLength(2);
   expect(result.name).toBe("Portal 2");
+  const remaining = [{ appid: 570, name: "Dota 2", playtime_forever: 55 }];
+  const latestAt = start + 9 * HOUR;
+  const removed = s.record("alice", "library", 0, { games: remaining }, "complete", latestAt);
+  s.projectLibrary(removed, "alice", remaining, latestAt);
+  const priorGame = dashboard(s, "alice", "Asia/Shanghai", 7, 620, latestAt);
+  expect(priorGame.total).toBe(215);
+  expect(priorGame.lastObserved).toBe(start + 7 * HOUR);
+  const currentLibrary = dashboard(s, "alice", "Asia/Shanghai", 7, null, latestAt);
+  expect(currentLibrary.total).toBe(55);
+  expect(currentLibrary.lastObserved).toBe(latestAt);
+
 });
 
 test("dashboard aggregates more than one thousand hourly game rows and compares covered days", () => {

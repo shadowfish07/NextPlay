@@ -1295,8 +1295,12 @@ class GameRepository {
 
   /// 切换待玩状态（已在则移除，不在则添加）
   Future<Result<bool, String>> togglePlayQueue(int appId) async {
+    final account = _databaseService.boundAccount ?? _account;
     try {
       final isIn = await isInPlayQueue(appId);
+      if (_disposed || _account != account) {
+        return const Failure('账号已切换，请重试');
+      }
       if (isIn) {
         await removeFromPlayQueue(appId);
         return const Success(false); // 返回 false 表示已移除
