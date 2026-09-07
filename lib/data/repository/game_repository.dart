@@ -837,7 +837,7 @@ class GameRepository {
           };
         }).toList();
 
-        await _databaseService.clearIgdbGames();
+        // Public metadata is shared across accounts; retain other libraries.
         await _databaseService.upsertIgdbGames(igdbDataList);
 
         _syncProgressController.add(

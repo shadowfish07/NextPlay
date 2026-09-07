@@ -42,6 +42,37 @@ void main() {
     await dependencies.dispose();
   });
 
+  test('sync keeps metadata for another account library', () async {
+    dependencies = await createTestDependencies(
+      preferences: {'steam_id': 'alice'},
+      databaseName: 'account_metadata_union.db',
+    );
+    final db = dependencies.gameDatabaseService;
+    await db.upsertSteamGames([
+      {'app_id': 1, 'name': 'Alice title'},
+    ]);
+    await db.upsertIgdbGames([
+      {
+        'steam_id': 1,
+        'name': 'Alice title',
+        'summary': 'Alice title summary',
+        'cover_url': 'https://example.com/alice.jpg',
+      },
+    ]);
+    await dependencies.onboardingRepository.saveSteamIdWithoutValidation('bob');
+    final result = await dependencies.gameRepository.syncGameLibrary(
+      apiKey: TestFixtures.apiKey,
+      steamId: 'bob',
+    );
+    expect(result.isSuccess(), isTrue);
+    await dependencies.onboardingRepository.saveSteamIdWithoutValidation(
+      'alice',
+    );
+    final restored = dependencies.gameRepository.getGameByAppId(1)!;
+    expect(restored.summary, 'Alice title summary');
+    expect(restored.coverUrl, 'https://example.com/alice.jpg');
+  });
+
   test(
     'an in-flight old-account sync cannot overwrite the new account library',
     () async {

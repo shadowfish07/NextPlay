@@ -142,6 +142,17 @@ void main() {
     final db = dependencies.gameDatabaseService;
     final prefs = dependencies.sharedPreferences;
     try {
+      await db.upsertSteamGames([
+        {'app_id': 1, 'name': 'Alice title'},
+      ]);
+      await db.upsertIgdbGames([
+        {
+          'steam_id': 1,
+          'name': 'Alice title',
+          'summary': 'Alice title summary',
+          'cover_url': 'https://example.com/alice.jpg',
+        },
+      ]);
       await db.updateUserGameNotes(1, 'alice-private');
       await db.addToPlayQueue(1);
       final sqlite = await db.database;
@@ -173,12 +184,24 @@ void main() {
       );
       expect(retained.single['acknowledged'], 0);
       expect(retained.single['body'], contains('bob-private'));
+      await dependencies.gameRepository.refreshAccount();
+      final synced = await dependencies.gameRepository.syncGameLibrary(
+        apiKey: TestFixtures.apiKey,
+        steamId: 'bob',
+      );
+      expect(synced.isSuccess(), isTrue);
+
       await prefs.setString('steam_id', 'alice');
       expect(
         (await db.getOrCreateUserGameData(1))['user_notes'],
         'alice-private',
       );
       expect(await db.getPlayQueue(), [1]);
+      await dependencies.gameRepository.refreshAccount();
+      final restored = dependencies.gameRepository.getGameByAppId(1)!;
+      expect(restored.summary, 'Alice title summary');
+      expect(restored.coverUrl, 'https://example.com/alice.jpg');
+
       final aliceRead = db.getOrCreateUserGameData(1);
       await prefs.setString('steam_id', 'bob');
       final bobRead = db.getOrCreateUserGameData(1);
