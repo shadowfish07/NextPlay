@@ -19,6 +19,7 @@ class GameDatabaseService {
 
   Database? _database;
   Future<Database>? _opening;
+  String? _activeAccount;
   final _historyCommitted = StreamController<void>.broadcast();
 
   /// Emitted only after a transaction durably adds history to the outbox.
@@ -34,8 +35,9 @@ class GameDatabaseService {
       _opening = null;
       rethrow;
     }
-    if (_historyAccount != null) {
+    if (_historyAccount != null && _activeAccount != account) {
       await db.transaction((txn) => _activateAccount(txn, account));
+      _activeAccount = account;
     }
     return db;
   }
@@ -207,6 +209,7 @@ class GameDatabaseService {
       await _database!.close();
       _database = null;
       _opening = null;
+      _activeAccount = null;
       AppLogger.info('Database closed');
     }
   }
@@ -719,6 +722,7 @@ class GameDatabaseService {
         );
       }
     });
+    _activeAccount = account;
     if (appended) _historyCommitted.add(null);
   }
 

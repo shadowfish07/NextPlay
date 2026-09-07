@@ -402,11 +402,18 @@ test("dashboard retains baseline, gaps, corrections, timezone dates and account 
 test("dashboard aggregates more than one thousand hourly game rows and compares covered days", () => {
   const s = store();
   const start = Date.parse("2026-08-20T00:00:00Z");
-  for (let hour = 0; hour <= 24 * 17; hour++) {
-    const games = Array.from({ length: 4 }, (_, i) => ({ appid: i + 1, name: `Game ${i}`, playtime_forever: 100 + hour }));
-    const id = s.record("alice", "library", 0, { games }, "complete", start + hour * HOUR);
-    s.projectLibrary(id, "alice", games, start + hour * HOUR);
-  }
+  // This is a query-scale fixture. Raw-file durability has separate coverage;
+  // avoid thousands of fsyncs during setup on hosted CI disks.
+  const payload = s.payload("alice", { fixture: "dashboard query scale" }, start);
+  const observation = s.db.query("INSERT INTO observations VALUES (?,?,?,?,?,?,?,?)");
+  s.db.transaction(() => {
+    for (let hour = 0; hour <= 24 * 17; hour++) {
+      const games = Array.from({ length: 4 }, (_, i) => ({ appid: i + 1, name: `Game ${i}`, playtime_forever: 100 + hour }));
+      const id = `fixture-${hour}`, at = start + hour * HOUR;
+      observation.run(id, "alice", "library", 0, at, "complete", payload, null);
+      s.projectLibrary(id, "alice", games, at);
+    }
+  })();
   const result = dashboard(s, "alice", "UTC", 7, null, start + 24 * 17 * HOUR);
   expect(result.days).toHaveLength(7);
   expect(result.added).toBe(4 * (6 * 24 + 1));
@@ -417,5 +424,4 @@ test("dashboard aggregates more than one thousand hourly game rows and compares 
   expect(result.days.at(-1)?.quality).toBe("partial"); // an unfinished day is distinct from a gap
   const stale = dashboard(s, "alice", "UTC", 7, null, start + (24 * 17 + 2) * HOUR);
   expect(stale.partial).toBe(true); // today's real outage must still be visible
-
 });
