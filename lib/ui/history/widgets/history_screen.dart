@@ -306,6 +306,14 @@ class _HistoryScreenState extends State<HistoryScreen>
     VoidCallback? open,
   }) {
     final share = total > 0 ? game.added / total : 0.0;
+    final placeholder = SizedBox(
+      width: 64,
+      height: 44,
+      child: ColoredBox(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: const Icon(Icons.sports_esports_outlined),
+      ),
+    );
     return ListTile(
       key: AppKeys.historyGame(game.appId),
       contentPadding: EdgeInsets.zero,
@@ -316,12 +324,9 @@ class _HistoryScreenState extends State<HistoryScreen>
           width: 64,
           height: 44,
           fit: BoxFit.cover,
-          errorBuilder: (_, error, stack) => Container(
-            width: 64,
-            height: 44,
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: const Icon(Icons.sports_esports_outlined),
-          ),
+          frameBuilder: (_, child, frame, wasSynchronouslyLoaded) =>
+              frame == null ? placeholder : child,
+          errorBuilder: (_, error, stack) => placeholder,
         ),
       ),
       title: Text(game.name, maxLines: 2, overflow: TextOverflow.ellipsis),
