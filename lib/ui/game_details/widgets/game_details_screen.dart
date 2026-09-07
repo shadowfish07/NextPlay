@@ -116,6 +116,16 @@ class GameDetailsScreen extends StatelessWidget {
                         viewModel.toggleWishlistCommand.execute(),
                   ),
 
+                  ListTile(
+                    key: AppKeys.historyEntry,
+                    leading: const Icon(Icons.bar_chart_rounded),
+                    title: const Text('游玩记录'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.pushNamed(
+                      'history',
+                      queryParameters: {'appid': game.appId.toString()},
+                    ),
+                  ),
                   // 游玩记录卡片（仅在有游玩时间时展示）
                   if (game.playtimeForever > 0) ...[
                     const SizedBox(height: 16),

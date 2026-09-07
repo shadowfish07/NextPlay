@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../view_models/settings_view_model.dart';
 import 'account_section/steam_connection_card.dart';
 import 'account_section/data_sync_card.dart';
-import 'account_section/history_connection_card.dart';
 // import 'appearance_section/theme_display_card.dart';
 import 'appearance_section/language_settings_card.dart';
 import 'preferences_section/software_filter_card.dart';
@@ -54,8 +53,6 @@ class SettingsScreen extends StatelessWidget {
                     const SteamConnectionCard(),
                     const SizedBox(height: 16),
                     const DataSyncCard(),
-                    const SizedBox(height: 16),
-                    const HistoryConnectionCard(),
                     const SizedBox(
                       height: 24,
                     ), // Larger spacing between sections

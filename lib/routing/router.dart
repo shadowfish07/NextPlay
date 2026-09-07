@@ -1,3 +1,5 @@
+import '../ui/history/widgets/history_screen.dart';
+
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,6 +38,15 @@ class AppRouter {
         return null; // No redirect needed
       },
       routes: [
+        GoRoute(
+          path: '/history',
+          name: 'history',
+          builder: (context, state) => HistoryScreen(
+            appId: int.tryParse(state.uri.queryParameters['appid'] ?? ''),
+            initialRange:
+                int.tryParse(state.uri.queryParameters['range'] ?? '') ?? 7,
+          ),
+        ),
         GoRoute(
           path: Routes.onboarding,
           name: 'onboarding',

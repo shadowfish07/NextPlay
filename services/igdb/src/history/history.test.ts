@@ -1,3 +1,4 @@
+import { dashboard } from "./dashboard";
 import { test, expect, afterEach } from "bun:test";
 import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -215,6 +216,13 @@ test("private routes reject anonymous access and never select account from reque
     }),
   );
   expect(response!.status).toBe(200);
+  for (const [query, status] of [["range=7", 200], ["range=365", 200], ["range=1", 400], ["appid=-1", 400], ["range=30&account=bob", 200]] as const) {
+    const result = (await rt.handle(new Request(`http://local/api/history/dashboard?${query}`, {headers: {Authorization: `Bearer ${account.token}`}})))!;
+    expect(result.status).toBe(status);
+    expect(result.headers.get("cache-control")).toBe("no-store");
+    if (status === 200) expect((await result.json() as any).firstObserved).toBeNull();
+  }
+  expect((await rt.handle(new Request("http://local/api/history/dashboard")))!.status).toBe(401);
   expect(() =>
     loadAccounts({
       NEXTPLAY_HISTORY_ACCOUNTS: JSON.stringify([
@@ -353,4 +361,122 @@ test("persisted account binding rejects configuration that would mix two Steam h
       .query("SELECT steam_id FROM account_bindings WHERE account='alice'")
       .get(),
   ).toEqual({ steam_id: "76561198000000000" });
+});
+
+test("dashboard retains baseline, gaps, corrections, timezone dates and account isolation", () => {
+  const s = store();
+  const start = Date.parse("2026-09-01T15:00:00Z");
+  const sample = (at: number, minutes: number, who = "alice") => {
+    const games = [{ appid: 620, name: "Portal 2", playtime_forever: minutes }];
+    const id = s.record(who, "library", 0, { games }, "complete", at);
+    s.projectLibrary(id, who, games, at);
+  };
+  sample(start, 100);
+  let result = dashboard(s, "alice", "Asia/Shanghai", 7, null, start);
+  expect(result.added).toBeNull();
+  expect(result.total).toBe(100);
+  expect(result.days.at(-1)?.date).toBe("2026-09-01");
+  sample(start + HOUR, 120);
+  sample(start + 5 * HOUR, 300); // gap delta must not be assigned to this day
+  sample(start + 6 * HOUR, 200); // correction is not negative activity
+  sample(start + 7 * HOUR, 215);
+  s.register("bob");
+  sample(start + HOUR, 99999, "bob");
+  result = dashboard(s, "alice", "Asia/Shanghai", 7, null, start + 8 * HOUR);
+  expect(result.added).toBe(35);
+  expect(result.total).toBe(215);
+  expect(result.games[0]?.added).toBe(35);
+  const year = dashboard(s, "alice", "Asia/Shanghai", 365, null, start + 8 * HOUR);
+  expect(year.days).toHaveLength(365);
+  expect(year.days[0]?.added).toBeNull();
+  expect(year.added).toBe(35);
+  expect(result.days.at(-1)?.quality).toBe("partial");
+  expect(result.days[0]?.added).toBeNull();
+  expect(result.previousAdded).toBeNull();
+  expect(dashboard(s, "alice", "Asia/Shanghai", 0, 999, start + 8 * HOUR).firstObserved).toBeNull();
+  result = dashboard(s, "alice", "Asia/Shanghai", 0, 620, start + 8 * HOUR);
+  expect(result.days).toHaveLength(2);
+  expect(result.name).toBe("Portal 2");
+  const remaining = [{ appid: 570, name: "Dota 2", playtime_forever: 55 }];
+  const latestAt = start + 9 * HOUR;
+  const removed = s.record("alice", "library", 0, { games: remaining }, "complete", latestAt);
+  s.projectLibrary(removed, "alice", remaining, latestAt);
+  const priorGame = dashboard(s, "alice", "Asia/Shanghai", 7, 620, latestAt);
+  expect(priorGame.total).toBe(215);
+  expect(priorGame.lastObserved).toBe(start + 7 * HOUR);
+  const currentLibrary = dashboard(s, "alice", "Asia/Shanghai", 7, null, latestAt);
+  expect(currentLibrary.total).toBe(55);
+  expect(currentLibrary.lastObserved).toBe(latestAt);
+  const emptyAt = latestAt + HOUR;
+  const empty = s.record("alice", "library", 0, { games: [] }, "complete", emptyAt);
+  s.projectLibrary(empty, "alice", [], emptyAt);
+  const emptyLibrary = dashboard(s, "alice", "Asia/Shanghai", 7, null, emptyAt);
+  expect(emptyLibrary.total).toBe(0);
+  expect(emptyLibrary.lastObserved).toBe(emptyAt);
+  expect(emptyLibrary.days.at(-1)?.total).toBe(0);
+  expect(dashboard(s, "alice", "Asia/Shanghai", 7, 620, emptyAt).total).toBe(215);
+  s.register("empty");
+  expect(dashboard(s, "empty", "UTC", 0, null, emptyAt).total).toBeNull();
+  expect(dashboard(s, "empty", "UTC", 0, null, emptyAt).lastObserved).toBeNull();
+  const firstEmpty = s.record("empty", "library", 0, { games: [] }, "complete", start);
+  s.projectLibrary(firstEmpty, "empty", [], start);
+  const onlyEmpty = dashboard(s, "empty", "UTC", 0, null, emptyAt);
+  expect(onlyEmpty.firstObserved).toBe(start);
+  expect(onlyEmpty.lastObserved).toBe(start);
+  expect(onlyEmpty.total).toBe(0);
+
+
+});
+
+test("dashboard aggregates more than one thousand hourly game rows and compares covered days", () => {
+  const s = store();
+  const start = Date.parse("2026-08-20T00:00:00Z");
+  // This is a query-scale fixture. Raw-file durability has separate coverage;
+  // avoid thousands of fsyncs during setup on hosted CI disks.
+  const payload = s.payload("alice", { fixture: "dashboard query scale" }, start);
+  const observation = s.db.query("INSERT INTO observations VALUES (?,?,?,?,?,?,?,?)");
+  s.db.transaction(() => {
+    for (let hour = 0; hour <= 24 * 17; hour++) {
+      const games = Array.from({ length: 4 }, (_, i) => ({ appid: i + 1, name: `Game ${i}`, playtime_forever: 100 + hour * hour }));
+      const id = `fixture-${hour}`, at = start + hour * HOUR;
+      observation.run(id, "alice", "library", 0, at, "complete", payload, null);
+      s.projectLibrary(id, "alice", games, at);
+    }
+  })();
+  const result = dashboard(s, "alice", "UTC", 7, null, start + 24 * 17 * HOUR);
+  expect(result.days).toHaveLength(7);
+  expect(result.added).toBe(4 * (408 ** 2 - 263 ** 2));
+  expect(result.previousAdded).toBe(4 * (263 ** 2 - 119 ** 2));
+  expect(result.comparisonAdded).toBe(4 * (407 ** 2 - 263 ** 2));
+  expect(result.games).toHaveLength(4);
+  expect(result.partial).toBe(false);
+  expect(result.days.at(-1)?.quality).toBe("partial"); // an unfinished day is distinct from a gap
+  const stale = dashboard(s, "alice", "UTC", 7, null, start + (24 * 17 + 2) * HOUR);
+  expect(stale.partial).toBe(true); // today's real outage must still be visible
+  // Before the next hourly poll, midnight alone is not evidence of an outage.
+  s.db.query("DELETE FROM playtime WHERE observation=?").run("fixture-408");
+  s.db.query("DELETE FROM observations WHERE id=?").run("fixture-408");
+  const beforeNextPoll = dashboard(s, "alice", "UTC", 7, null, start + 408.25 * HOUR);
+  expect(beforeNextPoll.days.at(-1)?.quality).toBe("missing");
+  expect(beforeNextPoll.partial).toBe(false);
+  expect(dashboard(s, "alice", "UTC", 7, null, start + 408.75 * HOUR).partial).toBe(true);
+  // The number of native SQLite result queries must not grow with civil days.
+  let resultQueries = 0;
+  const counted = { db: { query(sql: string) {
+    const statement = s.db.query(sql);
+    return new Proxy(statement, { get(target, key) {
+      const value = Reflect.get(target, key);
+      if (key === "all") return (...args: unknown[]) => {
+        resultQueries++;
+        return value.apply(target, args);
+      };
+      return typeof value === "function" ? value.bind(target) : value;
+    }});
+  }}} as unknown as HistoryStore;
+  for (const range of [365, 0]) {
+    resultQueries = 0;
+    const bounded = dashboard(counted, "alice", "UTC", range, null, start + 408.25 * HOUR);
+    expect(bounded.games).toHaveLength(4);
+    expect(resultQueries).toBeLessThanOrEqual(2);
+  }
 });

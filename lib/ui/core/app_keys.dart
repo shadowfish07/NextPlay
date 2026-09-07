@@ -2,6 +2,24 @@ import 'package:flutter/foundation.dart';
 
 /// Stable identifiers shared by Flutter tests and Android accessibility tools.
 abstract final class AppKeys {
+  static const historyInfo = Key('history.info');
+  static const historyInfoSheet = Key('history.info.sheet');
+  static const historyInfoClose = Key('history.info.close');
+  static const historyHeatmap = Key('history.heatmap');
+  static const historyHeatmapScroll = Key('history.heatmap.scroll');
+  static const historyEntry = Key('history.entry');
+  static const historyScreen = Key('history.screen');
+  static const historyLoading = Key('history.loading');
+  static const historyRetry = Key('history.retry');
+  static const historyEmpty = Key('history.empty');
+  static const historyDaily = Key('history.daily');
+  static const historyCumulative = Key('history.cumulative');
+  static const historyDaySheet = Key('history.daySheet');
+  static ValueKey<String> historyRange(int days) =>
+      ValueKey('history.range.$days');
+  static ValueKey<String> historyDay(String date) =>
+      ValueKey('history.day.$date');
+  static ValueKey<String> historyGame(int id) => ValueKey('history.game.$id');
   static const historyStatus = Key('history.status');
   static const historyConnect = Key('history.connect');
   static const historySync = Key('history.sync');

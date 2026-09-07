@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as path;
@@ -13,15 +14,62 @@ class GameDatabaseService {
   });
 
   final String _databaseName;
-  static const int _databaseVersion = 6;
+  static const int _databaseVersion = 7;
   final String Function()? _historyAccount;
 
   Database? _database;
+  Future<Database>? _opening;
+  String? _activeAccount;
+  final Object _accountScope = Object();
+  // Keep SQLite work independent of a caller's temporary async scheduler.
+  final Zone _databaseZone = Zone.current;
+  Future<void> _operations = Future<void>.value();
 
-  /// 获取数据库实例
+  String? get _selectedAccount =>
+      Zone.current[_accountScope] as String? ?? _historyAccount?.call();
+
+  /// The account attached to the current workflow, if account binding is enabled.
+  String? get boundAccount => _selectedAccount;
+
+  /// Retains the initiating account across a multi-step asynchronous workflow.
+  Future<T> withCurrentAccount<T>(Future<T> Function() action) =>
+      runZoned(action, zoneValues: {_accountScope: _selectedAccount});
+
+  /// Account selection and the entire operation share one service queue.
+  Future<T> _runDatabase<T>(Future<T> Function(Database db) action) {
+    final account = _selectedAccount;
+    return _databaseZone.run(() {
+      final result = _operations.then((_) async {
+        final db = await database;
+        if (account != null && _activeAccount != account) {
+          await db.transaction((txn) => _activateAccount(txn, account));
+          _activeAccount = account;
+        }
+        return action(db);
+      });
+      _operations = result.then<void>(
+        (_) {},
+        onError: (Object _, StackTrace __) {},
+      );
+      return result;
+    });
+  }
+
+  final _historyCommitted = StreamController<void>.broadcast();
+
+  /// Emitted only after a transaction durably adds history to the outbox.
+  Stream<void> get historyCommitted => _historyCommitted.stream;
+
+  /// Raw handle for schema diagnostics; application reads and writes use [_runDatabase].
   Future<Database> get database async {
-    _database ??= await _initDatabase();
-    return _database!;
+    final Database db;
+    try {
+      db = _database ??= await (_opening ??= _initDatabase());
+    } catch (_) {
+      _opening = null;
+      rethrow;
+    }
+    return db;
   }
 
   /// 初始化数据库
@@ -131,7 +179,13 @@ class GameDatabaseService {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     AppLogger.info('Upgrading database from v$oldVersion to v$newVersion');
 
-    if (oldVersion < 6) await _createHistoryTables(db);
+    if (oldVersion < 6) {
+      await _createHistoryTables(db);
+    } else if (oldVersion < 7) {
+      await db.execute(
+        'ALTER TABLE history_outbox ADD COLUMN upload_error TEXT',
+      );
+    }
 
     // v1 -> v2: 添加本地化名字、artworks、开发商、发行商字段
     if (oldVersion < 2) {
@@ -180,112 +234,155 @@ class GameDatabaseService {
   }
 
   /// 关闭数据库
-  Future<void> close() async {
+  Future<void> close() => _runDatabase((_) async {
     if (_database != null) {
       await _database!.close();
       _database = null;
+      _opening = null;
+      _activeAccount = null;
       AppLogger.info('Database closed');
     }
-  }
+  });
 
   // ==================== Steam Games 操作 ====================
 
   /// 批量插入/更新 Steam 游戏数据
   Future<void> upsertSteamGames(List<Map<String, dynamic>> games) async {
-    final db = await database;
-    final batch = db.batch();
-    final now = DateTime.now().millisecondsSinceEpoch;
+    return _runDatabase((db) async {
+      final batch = db.batch();
+      final now = DateTime.now().millisecondsSinceEpoch;
 
-    for (final game in games) {
-      batch.insert('steam_games', {
-        ...game,
-        'updated_at': now,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
-    }
+      for (final game in games) {
+        batch.insert('steam_games', {
+          ...game,
+          'updated_at': now,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
 
-    await batch.commit(noResult: true);
-    AppLogger.info('Upserted ${games.length} steam games');
+      await batch.commit(noResult: true);
+      AppLogger.info('Upserted ${games.length} steam games');
+    });
   }
 
   /// 获取所有 Steam 游戏
   Future<List<Map<String, dynamic>>> getAllSteamGames() async {
-    final db = await database;
-    return await db.query('steam_games');
+    return _runDatabase((db) async {
+      return await db.query('steam_games');
+    });
   }
+
+  /// Reads all library layers without allowing account activation between them.
+  Future<
+    ({
+      List<Map<String, dynamic>> steam,
+      List<Map<String, dynamic>> igdb,
+      List<Map<String, dynamic>> user,
+    })
+  >
+  readLibrarySnapshot() => _runDatabase(
+    (db) async => (
+      steam: await db.query('steam_games'),
+      igdb: await db.query('igdb_games'),
+      user: await db.query('user_game_data'),
+    ),
+  );
+
+  /// Replaces a fetched library atomically within the initiating account.
+  Future<void> replaceSteamGames(List<Map<String, dynamic>> games) =>
+      _runDatabase(
+        (db) => db.transaction((txn) async {
+          await txn.delete('steam_games');
+          final now = DateTime.now().millisecondsSinceEpoch;
+          final batch = txn.batch();
+          for (final game in games) {
+            batch.insert('steam_games', {
+              ...game,
+              'updated_at': now,
+            }, conflictAlgorithm: ConflictAlgorithm.replace);
+          }
+          await batch.commit(noResult: true);
+        }),
+      );
 
   /// 获取单个 Steam 游戏
   Future<Map<String, dynamic>?> getSteamGame(int appId) async {
-    final db = await database;
-    final results = await db.query(
-      'steam_games',
-      where: 'app_id = ?',
-      whereArgs: [appId],
-    );
-    return results.isNotEmpty ? results.first : null;
+    return _runDatabase((db) async {
+      final results = await db.query(
+        'steam_games',
+        where: 'app_id = ?',
+        whereArgs: [appId],
+      );
+      return results.isNotEmpty ? results.first : null;
+    });
   }
 
   /// 清空 Steam 游戏表
   Future<void> clearSteamGames() async {
-    final db = await database;
-    await db.delete('steam_games');
-    AppLogger.info('Cleared steam_games table');
+    return _runDatabase((db) async {
+      await db.delete('steam_games');
+      AppLogger.info('Cleared steam_games table');
+    });
   }
 
   // ==================== IGDB Games 操作 ====================
 
   /// 批量插入/更新 IGDB 游戏数据
   Future<void> upsertIgdbGames(List<Map<String, dynamic>> games) async {
-    final db = await database;
-    final batch = db.batch();
-    final now = DateTime.now().millisecondsSinceEpoch;
+    return _runDatabase((db) async {
+      final batch = db.batch();
+      final now = DateTime.now().millisecondsSinceEpoch;
 
-    for (final game in games) {
-      batch.insert('igdb_games', {
-        ...game,
-        'updated_at': now,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
-    }
+      for (final game in games) {
+        batch.insert('igdb_games', {
+          ...game,
+          'updated_at': now,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
 
-    await batch.commit(noResult: true);
-    AppLogger.info('Upserted ${games.length} igdb games');
+      await batch.commit(noResult: true);
+      AppLogger.info('Upserted ${games.length} igdb games');
+    });
   }
 
   /// 获取所有 IGDB 游戏
   Future<List<Map<String, dynamic>>> getAllIgdbGames() async {
-    final db = await database;
-    return await db.query('igdb_games');
+    return _runDatabase((db) async {
+      return await db.query('igdb_games');
+    });
   }
 
   /// 获取单个 IGDB 游戏
   Future<Map<String, dynamic>?> getIgdbGame(int steamId) async {
-    final db = await database;
-    final results = await db.query(
-      'igdb_games',
-      where: 'steam_id = ?',
-      whereArgs: [steamId],
-    );
-    return results.isNotEmpty ? results.first : null;
+    return _runDatabase((db) async {
+      final results = await db.query(
+        'igdb_games',
+        where: 'steam_id = ?',
+        whereArgs: [steamId],
+      );
+      return results.isNotEmpty ? results.first : null;
+    });
   }
 
   /// 清空 IGDB 游戏表
   Future<void> clearIgdbGames() async {
-    final db = await database;
-    await db.delete('igdb_games');
-    AppLogger.info('Cleared igdb_games table');
+    return _runDatabase((db) async {
+      await db.delete('igdb_games');
+      AppLogger.info('Cleared igdb_games table');
+    });
   }
 
   /// 将服务端已完成的 Steam 官方本地化写入本地展示副本。
   Future<void> upsertOfficialLocalizations(
     List<Map<String, dynamic>> localizations,
   ) async {
-    if (localizations.isEmpty) return;
-    final db = await database;
-    final batch = db.batch();
-    final now = DateTime.now().millisecondsSinceEpoch;
+    return _runDatabase((db) async {
+      if (localizations.isEmpty) return;
+      final batch = db.batch();
+      final now = DateTime.now().millisecondsSinceEpoch;
 
-    for (final localization in localizations) {
-      batch.rawInsert(
-        '''
+      for (final localization in localizations) {
+        batch.rawInsert(
+          '''
         INSERT INTO igdb_games (
           steam_id, name, localized_name, localized_name_source,
           summary, summary_source, localization_language,
@@ -300,22 +397,23 @@ class GameDatabaseService {
           localization_updated_at = excluded.localization_updated_at,
           updated_at = excluded.updated_at
         ''',
-        [
-          localization['steam_id'],
-          localization['base_name'],
-          localization['localized_name'],
-          localization['localized_name_source'],
-          localization['summary'],
-          localization['summary_source'],
-          localization['language'],
-          now,
-          now,
-        ],
-      );
-    }
+          [
+            localization['steam_id'],
+            localization['base_name'],
+            localization['localized_name'],
+            localization['localized_name_source'],
+            localization['summary'],
+            localization['summary_source'],
+            localization['language'],
+            now,
+            now,
+          ],
+        );
+      }
 
-    await batch.commit(noResult: true);
-    AppLogger.info('Upserted ${localizations.length} official localizations');
+      await batch.commit(noResult: true);
+      AppLogger.info('Upserted ${localizations.length} official localizations');
+    });
   }
 
   /// 官方明确没有该语言资料时，清除同语言的旧展示副本。
@@ -323,11 +421,11 @@ class GameDatabaseService {
     List<int> steamIds, {
     required String language,
   }) async {
-    if (steamIds.isEmpty) return;
-    final db = await database;
-    final placeholders = List.filled(steamIds.length, '?').join(',');
-    await db.rawUpdate(
-      '''
+    return _runDatabase((db) async {
+      if (steamIds.isEmpty) return;
+      final placeholders = List.filled(steamIds.length, '?').join(',');
+      await db.rawUpdate(
+        '''
       UPDATE igdb_games SET
         localized_name = NULL,
         localized_name_source = NULL,
@@ -338,38 +436,40 @@ class GameDatabaseService {
         updated_at = ?
       WHERE steam_id IN ($placeholders) AND localization_language = ?
       ''',
-      [DateTime.now().millisecondsSinceEpoch, ...steamIds, language],
-    );
+        [DateTime.now().millisecondsSinceEpoch, ...steamIds, language],
+      );
+    });
   }
 
   // ==================== User Game Data 操作 ====================
 
   /// 获取或创建用户游戏数据
   Future<Map<String, dynamic>> getOrCreateUserGameData(int appId) async {
-    final db = await database;
-    final results = await db.query(
-      'user_game_data',
-      where: 'app_id = ?',
-      whereArgs: [appId],
-    );
+    return _runDatabase((db) async {
+      final results = await db.query(
+        'user_game_data',
+        where: 'app_id = ?',
+        whereArgs: [appId],
+      );
 
-    if (results.isNotEmpty) {
-      return results.first;
-    }
+      if (results.isNotEmpty) {
+        return results.first;
+      }
 
-    // 创建默认数据
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final defaultData = {
-      'app_id': appId,
-      'status': 'notStarted',
-      'user_notes': '',
-      'custom_tags': json.encode([]),
-      'created_at': now,
-      'updated_at': now,
-    };
+      // 创建默认数据
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final defaultData = {
+        'app_id': appId,
+        'status': 'notStarted',
+        'user_notes': '',
+        'custom_tags': json.encode([]),
+        'created_at': now,
+        'updated_at': now,
+      };
 
-    await db.insert('user_game_data', defaultData);
-    return defaultData;
+      await db.insert('user_game_data', defaultData);
+      return defaultData;
+    });
   }
 
   /// 更新用户游戏状态
@@ -418,8 +518,9 @@ class GameDatabaseService {
 
   /// 获取所有用户游戏数据
   Future<List<Map<String, dynamic>>> getAllUserGameData() async {
-    final db = await database;
-    return await db.query('user_game_data');
+    return _runDatabase((db) async {
+      return await db.query('user_game_data');
+    });
   }
 
   /// 批量更新用户游戏状态
@@ -458,9 +559,10 @@ class GameDatabaseService {
 
   /// 获取待玩队列
   Future<List<int>> getPlayQueue() async {
-    final db = await database;
-    final results = await db.query('play_queue', orderBy: 'position ASC');
-    return results.map((r) => r['app_id'] as int).toList();
+    return _runDatabase((db) async {
+      final results = await db.query('play_queue', orderBy: 'position ASC');
+      return results.map((r) => r['app_id'] as int).toList();
+    });
   }
 
   /// 添加到待玩队列
@@ -516,32 +618,35 @@ class GameDatabaseService {
 
   /// 获取待玩队列详情（包含加入时间）
   Future<List<Map<String, dynamic>>> getPlayQueueWithDetails() async {
-    final db = await database;
-    return await db.query('play_queue', orderBy: 'position ASC');
+    return _runDatabase((db) async {
+      return await db.query('play_queue', orderBy: 'position ASC');
+    });
   }
 
   /// 检查游戏是否在待玩队列中
   Future<bool> isInPlayQueue(int appId) async {
-    final db = await database;
-    final results = await db.query(
-      'play_queue',
-      where: 'app_id = ?',
-      whereArgs: [appId],
-      limit: 1,
-    );
-    return results.isNotEmpty;
+    return _runDatabase((db) async {
+      final results = await db.query(
+        'play_queue',
+        where: 'app_id = ?',
+        whereArgs: [appId],
+        limit: 1,
+      );
+      return results.isNotEmpty;
+    });
   }
 
   /// 获取单个待玩项详情
   Future<Map<String, dynamic>?> getPlayQueueItem(int appId) async {
-    final db = await database;
-    final results = await db.query(
-      'play_queue',
-      where: 'app_id = ?',
-      whereArgs: [appId],
-      limit: 1,
-    );
-    return results.isNotEmpty ? results.first : null;
+    return _runDatabase((db) async {
+      final results = await db.query(
+        'play_queue',
+        where: 'app_id = ?',
+        whereArgs: [appId],
+        limit: 1,
+      );
+      return results.isNotEmpty ? results.first : null;
+    });
   }
 
   /// 批量从待玩队列移除
@@ -570,7 +675,7 @@ class GameDatabaseService {
     await db.execute('''CREATE TABLE history_outbox (
       sequence INTEGER PRIMARY KEY AUTOINCREMENT,
       id TEXT NOT NULL UNIQUE, account TEXT NOT NULL, body TEXT NOT NULL,
-      acknowledged INTEGER NOT NULL DEFAULT 0
+      acknowledged INTEGER NOT NULL DEFAULT 0, upload_error TEXT
     )''');
     await db.insert('history_meta', {
       'key': 'device',
@@ -578,70 +683,127 @@ class GameDatabaseService {
     });
   }
 
+  /// Switches private working tables atomically, preserving the previous account.
+  /// Existing v6 data belongs to its recorded baseline owner, never the next login.
+  Future<void> _activateAccount(Transaction txn, String account) async {
+    Future<String?> meta(String key) async {
+      final rows = await txn.query(
+        'history_meta',
+        where: 'key = ?',
+        whereArgs: [key],
+      );
+      return rows.isEmpty ? null : rows.single['value'] as String;
+    }
+
+    Future<void> save(String key, String value) => txn
+        .insert('history_meta', {
+          'key': key,
+          'value': value,
+        }, conflictAlgorithm: ConflictAlgorithm.replace)
+        .then((_) {});
+    final legacyOwner = await meta('baseline');
+    if (legacyOwner != null && await meta('baseline:$legacyOwner') == null) {
+      await save('baseline:$legacyOwner', '1');
+    }
+    final active = await meta('active_account') ?? legacyOwner;
+    if (active == account) return;
+    const tables = ['user_game_data', 'play_queue', 'steam_games'];
+    if (active != null) {
+      final snapshot = <String, Object?>{};
+      for (final table in tables) {
+        snapshot[table] = await txn.query(table);
+      }
+      await save('account_state:$active', jsonEncode(snapshot));
+      final saved = await meta('account_state:$account');
+      final restored = saved == null
+          ? <String, dynamic>{}
+          : jsonDecode(saved) as Map<String, dynamic>;
+      for (final table in tables) {
+        await txn.delete(table);
+        for (final row in (restored[table] as List? ?? [])) {
+          await txn.insert(table, Map<String, Object?>.from(row as Map));
+        }
+      }
+    }
+    await save('active_account', account);
+  }
+
   Future<void> initializeHistory() => _historyMutation((_) async {});
 
   Future<void> _historyMutation(
     Future<void> Function(Transaction) action,
   ) async {
-    final db = await database;
-    await db.transaction((txn) async {
-      final account = _historyAccount?.call() ?? '';
-      if (account.isEmpty) {
-        await action(txn);
-        return;
-      }
-      final before = await txn.query('user_game_data', orderBy: 'app_id');
-      final queueBefore = await txn.query(
-        'play_queue',
-        orderBy: 'position, id',
-      );
-      final baseline = await txn.query(
-        'history_meta',
-        where: 'key = ?',
-        whereArgs: ['baseline'],
-      );
-      if (baseline.isEmpty) {
-        for (final row in before) {
-          await _appendHistory(txn, account, 'baseline', null, row, null);
+    final account = _selectedAccount ?? '';
+    return _runDatabase((db) async {
+      var appended = false;
+      await db.transaction((txn) async {
+        if (account.isEmpty) {
+          await action(txn);
+          return;
         }
-        await _appendHistory(
-          txn,
-          account,
-          'queue_baseline',
-          null,
-          queueBefore,
-          null,
+        final before = await txn.query('user_game_data', orderBy: 'app_id');
+        final queueBefore = await txn.query(
+          'play_queue',
+          orderBy: 'position, id',
         );
-        await txn.insert('history_meta', {'key': 'baseline', 'value': account});
-      }
-      await action(txn);
-      final after = await txn.query('user_game_data', orderBy: 'app_id');
-      final previous = {for (final row in before) row['app_id']: row};
-      final batchId = await _historyId(txn);
-      for (final row in after) {
-        final old = previous[row['app_id']];
-        if (jsonEncode(old) != jsonEncode(row)) {
+        final baseline = await txn.query(
+          'history_meta',
+          where: 'key = ?',
+          whereArgs: ['baseline:$account'],
+        );
+        if (baseline.isEmpty) {
+          appended = true;
+          for (final row in before) {
+            await _appendHistory(txn, account, 'baseline', null, row, null);
+          }
           await _appendHistory(
             txn,
             account,
-            'user_game_data',
-            old,
-            row,
+            'queue_baseline',
+            null,
+            queueBefore,
+            null,
+          );
+          await txn.insert('history_meta', {
+            'key': 'baseline:$account',
+            'value': '1',
+          });
+        }
+        await action(txn);
+        final after = await txn.query('user_game_data', orderBy: 'app_id');
+        final previous = {for (final row in before) row['app_id']: row};
+        final batchId = await _historyId(txn);
+        for (final row in after) {
+          final old = previous[row['app_id']];
+          if (jsonEncode(old) != jsonEncode(row)) {
+            appended = true;
+            await _appendHistory(
+              txn,
+              account,
+              'user_game_data',
+              old,
+              row,
+              batchId,
+            );
+          }
+        }
+        final queueAfter = await txn.query(
+          'play_queue',
+          orderBy: 'position, id',
+        );
+        if (jsonEncode(queueBefore) != jsonEncode(queueAfter)) {
+          appended = true;
+          await _appendHistory(
+            txn,
+            account,
+            'queue',
+            queueBefore,
+            queueAfter,
             batchId,
           );
         }
-      }
-      final queueAfter = await txn.query('play_queue', orderBy: 'position, id');
-      if (jsonEncode(queueBefore) != jsonEncode(queueAfter)) {
-        await _appendHistory(
-          txn,
-          account,
-          'queue',
-          queueBefore,
-          queueAfter,
-          batchId,
-        );
-      }
+      });
+      if (appended) _historyCommitted.add(null);
     });
   }
 
@@ -686,30 +848,46 @@ class GameDatabaseService {
   }
 
   Future<List<Map<String, dynamic>>> pendingHistory(String account) async {
-    final db = await database;
-    final rows = await db.query(
-      'history_outbox',
-      where: 'account = ? AND acknowledged = 0',
-      whereArgs: [account],
-      orderBy: 'sequence',
-      limit: 20,
-    );
-    return rows
-        .map((row) => jsonDecode(row['body'] as String) as Map<String, dynamic>)
-        .toList();
+    return _runDatabase((db) async {
+      final rows = await db.query(
+        'history_outbox',
+        where: 'account = ? AND acknowledged = 0 AND upload_error IS NULL',
+        whereArgs: [account],
+        orderBy: 'sequence',
+        limit: 20,
+      );
+      return rows
+          .map(
+            (row) => jsonDecode(row['body'] as String) as Map<String, dynamic>,
+          )
+          .toList();
+    });
+  }
+
+  /// Retains unsendable events for recovery while allowing later events to sync.
+  Future<void> rejectHistory(String account, String id, String reason) async {
+    return _runDatabase((db) async {
+      await db.update(
+        'history_outbox',
+        {'upload_error': reason},
+        where: 'account = ? AND id = ? AND acknowledged = 0',
+        whereArgs: [account, id],
+      );
+    });
   }
 
   Future<void> acknowledgeHistory(String account, List<String> ids) async {
-    final db = await database;
-    await db.transaction((txn) async {
-      for (final id in ids) {
-        await txn.update(
-          'history_outbox',
-          {'acknowledged': 1},
-          where: 'account = ? AND id = ?',
-          whereArgs: [account, id],
-        );
-      }
+    return _runDatabase((db) async {
+      await db.transaction((txn) async {
+        for (final id in ids) {
+          await txn.update(
+            'history_outbox',
+            {'acknowledged': 1},
+            where: 'account = ? AND id = ?',
+            whereArgs: [account, id],
+          );
+        }
+      });
     });
   }
 

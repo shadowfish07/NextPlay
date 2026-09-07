@@ -1,7 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'game_database_service.dart';
@@ -27,7 +28,7 @@ class SecureHistoryConnectionStorage implements HistoryConnectionStorage {
   Future<void> delete() => _storage.delete(key: 'connection_v1');
 }
 
-class HistorySyncService extends ChangeNotifier {
+class HistorySyncService extends ChangeNotifier with WidgetsBindingObserver {
   HistorySyncService({
     required this.database,
     required this.account,
@@ -50,6 +51,9 @@ class HistorySyncService extends ChangeNotifier {
   final Dio _dio;
   Map<String, dynamic>? _connection;
   Timer? _timer;
+  StreamSubscription<void>? _commits;
+  bool _started = false;
+  bool _wakeRequested = false;
   bool _busy = false;
   Completer<void>? _idle;
   bool _disposed = false;
@@ -58,6 +62,10 @@ class HistorySyncService extends ChangeNotifier {
   bool get busy => _busy;
 
   Future<void> start() async {
+    if (_started || _disposed) return;
+    _started = true;
+    WidgetsBinding.instance.addObserver(this);
+    _commits = database.historyCommitted.listen((_) => _wake());
     try {
       // Discard obsolete user-entered endpoints. Credentials never go to a saved URL.
       await storage?.delete();
@@ -74,6 +82,20 @@ class HistorySyncService extends ChangeNotifier {
     }
   }
 
+  void _wake() {
+    if (_disposed) return;
+    if (_busy) {
+      _wakeRequested = true;
+    } else {
+      unawaited(sync());
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _wake();
+  }
+
   Future<void> sync() async {
     if (_busy || _disposed) return;
     final bound = account();
@@ -84,6 +106,9 @@ class HistorySyncService extends ChangeNotifier {
       return;
     }
     _busy = true;
+    _wakeRequested = false;
+    var madeProgress = false;
+    var hasMore = false;
     _idle = Completer<void>();
     try {
       final key = await apiKeyStorage.read();
@@ -104,7 +129,34 @@ class HistorySyncService extends ChangeNotifier {
         throw const FormatException('Invalid history session');
       }
       _connection = {'account': bound};
-      final events = await database.pendingHistory(bound);
+      final pending = await database.pendingHistory(bound);
+      final events = <Map<String, dynamic>>[];
+      var bodyBytes = utf8.encode('{"events":[]}').length;
+      for (final event in pending) {
+        final eventBytes = utf8.encode(jsonEncode(event)).length;
+        // The server canonicalizes UTF-16 JSON after replacing account with its
+        // configured ID (at most 64 ASCII characters) and adding steamId.
+        // Key sorting does not change length; reserve the maximum ID length.
+        final storedCharacters = jsonEncode({
+          ...event,
+          'account': 'a' * 64,
+          'steamId': bound,
+        }).length;
+        if (storedCharacters > 256000 ||
+            eventBytes + utf8.encode('{"events":[]}').length > 1000000) {
+          await database.rejectHistory(
+            bound,
+            event['id'] as String,
+            'payload_too_large',
+          );
+          madeProgress = true;
+          continue;
+        }
+        final nextBytes = bodyBytes + eventBytes + (events.isEmpty ? 0 : 1);
+        if (nextBytes > 1000000) break;
+        events.add(event);
+        bodyBytes = nextBytes;
+      }
       if (_disposed || account() != bound) return;
       if (events.isNotEmpty) {
         final response = await _dio.post(
@@ -118,8 +170,10 @@ class HistorySyncService extends ChangeNotifier {
           throw const FormatException('Unexpected event acknowledgment');
         }
         await database.acknowledgeHistory(bound, accepted);
+        madeProgress = madeProgress || accepted.isNotEmpty;
       }
       final remaining = await database.pendingHistory(bound);
+      hasMore = remaining.isNotEmpty;
       message = remaining.isEmpty ? '本机操作记录已同步' : '仍有操作记录等待上传';
     } catch (_) {
       _connection = null;
@@ -127,7 +181,12 @@ class HistorySyncService extends ChangeNotifier {
     } finally {
       _busy = false;
       _idle?.complete();
-      if (!_disposed) notifyListeners();
+      if (!_disposed) {
+        notifyListeners();
+        if (_wakeRequested || (madeProgress && hasMore)) {
+          scheduleMicrotask(_wake);
+        }
+      }
     }
   }
 
@@ -140,6 +199,8 @@ class HistorySyncService extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _timer?.cancel();
+    unawaited(_commits?.cancel());
+    if (_started) WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 }

@@ -170,6 +170,7 @@ class OnboardingRepository {
     try {
       AppLogger.info('Saving Steam ID without validation');
       await _prefs.setString('steam_id', steamId);
+      await _refreshAccountOrThrow();
 
       _currentState = _currentState.copyWith(
         steamId: steamId,
@@ -182,9 +183,12 @@ class OnboardingRepository {
         e,
         stackTrace,
       );
-      _stateController.add(
-        _currentState.copyWith(errorMessage: 'Failed to save Steam ID'),
+      _currentState = _currentState.copyWith(
+        steamId: _prefs.getString('steam_id') ?? '',
+        isSteamIdValid: false,
+        errorMessage: '本地账号数据加载失败，请重试',
       );
+      _stateController.add(_currentState);
     }
   }
 
@@ -246,6 +250,7 @@ class OnboardingRepository {
 
       if (result.isSuccess()) {
         await _prefs.setString('steam_id', steamId);
+        await _refreshAccountOrThrow();
         _currentState = _currentState.copyWith(
           isSteamIdValid: true,
           isLoading: false,
@@ -264,13 +269,12 @@ class OnboardingRepository {
       _stateController.add(_currentState);
     } catch (e, stackTrace) {
       AppLogger.error('Failed to save Steam ID', e, stackTrace);
-      _stateController.add(
-        _currentState.copyWith(
-          isSteamIdValid: false,
-          isLoading: false,
-          errorMessage: 'Failed to save Steam ID',
-        ),
+      _currentState = _currentState.copyWith(
+        isSteamIdValid: false,
+        isLoading: false,
+        errorMessage: 'Failed to save Steam ID',
       );
+      _stateController.add(_currentState);
     }
   }
 
@@ -399,6 +403,13 @@ class OnboardingRepository {
       isSteamIdValid: false,
     );
     _stateController.add(_currentState);
+    // Credentials are already removed even when loading the signed-out cache fails.
+    await _refreshAccountOrThrow();
+  }
+
+  Future<void> _refreshAccountOrThrow() async {
+    final result = await _gameRepository.refreshAccount();
+    if (!result.isSuccess()) throw StateError(result.exceptionOrNull()!);
   }
 
   void dispose() {

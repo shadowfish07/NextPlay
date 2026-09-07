@@ -81,6 +81,7 @@ export class HistoryStore {
       CREATE INDEX IF NOT EXISTS observation_lookup ON observations(account,source,target,observed);
       CREATE TABLE IF NOT EXISTS games(account TEXT NOT NULL,appid INTEGER NOT NULL,first_seen INTEGER NOT NULL,last_seen INTEGER NOT NULL,active INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(account,appid));
       CREATE TABLE IF NOT EXISTS playtime(observation TEXT NOT NULL REFERENCES observations(id),account TEXT NOT NULL,appid INTEGER NOT NULL,observed INTEGER NOT NULL,minutes INTEGER,delta INTEGER,quality TEXT NOT NULL,fields TEXT NOT NULL,PRIMARY KEY(observation,appid));
+      CREATE INDEX IF NOT EXISTS playtime_account_time ON playtime(account,observed);
       CREATE INDEX IF NOT EXISTS playtime_lookup ON playtime(account,appid,observed);
       CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY,account TEXT NOT NULL,source TEXT NOT NULL,target INTEGER NOT NULL,slot INTEGER NOT NULL,state TEXT NOT NULL DEFAULT 'pending',attempts INTEGER NOT NULL DEFAULT 0,next_at INTEGER NOT NULL,lease TEXT,lease_until INTEGER,error TEXT,UNIQUE(account,source,target,slot));
       CREATE TABLE IF NOT EXISTS attempts(id TEXT PRIMARY KEY,job TEXT NOT NULL REFERENCES jobs(id),started INTEGER NOT NULL,finished INTEGER,status TEXT NOT NULL);

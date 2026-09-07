@@ -1,0 +1,4 @@
+- [x] Add aggregated query and quality tests.
+- [x] Implement page, navigation, authentication and state tests.
+- [x] Run fast verification, Android interactions and separate visual inspection.
+- [x] Deploy and exercise authorized public query; document limits and commit.

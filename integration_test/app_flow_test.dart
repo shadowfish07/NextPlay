@@ -1,4 +1,7 @@
+import '../test/support/account_sync_fixture.dart';
+
 import 'dart:io';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -31,6 +34,211 @@ const _captureVisualEvidence = bool.fromEnvironment(
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('final sync reload respects account switching on Android', (
+    tester,
+  ) async {
+    await verifySyncCompletionAccountSwitch('sync_completion_android.db');
+  });
+
+  testWidgets('playtime history library, range, day and game navigation', (
+    tester,
+  ) async {
+    final dependencies = await createTestDependencies(
+      preferences: {
+        'onboarding_completed': true,
+        'api_key': TestFixtures.apiKey,
+        'steam_id': TestFixtures.steamId,
+      },
+      databaseName: 'nextplay_history_dashboard_e2e.db',
+    );
+    await dependencies.gameRepository.syncGameLibrary(
+      apiKey: TestFixtures.apiKey,
+      steamId: TestFixtures.steamId,
+    );
+    await tester.pumpWidget(buildTestApp(dependencies));
+    await _waitFor(tester, find.byKey(AppKeys.discoverScreen));
+    await _tapAndWait(tester, AppKeys.libraryDestination);
+    await _tapAndWait(tester, AppKeys.historyEntry);
+    await _waitFor(tester, find.byKey(AppKeys.historyDaily));
+    expect(find.text('8 小时 40 分钟'), findsOneWidget);
+    await _tapAndWait(tester, AppKeys.historyHeatmap);
+    await _waitFor(tester, find.byKey(AppKeys.historyHeatmapScroll));
+    await tester.ensureVisible(find.byKey(AppKeys.historyHeatmapScroll));
+    expect(find.textContaining('按采样差值'), findsNothing);
+    expect(find.textContaining('点击格子'), findsNothing);
+    await _tapAndWait(tester, AppKeys.historyInfo);
+    await _waitFor(tester, find.byKey(AppKeys.historyInfoSheet));
+    await _tapAndWait(tester, AppKeys.historyInfoClose);
+    expect(find.byKey(AppKeys.historyInfoSheet), findsNothing);
+
+    await tester.drag(
+      find.byKey(AppKeys.historyHeatmapScroll),
+      const Offset(160, 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(AppKeys.historyDay('2026-09-07')));
+    await _tapAndWait(tester, AppKeys.historyDay('2026-09-07'));
+    await _waitFor(tester, find.byKey(AppKeys.historyDaySheet));
+    Navigator.of(tester.element(find.byKey(AppKeys.historyDaySheet))).pop();
+    await tester.pumpAndSettle();
+    await _tapAndWait(tester, AppKeys.historyDaily);
+
+    await _tapAndWait(tester, AppKeys.historyRange(30));
+    await _waitFor(tester, find.byKey(AppKeys.historyDaily));
+    await _tapAndWait(tester, AppKeys.historyRange(7));
+    await _waitFor(tester, find.byKey(AppKeys.historyDaily));
+    await _tapAndWait(tester, AppKeys.historyDay('2026-09-07'));
+    await _waitFor(tester, find.byKey(AppKeys.historyDaySheet));
+    final dayGame = find.descendant(
+      of: find.byKey(AppKeys.historyDaySheet),
+      matching: find.byKey(AppKeys.historyGame(620)),
+    );
+    await tester.ensureVisible(dayGame);
+    await tester.tap(dayGame);
+    await tester.pumpAndSettle();
+    await _waitFor(tester, find.text('游戏游玩记录'));
+    await _waitFor(tester, find.text('Portal 2'));
+    await _tapAndWait(tester, AppKeys.historyCumulative);
+    expect(
+      tester
+          .widget<SegmentedButton<String>>(find.byType(SegmentedButton<String>))
+          .selected,
+      {'cumulative'},
+    );
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('游玩记录'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.libraryScreen), findsOneWidget);
+    final item = find.byKey(AppKeys.libraryItem(620));
+    await tester.ensureVisible(item);
+    await tester.tap(item);
+    await _waitFor(tester, find.byKey(AppKeys.detailsScreen));
+    await tester.pumpAndSettle();
+    final detailsEntry = find.descendant(
+      of: find.byKey(AppKeys.detailsScreen),
+      matching: find.byKey(AppKeys.historyEntry),
+    );
+    await tester.scrollUntilVisible(
+      detailsEntry,
+      250,
+      scrollable: find.descendant(
+        of: find.byKey(AppKeys.detailsScreen),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              widget.axisDirection == AxisDirection.down,
+        ),
+      ),
+    );
+    await tester.tap(detailsEntry);
+    await tester.pumpAndSettle();
+    await _waitFor(tester, find.text('游戏游玩记录'));
+    await disposeTestApp(tester);
+    await dependencies.dispose();
+  });
+
+  testWidgets('isolates account history through an Android SQLite upgrade', (
+    tester,
+  ) async {
+    final dependencies = await createTestDependencies(
+      databaseName: 'nextplay_account_upgrade_e2e.db',
+      preferences: {'steam_id': 'alice'},
+    );
+    final db = dependencies.gameDatabaseService;
+    final prefs = dependencies.sharedPreferences;
+    try {
+      await db.upsertSteamGames([
+        {'app_id': 1, 'name': 'Alice title'},
+      ]);
+      await db.upsertIgdbGames([
+        {
+          'steam_id': 1,
+          'name': 'Alice title',
+          'summary': 'Alice title summary',
+          'cover_url': 'https://example.com/alice.jpg',
+        },
+      ]);
+      await db.updateUserGameNotes(1, 'alice-private');
+      await db.addToPlayQueue(1);
+      final sqlite = await db.database;
+      await sqlite.delete('history_meta', where: "key != 'device'");
+      await sqlite.insert('history_meta', {
+        'key': 'baseline',
+        'value': 'alice',
+      });
+      await sqlite.execute(
+        'ALTER TABLE history_outbox DROP COLUMN upload_error',
+      );
+      await sqlite.execute('PRAGMA user_version = 6');
+      await db.close();
+      await prefs.setString('steam_id', 'bob');
+      await db.updateUserGameNotes(1, 'bob-private');
+      expect(await db.getPlayQueue(), isEmpty);
+      final events = await db.pendingHistory('bob');
+      expect(jsonEncode(events), isNot(contains('alice-private')));
+      expect(events.where((e) => e['type'] == 'queue_baseline'), hasLength(1));
+      await db.rejectHistory(
+        'bob',
+        events.last['id'] as String,
+        'payload_too_large',
+      );
+      await db.close();
+      final retained = await (await db.database).query(
+        'history_outbox',
+        where: 'upload_error IS NOT NULL',
+      );
+      expect(retained.single['acknowledged'], 0);
+      expect(retained.single['body'], contains('bob-private'));
+      await dependencies.gameRepository.refreshAccount();
+      final synced = await dependencies.gameRepository.syncGameLibrary(
+        apiKey: TestFixtures.apiKey,
+        steamId: 'bob',
+      );
+      expect(synced.isSuccess(), isTrue);
+      final bobTime = dependencies.gameRepository.lastSyncTime;
+      expect(bobTime, isNotNull);
+      await db.addToPlayQueue(1);
+
+      await prefs.setString('steam_id', 'alice');
+      expect(
+        (await db.getOrCreateUserGameData(1))['user_notes'],
+        'alice-private',
+      );
+      expect(await db.getPlayQueue(), [1]);
+      await dependencies.gameRepository.refreshAccount();
+      expect(dependencies.gameRepository.lastSyncTime, isNull);
+      final restored = dependencies.gameRepository.getGameByAppId(1)!;
+      expect(restored.summary, 'Alice title summary');
+      expect(restored.coverUrl, 'https://example.com/alice.jpg');
+
+      final toggle = dependencies.gameRepository.togglePlayQueue(1);
+      final aliceRead = db.getOrCreateUserGameData(1);
+      await prefs.setString('steam_id', 'bob');
+      final bobRead = db.getOrCreateUserGameData(1);
+      expect(dependencies.gameRepository.lastSyncTime, bobTime);
+      final concurrent = await Future.wait([aliceRead, bobRead]);
+      expect(concurrent[0]['user_notes'], 'alice-private');
+      expect(concurrent[1]['user_notes'], 'bob-private');
+      expect((await toggle).isSuccess(), isFalse);
+      expect(await db.getPlayQueue(), [1]);
+      await (await db.database).execute('DROP TABLE steam_games');
+      final reload = await dependencies.gameRepository.refreshAccount();
+      expect(reload.isSuccess(), isFalse);
+      await dependencies.onboardingRepository.saveSteamIdWithoutValidation(
+        'bob',
+      );
+      expect(
+        dependencies.onboardingRepository.currentState.errorMessage,
+        isNotEmpty,
+      );
+      expect(dependencies.gameRepository.gameLibrary, isEmpty);
+    } finally {
+      await dependencies.dispose();
+    }
+  });
 
   testWidgets('migrates a released API key with Android secure storage', (
     tester,
@@ -340,11 +548,11 @@ void main() {
     expect(find.byKey(AppKeys.settingsSync), findsOneWidget);
 
     await Scrollable.ensureVisible(
-      tester.element(find.byKey(AppKeys.historyStatus)),
-      alignment: 0.4,
+      tester.element(find.byKey(AppKeys.settingsSync)),
+      alignment: 0.2,
     );
-    await tester.pumpAndSettle();
-    expect(find.byKey(AppKeys.historySync), findsOneWidget);
+    expect(find.byKey(AppKeys.historySync), findsNothing);
+    expect(find.byKey(AppKeys.historyStatus), findsNothing);
     expect(find.byKey(AppKeys.historyConnect), findsNothing);
     expect(find.byKey(AppKeys.historyEndpoint), findsNothing);
     final historyDatabase = Provider.of<GameDatabaseService>(
@@ -365,6 +573,7 @@ void main() {
       historyBefore,
     );
     // Real Android sockets and secure storage, with an explicitly local fake backend.
+    final automaticUpload = Completer<void>();
     final historyServer = await HttpServer.bind(
       InternetAddress.loopbackIPv4,
       0,
@@ -380,6 +589,28 @@ void main() {
         );
       } else {
         final body = jsonDecode(await utf8.decoder.bind(request).join());
+        if ((body['events'] as List).any(
+          (e) =>
+              jsonEncode({
+                ...e as Map<String, dynamic>,
+                'account': 'a' * 64,
+                'steamId': TestFixtures.steamId,
+              }).length >
+              256000,
+        )) {
+          request.response.statusCode = 400;
+          request.response.write('{"error":"Event too large"}');
+          await request.response.close();
+          return;
+        }
+        if ((body['events'] as List).any(
+              (e) =>
+                  e['after'] is Map &&
+                  e['after']['user_notes'] == 'automatic mutation acceptance',
+            ) &&
+            !automaticUpload.isCompleted) {
+          automaticUpload.complete();
+        }
         request.response.write(
           jsonEncode({
             'accepted': (body['events'] as List).map((e) => e['id']).toList(),
@@ -408,14 +639,32 @@ void main() {
       dio: historyTransport,
     );
     try {
+      await historyDatabase.updateUserGameNotes(99999, 'x' * 260000);
       await historySync.start();
       expect(historySync.connected, isTrue);
+      final rejected = await (await historyDatabase.database).query(
+        'history_outbox',
+        where: 'upload_error IS NOT NULL',
+      );
+      expect(rejected, hasLength(1));
+      expect(rejected.single['acknowledged'], 0);
+      expect(
+        (jsonDecode(rejected.single['body'] as String)['after']
+            as Map)['user_notes'],
+        'x' * 260000,
+      );
+
       expect(await historyStorage.read(), isNull);
       expect(
         await historyDatabase.pendingHistory(TestFixtures.steamId),
         isEmpty,
       );
       expect(await historyStorage.read(), isNull);
+      await historyDatabase.updateUserGameNotes(
+        620,
+        'automatic mutation acceptance',
+      );
+      await automaticUpload.future.timeout(const Duration(seconds: 10));
     } finally {
       await historySync.close();
       await historyStorage.delete();

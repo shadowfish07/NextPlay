@@ -101,10 +101,7 @@ class SettingsViewModel extends ChangeNotifier {
   double? get updateDownloadProgress => _releaseUpdater.downloadProgress;
   String get updateErrorMessage => _releaseUpdater.errorMessage;
   DateTime? get lastUpdateCheckAt => _releaseUpdater.lastCheckAt;
-  DateTime? get lastSyncTime {
-    final syncTimeString = _prefs.getString('last_sync_time');
-    return syncTimeString != null ? DateTime.tryParse(syncTimeString) : null;
-  }
+  DateTime? get lastSyncTime => _gameRepository.lastSyncTime;
 
   // 同步进度 Getters
   double get syncProgress => _syncProgress;

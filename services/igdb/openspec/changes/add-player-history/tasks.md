@@ -51,3 +51,18 @@
 - Production repository live smoke passed after retrying a transient Steam TLS
   handshake failure with certificate verification enabled. The first broad check
   used an incorrect local port; the repository default 61000 was then used.
+
+- History delivery now has no app-facing sync card or action. A post-commit
+  outbox notification wakes the worker; writes during an upload and multiple
+  pending batches drain without blocking local mutations. Startup, foreground
+  resume and the existing periodic timer retry pending records.
+- Added a host test holding an upload while 25 later mutations commit and checking
+  automatic batch drain. Android acceptance checks a note mutation reaching the
+  injected local HTTP server without an explicit sync call; it uses the actual
+  user_notes field in the event payload. Screenshot inspection confirms the new
+  card is absent. Android suspended/killed execution is not an OS job guarantee.
+
+- Final verification passed: 48 Flutter tests, service checks/build, and Android
+  E2E including automatic post-mutation HTTP delivery and production APK launch.
+  The first Android listener assertion used notes instead of user_notes and timed
+  out; the corrected acceptance passed. Debug logs remain ignored.

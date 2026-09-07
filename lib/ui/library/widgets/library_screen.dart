@@ -164,7 +164,16 @@ class _LibraryScreenState extends State<LibraryScreen>
     BuildContext context,
     LibraryViewModel viewModel,
   ) {
-    return const [SyncStatusIndicator()];
+    return [
+      TextButton.icon(
+        key: AppKeys.historyEntry,
+        onPressed: () => context.pushNamed('history'),
+        icon: const Icon(Icons.bar_chart_rounded, size: 20),
+        label: const Text('记录'),
+      ),
+      const SyncStatusIndicator(),
+      const SizedBox(width: 8),
+    ];
   }
 
   /// 构建游戏列表

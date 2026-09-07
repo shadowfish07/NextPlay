@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:convert';
+import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +26,7 @@ class _Storage implements HistoryConnectionStorage {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   initializeHostDatabase();
   test(
     'automatic sync uses existing backend and rejects mismatched accounts',
@@ -99,4 +102,222 @@ void main() {
       await dir.delete(recursive: true);
     },
   );
+  test('committed mutations automatically upload and drain writes made during upload', () async {
+    final dir = await Directory.systemTemp.createTemp('history-auto-');
+    const account = '76561198000000000';
+    final db = GameDatabaseService(
+      databaseName: '${dir.path}/db',
+      historyAccount: () => account,
+    );
+    final firstRequest = Completer<void>();
+    final release = Completer<void>();
+    final drained = Completer<void>();
+    var hold = false;
+    var uploads = 0;
+    final dio = Dio();
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          if (options.path.endsWith('/session')) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                data: {'steamId': account, 'token': 'a' * 32},
+              ),
+            );
+            return;
+          }
+          uploads++;
+          if (hold && !firstRequest.isCompleted) {
+            // The triggering transaction has already committed; network latency cannot hold its lock.
+            expect(await db.pendingHistory(account), isNotEmpty);
+            firstRequest.complete();
+            await release.future;
+          }
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              data: {
+                'accepted': (options.data['events'] as List)
+                    .map((e) => e['id'])
+                    .toList(),
+              },
+            ),
+          );
+        },
+      ),
+    );
+    final sync = HistorySyncService(
+      database: db,
+      account: () => account,
+      apiKeyStorage: FakeApiKeyStorage(value: 'existing-steam-key'),
+      dio: dio,
+    );
+    try {
+      await db.initializeHistory();
+      await sync.start();
+      hold = true;
+      await db.updateUserGameStatus(1, 'playing');
+      await firstRequest.future.timeout(const Duration(seconds: 5));
+      for (var app = 2; app <= 26; app++) {
+        await db.updateUserGameStatus(app, 'playing');
+      }
+      sync.addListener(() async {
+        if (!sync.busy &&
+            (await db.pendingHistory(account)).isEmpty &&
+            !drained.isCompleted) {
+          drained.complete();
+        }
+      });
+      release.complete();
+      await drained.future.timeout(const Duration(seconds: 5));
+      expect(uploads, greaterThanOrEqualTo(4));
+      expect(await db.pendingHistory(account), isEmpty);
+    } finally {
+      if (!release.isCompleted) release.complete();
+      await sync.close();
+      await db.close();
+      await dir.delete(recursive: true);
+    }
+  });
+  test('UTF-8 batches fit the server limit and oversized events survive without blocking', () async {
+    final dir = await Directory.systemTemp.createTemp('history-size-');
+    const account = 'alice';
+    final db = GameDatabaseService(
+      databaseName: '${dir.path}/db',
+      historyAccount: () => account,
+    );
+    final dio = Dio();
+    final sent = <Map<String, dynamic>>[];
+    var batches = 0;
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (request, handler) {
+          if (request.path.endsWith('/session')) {
+            handler.resolve(
+              Response(
+                requestOptions: request,
+                data: {'steamId': account, 'token': 'a' * 32},
+              ),
+            );
+            return;
+          }
+          final body = utf8.encode(jsonEncode(request.data));
+          if (body.length > 1000000) {
+            handler.reject(
+              DioException(
+                requestOptions: request,
+                response: Response(requestOptions: request, statusCode: 413),
+              ),
+            );
+            return;
+          }
+          batches++;
+          final events = (request.data['events'] as List)
+              .cast<Map<String, dynamic>>();
+          if (events.any(
+            (event) =>
+                jsonEncode({...event, 'account': 'a' * 64, 'steamId': account})
+                    .length >
+                256000,
+          )) {
+            handler.reject(
+              DioException(
+                requestOptions: request,
+                response: Response(requestOptions: request, statusCode: 400),
+              ),
+            );
+            return;
+          }
+          sent.addAll(events);
+          handler.resolve(
+            Response(
+              requestOptions: request,
+              data: {'accepted': events.map((event) => event['id']).toList()},
+            ),
+          );
+        },
+      ),
+    );
+    final sync = HistorySyncService(
+      database: db,
+      account: () => account,
+      apiKeyStorage: FakeApiKeyStorage(value: 'key'),
+      dio: dio,
+    );
+    final drained = Completer<void>();
+    try {
+      await db.updateUserGameNotes(
+        1,
+        '游' * 400000,
+      ); // one event exceeds 1 MB in UTF-8
+      await db.updateUserGameNotes(2, '游' * 190000);
+      await db.updateUserGameNotes(
+        3,
+        '游' * 190000,
+      ); // two valid events exceed 1 MB together
+      await db.updateUserGameNotes(5, 'x' * 260000);
+      await db.updateUserGameNotes(6, 'near boundary');
+      // This event fits before the server enriches account/steamId, then exceeds
+      // its per-event cap. Retain it without blocking the following valid event.
+      final raw = await db.database;
+      final boundaryRow = (await raw.query(
+        'history_outbox',
+        orderBy: 'sequence DESC',
+        limit: 1,
+      )).single;
+      final boundary =
+          jsonDecode(boundaryRow['body'] as String) as Map<String, dynamic>;
+      boundary['after']['user_notes'] = '';
+      boundary['after']['user_notes'] =
+          'x' * (255990 - jsonEncode(boundary).length);
+      expect(jsonEncode(boundary).length, 255990);
+      await raw.update(
+        'history_outbox',
+        {'body': jsonEncode(boundary)},
+        where: 'id = ?',
+        whereArgs: [boundaryRow['id']],
+      );
+      await db.updateUserGameNotes(4, 'later event');
+      sync.addListener(() async {
+        if (!sync.busy &&
+            (await db.pendingHistory(account)).isEmpty &&
+            !drained.isCompleted) {
+          drained.complete();
+        }
+      });
+      await sync.start();
+      await drained.future.timeout(const Duration(seconds: 5));
+      expect(batches, greaterThanOrEqualTo(2));
+      expect(
+        sent.where((e) => (e['after'] is Map) && e['after']['app_id'] == 4),
+        hasLength(1),
+      );
+      await sync.close();
+      await db.close();
+      final reopened = await db.database;
+      final failed = await reopened.query(
+        'history_outbox',
+        where: 'upload_error IS NOT NULL',
+      );
+      expect(failed, hasLength(3));
+      expect(
+        failed.every(
+          (row) =>
+              row['acknowledged'] == 0 &&
+              row['upload_error'] == 'payload_too_large',
+        ),
+        isTrue,
+      );
+      expect(
+        jsonDecode(failed.first['body'] as String)['after']['user_notes'],
+        '游' * 400000,
+      );
+      expect(await db.pendingHistory(account), isEmpty);
+    } finally {
+      if (!drained.isCompleted) await sync.close();
+      await db.close();
+      await dir.delete(recursive: true);
+    }
+  });
 }

@@ -617,15 +617,21 @@ A Steam ID alone is insufficient. The app reads the existing key only through
 memory for the upload. There is no server address or history token form.
 Obsolete saved history connections are deleted on startup.
 
-Android Settings → 游玩档案 shows automatic sync status and an immediate sync
-button. User state/notes/tags and queue mutations append events in the same
-SQLite transaction. Offline events survive restart; account changes require
-fresh authentication. Backend collection still requires operator configuration.
+History has no configuration, status card or manual sync control in the app.
+User state/notes/tags and queue mutations append events in the same SQLite
+transaction; only after commit does the background worker receive a wake-up.
+Uploads do not block editing. New writes during an upload and remaining batches
+are drained automatically; failed or unacknowledged events stay in SQLite.
+The worker retries every minute while the app runs, on startup and on foreground
+resume. Android may suspend or kill the app: this is not a guaranteed scheduled
+OS background job. Server Steam collection continues independently of the app.
+Account changes require fresh authentication. Backend collection still requires operator configuration.
 A preexisting local state is imported as a baseline; this does not reconstruct
 older operations. There is no new trend screen yet. The old `history.connect`,
 `history.endpoint`, `history.token`, `history.save`, `history.error` and
 `history.disconnect` selectors are retained as constants for compatibility but
-have no corresponding controls; `history.status` and `history.sync` remain active.
+have no corresponding controls. `history.status` and `history.sync` are also
+retained constants with no UI controls; tests assert these controls are absent.
 
 ### OneDrive authorization and retention
 
@@ -713,3 +719,11 @@ runtime. `tool/service.sh verify` runs deterministic tests and compiles it;
 `tool/verify_fast.sh` verifies both the service and Flutter. Real OneDrive
 upload/read-back/recovery acceptance requires a configured and authorized
 account; fake-remote tests do not establish live connectivity.
+
+### Playtime dashboard
+
+`GET /api/history/dashboard?range=7&appid=620` uses the same private bearer session as the event API. `range` is `7`, `30`, `365`, or `0` (all recorded dates); omit `appid` for the library. Dates use the configured account `timeZone` (default Asia/Shanghai). The response includes `firstObserved`, `lastObserved`, latest complete-snapshot `total` (for a single game, the latest complete observation containing that game, even if absent from the current library), observed-interval `added`, daily `days` (`date`, nullable `added`/`total`, `quality`, game breakdown), and period `games` ranked by increment. The service aggregates hourly records rather than truncating to 1000 samples. A complete empty library is a known zero total with its observation time, including in daily totals; absence of an applicable complete observation remains null.
+
+The app opens this read-only view from the library or a game's details, supports range selection, daily bars/cumulative curves and day-to-game drilldown, and reloads on foreground entry. No manual collection controls are added. Baselines, counter corrections and gap-spanning deltas are excluded from daily increments; missing days remain null. Partial days show only recorded increments. The summary `partial` flag signals actual missing or unreliable coverage; today remaining in progress alone does not set it, but a gap today still does. An unsampled new day remains unknown at day level without marking the summary partial while the last observation is still within the normal 90-minute collection interval. Per-game daily aggregation uses one indexed SQL join with account-local date boundaries for the requested window, excluding the comparison window; query count does not grow with the number of dates. `comparisonAdded`/`previousAdded` compare completed dates (excluding today) with the immediately preceding equal-length window, and are null unless both are covered. Screenshots/tests use explicit fixture services; production always reads the existing authorized backend.
+
+The playtime calendar uses one square per civil day, Monday-to-Sunday rows and horizontally scrollable weeks. Selecting the calendar opens the past 365 days. Green intensity represents observed minutes (0, 1–29, 30–59, 60–119, ≥120); missing observations are outlined and incomplete days have a separate border. Selecting a square opens the existing daily breakdown.

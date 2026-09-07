@@ -1,3 +1,4 @@
+import { dashboard } from "./dashboard";
 import { withArchiveLease } from "./lease";
 import { RcloneRemote } from "./rclone";
 import { rotateBackups } from "./lifecycle";
@@ -197,6 +198,13 @@ export class HistoryRuntime {
           paused: disk.bavail * disk.bsize < this.collector.minFreeBytes,
         },
       });
+    }
+    if (req.method === "GET" && path === "dashboard") {
+      const range = Number(url.searchParams.get("range") ?? "7");
+      const appid = url.searchParams.has("appid") ? Number(url.searchParams.get("appid")) : null;
+      if (![0, 7, 30, 365].includes(range) || (appid !== null && (!Number.isSafeInteger(appid) || appid <= 0)))
+        return json({ error: "Invalid query" }, 400);
+      return json(dashboard(this.store, account.id, account.timeZone ?? "Asia/Shanghai", range, appid));
     }
     if (req.method === "GET" && path === "playtime") {
       const appid = Number(url.searchParams.get("appid")),
