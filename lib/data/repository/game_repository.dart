@@ -123,7 +123,8 @@ class GameRepository {
 
   /// 获取上次同步时间
   DateTime? get lastSyncTime {
-    final timeStr = _prefs.getString('last_sync_time');
+    // Legacy unowned timestamps cannot safely suppress another account's sync.
+    final timeStr = _prefs.getString('last_sync_time:$_account');
     if (timeStr == null) return null;
     return DateTime.tryParse(timeStr);
   }
@@ -918,7 +919,7 @@ class GameRepository {
 
       // 保存同步时间
       await _prefs.setString(
-        'last_sync_time',
+        'last_sync_time:$account',
         DateTime.now().toIso8601String(),
       );
       if (isCancelled()) return const Failure(syncCancelledError);

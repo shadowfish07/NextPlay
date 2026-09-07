@@ -198,6 +198,8 @@ void main() {
         steamId: 'bob',
       );
       expect(synced.isSuccess(), isTrue);
+      final bobTime = dependencies.gameRepository.lastSyncTime;
+      expect(bobTime, isNotNull);
       await db.addToPlayQueue(1);
 
       await prefs.setString('steam_id', 'alice');
@@ -207,6 +209,7 @@ void main() {
       );
       expect(await db.getPlayQueue(), [1]);
       await dependencies.gameRepository.refreshAccount();
+      expect(dependencies.gameRepository.lastSyncTime, isNull);
       final restored = dependencies.gameRepository.getGameByAppId(1)!;
       expect(restored.summary, 'Alice title summary');
       expect(restored.coverUrl, 'https://example.com/alice.jpg');
@@ -215,6 +218,7 @@ void main() {
       final aliceRead = db.getOrCreateUserGameData(1);
       await prefs.setString('steam_id', 'bob');
       final bobRead = db.getOrCreateUserGameData(1);
+      expect(dependencies.gameRepository.lastSyncTime, bobTime);
       final concurrent = await Future.wait([aliceRead, bobRead]);
       expect(concurrent[0]['user_notes'], 'alice-private');
       expect(concurrent[1]['user_notes'], 'bob-private');

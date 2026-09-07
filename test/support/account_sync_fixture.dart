@@ -67,7 +67,8 @@ Future<void> verifySyncCompletionAccountSwitch(String databaseName) async {
     await dependencies.onboardingRepository.saveSteamIdWithoutValidation('bob');
     database.release.complete();
     expect((await sync).isSuccess(), isFalse);
-    expect(prefs.getString('last_sync_time'), isNull);
+    expect(prefs.getString('last_sync_time:alice'), isNull);
+    expect(prefs.getString('last_sync_time:bob'), isNull);
     expect(stages, isNot(contains(SyncStage.completed)));
     expect(dependencies.gameRepository.gameLibrary, isEmpty);
   } finally {

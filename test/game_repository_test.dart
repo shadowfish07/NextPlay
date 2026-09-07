@@ -12,6 +12,9 @@ import 'package:nextplay/domain/models/game/igdb_game_data.dart';
 import 'package:nextplay/domain/models/game/sync_progress.dart';
 
 import 'support/fake_services.dart';
+
+import 'package:nextplay/ui/settings/view_models/settings_view_model.dart';
+
 import 'support/fixtures.dart';
 import 'support/host_database.dart';
 import 'support/test_app.dart';
@@ -41,6 +44,54 @@ void main() {
   tearDown(() async {
     await dependencies.dispose();
   });
+
+  test(
+    'sync timestamps are account scoped across restart and settings',
+    () async {
+      const databaseName = 'account_sync_times.db';
+      dependencies = await createTestDependencies(
+        preferences: {'steam_id': 'alice'},
+        databaseName: databaseName,
+      );
+      final synced = await dependencies.gameRepository.syncGameLibrary(
+        apiKey: TestFixtures.apiKey,
+        steamId: 'alice',
+      );
+      expect(synced.isSuccess(), isTrue);
+      final aliceTime = dependencies.gameRepository.lastSyncTime;
+      expect(aliceTime, isNotNull);
+      final prefs = dependencies.sharedPreferences;
+      await prefs.setString('last_sync_time', DateTime.now().toIso8601String());
+      await dependencies.onboardingRepository.saveSteamIdWithoutValidation(
+        'bob',
+      );
+      expect(dependencies.gameRepository.lastSyncTime, isNull);
+      await dependencies.dispose();
+      dependencies = await createTestDependencies(
+        preferencesInstance: prefs,
+        databaseName: databaseName,
+        resetDatabase: false,
+      );
+      expect(dependencies.gameRepository.lastSyncTime, isNull);
+      final settings = SettingsViewModel(
+        onboardingRepository: dependencies.onboardingRepository,
+        gameRepository: dependencies.gameRepository,
+        steamValidationService: dependencies.steamValidationService,
+        releaseUpdater: dependencies.releaseUpdater,
+        prefs: prefs,
+      );
+      try {
+        expect(settings.lastSyncTime, isNull);
+        await dependencies.onboardingRepository.saveSteamIdWithoutValidation(
+          'alice',
+        );
+        expect(dependencies.gameRepository.lastSyncTime, aliceTime);
+        expect(settings.lastSyncTime, aliceTime);
+      } finally {
+        settings.dispose();
+      }
+    },
+  );
 
   test('queue toggle cancels when account changes during its lookup', () async {
     dependencies = await createTestDependencies(
