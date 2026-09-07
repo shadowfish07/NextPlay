@@ -131,15 +131,19 @@ class GameRepository {
   RecommendationResult? get currentRecommendations => _currentRecommendations;
 
   /// 从数据库加载数据到内存缓存
-  Future<void> _loadFromDatabase({bool startOfficialLocalization = true}) =>
-      _databaseService.withCurrentAccount(
-        () => _loadBoundLibrary(
-          startOfficialLocalization: startOfficialLocalization,
-        ),
-      );
+  Future<void> _loadFromDatabase({
+    bool startOfficialLocalization = true,
+    bool propagateErrors = false,
+  }) => _databaseService.withCurrentAccount(
+    () => _loadBoundLibrary(
+      startOfficialLocalization: startOfficialLocalization,
+      propagateErrors: propagateErrors,
+    ),
+  );
 
   Future<void> _loadBoundLibrary({
     bool startOfficialLocalization = true,
+    bool propagateErrors = false,
   }) async {
     try {
       AppLogger.info('Loading game data from database...');
@@ -203,11 +207,13 @@ class GameRepository {
       }
     } catch (e, stackTrace) {
       AppLogger.error('Error loading from database', e, stackTrace);
+      if (propagateErrors) rethrow;
     }
   }
 
   /// Invalidates old-account work and publishes the new account's local library.
-  Future<void> refreshAccount() async {
+  Future<Result<void, String>> refreshAccount() async {
+    final account = _account;
     _currentSyncId++;
     _currentLocalizationSyncId++;
     _loadedAccount = null;
@@ -217,7 +223,20 @@ class GameRepository {
     _gameLibraryController.add([]);
     _gameStatusController.add({});
     _playQueueController.add([]);
-    await _loadFromDatabase();
+    try {
+      await _loadFromDatabase(propagateErrors: true);
+      return const Success(());
+    } catch (_) {
+      if (_account == account) {
+        _loadedAccount = null;
+        _gameCache.clear();
+        _gameStatusCache.clear();
+        _gameLibraryController.add([]);
+        _gameStatusController.add({});
+        _playQueueController.add([]);
+      }
+      return const Failure('本地游戏库加载失败，请重试');
+    }
   }
 
   /// 获取游戏状态

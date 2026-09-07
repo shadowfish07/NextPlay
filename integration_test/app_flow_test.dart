@@ -185,6 +185,17 @@ void main() {
       final concurrent = await Future.wait([aliceRead, bobRead]);
       expect(concurrent[0]['user_notes'], 'alice-private');
       expect(concurrent[1]['user_notes'], 'bob-private');
+      await (await db.database).execute('DROP TABLE steam_games');
+      final reload = await dependencies.gameRepository.refreshAccount();
+      expect(reload.isSuccess(), isFalse);
+      await dependencies.onboardingRepository.saveSteamIdWithoutValidation(
+        'bob',
+      );
+      expect(
+        dependencies.onboardingRepository.currentState.errorMessage,
+        isNotEmpty,
+      );
+      expect(dependencies.gameRepository.gameLibrary, isEmpty);
     } finally {
       await dependencies.dispose();
     }

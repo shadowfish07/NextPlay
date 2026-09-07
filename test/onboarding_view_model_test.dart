@@ -30,6 +30,34 @@ void main() {
     await dependencies.dispose();
   });
 
+  test(
+    'account reload failures are observable and credentials stay consistent',
+    () async {
+      final db = await dependencies.gameDatabaseService.database;
+      await db.execute('DROP TABLE steam_games');
+      final reload = await dependencies.gameRepository.refreshAccount();
+      expect(reload.isSuccess(), isFalse);
+      await dependencies.onboardingRepository.saveSteamIdWithoutValidation(
+        TestFixtures.steamId,
+      );
+      expect(
+        dependencies.onboardingRepository.currentState.errorMessage,
+        isNotEmpty,
+      );
+      expect(
+        dependencies.onboardingRepository.currentState.isSteamIdValid,
+        isFalse,
+      );
+      expect(dependencies.gameRepository.gameLibrary, isEmpty);
+      await expectLater(
+        dependencies.onboardingRepository.clearCredentials(),
+        throwsStateError,
+      );
+      expect(dependencies.onboardingRepository.currentState.steamId, isEmpty);
+      expect(dependencies.sharedPreferences.getString('steam_id'), isNull);
+    },
+  );
+
   test('commands move forward and backward through onboarding', () async {
     viewModel.nextStepCommand.execute();
     await Future<void>.delayed(Duration.zero);
