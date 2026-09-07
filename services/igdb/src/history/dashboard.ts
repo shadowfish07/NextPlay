@@ -64,7 +64,8 @@ export function dashboard(store: HistoryStore, account: string, timezone: string
     const last = byDay.get(historyDay(previous, timezone));
     if (last) last.quality = "partial";
   }
-  const currentHasGap = current.quality !== "complete";
+  const awaitingFirstPoll = current.quality === "missing" && previous !== null && now - previous <= GAP;
+  const currentHasGap = current.quality !== "complete" && !awaitingFirstPoll;
   if (current.quality === "complete") current.quality = "partial";
   const gameDays: GameDay[] = [];
   // Bun SQLite has no JavaScript scalar-function API. Resolve civil-day
@@ -102,8 +103,8 @@ export function dashboard(store: HistoryStore, account: string, timezone: string
   }
   const days = [...byDay.values()].filter(d => d.date >= start);
   const prior = [...byDay.values()].filter(d => d.date < start);
-  // Compare completed days only, using the equivalent preceding window.
-  const completed = days.slice(0, -1), previousCompleted = prior.slice(0, -1);
+  // Compare completed days with the immediately preceding equal-length window.
+  const completed = days.slice(0, -1), previousCompleted = prior.slice(1);
   const comparable = range > 0 && completed.length > 0 && completed.every(d => d.quality === "complete") && previousCompleted.every(d => d.quality === "complete");
   const latest = store.db.query(`SELECT CASE WHEN COUNT(*)=COUNT(minutes) THEN SUM(minutes) END AS total,MAX(observed) AS observed FROM playtime WHERE account=? AND (? IS NULL OR appid=?) AND observation=(SELECT id FROM observations WHERE account=? AND source='library' AND quality='complete' ORDER BY observed DESC,rowid DESC LIMIT 1)`).get(account, appid, appid, account) as { total: number | null; observed: number | null };
   const name = appid === null ? null : (store.db.query(`SELECT json_extract(fields,'$.name') AS name FROM playtime WHERE account=? AND appid=? ORDER BY observed DESC,rowid DESC LIMIT 1`).get(account, appid) as {name: string | null} | null)?.name ?? `Game ${appid}`;

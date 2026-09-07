@@ -408,7 +408,7 @@ test("dashboard aggregates more than one thousand hourly game rows and compares 
   const observation = s.db.query("INSERT INTO observations VALUES (?,?,?,?,?,?,?,?)");
   s.db.transaction(() => {
     for (let hour = 0; hour <= 24 * 17; hour++) {
-      const games = Array.from({ length: 4 }, (_, i) => ({ appid: i + 1, name: `Game ${i}`, playtime_forever: 100 + hour }));
+      const games = Array.from({ length: 4 }, (_, i) => ({ appid: i + 1, name: `Game ${i}`, playtime_forever: 100 + hour * hour }));
       const id = `fixture-${hour}`, at = start + hour * HOUR;
       observation.run(id, "alice", "library", 0, at, "complete", payload, null);
       s.projectLibrary(id, "alice", games, at);
@@ -416,12 +416,19 @@ test("dashboard aggregates more than one thousand hourly game rows and compares 
   })();
   const result = dashboard(s, "alice", "UTC", 7, null, start + 24 * 17 * HOUR);
   expect(result.days).toHaveLength(7);
-  expect(result.added).toBe(4 * (6 * 24 + 1));
-  expect(result.previousAdded).toBe(4 * 6 * 24);
-  expect(result.comparisonAdded).toBe(result.previousAdded);
+  expect(result.added).toBe(4 * (408 ** 2 - 263 ** 2));
+  expect(result.previousAdded).toBe(4 * (263 ** 2 - 119 ** 2));
+  expect(result.comparisonAdded).toBe(4 * (407 ** 2 - 263 ** 2));
   expect(result.games).toHaveLength(4);
   expect(result.partial).toBe(false);
   expect(result.days.at(-1)?.quality).toBe("partial"); // an unfinished day is distinct from a gap
   const stale = dashboard(s, "alice", "UTC", 7, null, start + (24 * 17 + 2) * HOUR);
   expect(stale.partial).toBe(true); // today's real outage must still be visible
+  // Before the next hourly poll, midnight alone is not evidence of an outage.
+  s.db.query("DELETE FROM playtime WHERE observation=?").run("fixture-408");
+  s.db.query("DELETE FROM observations WHERE id=?").run("fixture-408");
+  const beforeNextPoll = dashboard(s, "alice", "UTC", 7, null, start + 408.25 * HOUR);
+  expect(beforeNextPoll.days.at(-1)?.quality).toBe("missing");
+  expect(beforeNextPoll.partial).toBe(false);
+  expect(dashboard(s, "alice", "UTC", 7, null, start + 408.75 * HOUR).partial).toBe(true);
 });
