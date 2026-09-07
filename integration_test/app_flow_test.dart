@@ -1,3 +1,5 @@
+import '../test/support/account_sync_fixture.dart';
+
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
@@ -32,6 +34,12 @@ const _captureVisualEvidence = bool.fromEnvironment(
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('final sync reload respects account switching on Android', (
+    tester,
+  ) async {
+    await verifySyncCompletionAccountSwitch('sync_completion_android.db');
+  });
 
   testWidgets('playtime history library, range, day and game navigation', (
     tester,

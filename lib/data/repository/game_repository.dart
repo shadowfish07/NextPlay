@@ -910,13 +910,18 @@ class GameRepository {
       }
 
       // 第五步：重新加载内存缓存
-      await _loadFromDatabase(startOfficialLocalization: false);
+      await _loadFromDatabase(
+        startOfficialLocalization: false,
+        propagateErrors: true,
+      );
+      if (isCancelled()) return const Failure(syncCancelledError);
 
       // 保存同步时间
       await _prefs.setString(
         'last_sync_time',
         DateTime.now().toIso8601String(),
       );
+      if (isCancelled()) return const Failure(syncCancelledError);
 
       _syncProgressController.add(
         SyncProgress(
@@ -936,6 +941,7 @@ class GameRepository {
       }
       return Success(gameLibrary);
     } catch (e, stackTrace) {
+      if (isCancelled()) return const Failure(syncCancelledError);
       final error = 'Game library sync error: $e';
       AppLogger.error(error, e, stackTrace);
       _syncProgressController.add(
