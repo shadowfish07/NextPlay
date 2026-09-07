@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../domain/models/discover/game_activity_stats.dart';
 import '../../core/theme.dart';
 

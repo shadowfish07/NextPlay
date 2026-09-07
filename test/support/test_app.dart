@@ -1,5 +1,7 @@
 import 'package:nextplay/data/service/playtime_history_service.dart';
+
 import 'history_fixture.dart';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_release_updater/flutter_release_updater.dart';
 import 'package:flutter_test/flutter_test.dart';

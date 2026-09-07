@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+
 import '../../config/backend.dart';
 import '../../domain/models/history/playtime_history.dart';
 import 'api_key_storage.dart';

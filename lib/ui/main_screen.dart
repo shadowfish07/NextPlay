@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import 'core/main_layout.dart';
 import 'discover/widgets/discover_screen.dart';
 import 'library/widgets/library_screen.dart';

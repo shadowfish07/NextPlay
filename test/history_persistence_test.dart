@@ -1,6 +1,8 @@
 import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nextplay/data/service/game_database_service.dart';
+
 import 'support/host_database.dart';
 
 void main() {
@@ -83,9 +85,8 @@ void main() {
       account = 'bob';
       await database.updateUserGameStatus(3, 'playing');
       expect(
-        (await database.pendingHistory(
-          'bob',
-        )).every((e) => e['account'] == 'bob'),
+        (await database.pendingHistory('bob'))
+            .every((e) => e['account'] == 'bob'),
         isTrue,
       );
       expect(await database.pendingHistory('alice'), events);

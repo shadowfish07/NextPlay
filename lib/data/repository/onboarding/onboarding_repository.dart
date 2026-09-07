@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../domain/models/onboarding/onboarding_state.dart';
 import '../../../domain/models/onboarding/onboarding_step.dart';
 import '../../service/api_key_storage.dart';
@@ -23,13 +25,10 @@ class OnboardingRepository {
 
   OnboardingRepository({
     required SharedPreferences sharedPreferences,
-    required ApiKeyStorage apiKeyStorage,
-    required SteamValidationService steamValidationService,
-    required GameRepository gameRepository,
-  }) : _prefs = sharedPreferences,
-       _apiKeyStorage = apiKeyStorage,
-       _steamValidationService = steamValidationService,
-       _gameRepository = gameRepository {
+    required this._apiKeyStorage,
+    required this._steamValidationService,
+    required this._gameRepository,
+  }) : _prefs = sharedPreferences {
     ready = _loadState();
   }
 

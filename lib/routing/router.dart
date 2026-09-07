@@ -1,7 +1,9 @@
 import '../ui/history/widgets/history_screen.dart';
+
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'routes.dart';
 import '../ui/onboarding/widgets/onboarding_screen.dart';
 import '../ui/main_screen.dart';

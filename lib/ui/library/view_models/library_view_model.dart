@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_command/flutter_command.dart';
 
@@ -47,8 +48,7 @@ class LibraryViewModel extends ChangeNotifier {
   late final Command<GameStatus, void> batchUpdateStatusCommand;
   late final Command<void, void> clearFiltersCommand;
 
-  LibraryViewModel({required GameRepository gameRepository})
-    : _gameRepository = gameRepository {
+  LibraryViewModel({required this._gameRepository}) {
     _initializeCommands();
     _subscribeToRepositoryStreams();
     _loadInitialData();

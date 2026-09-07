@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+
 import '../game/game.dart';
 import '../game/game_status.dart';
 
@@ -57,7 +58,7 @@ extension BatchOperationStepExtension on BatchOperationStep {
 
 /// 游戏建议项 - 用于智能状态建议展示
 @freezed
-class GameSelectionItem with _$GameSelectionItem {
+abstract class GameSelectionItem with _$GameSelectionItem {
   const factory GameSelectionItem({
     required Game game,
     required GameStatus currentStatus,
@@ -71,7 +72,7 @@ class GameSelectionItem with _$GameSelectionItem {
 
 /// 批量操作状态
 @freezed
-class BatchOperationState with _$BatchOperationState {
+abstract class BatchOperationState with _$BatchOperationState {
   const factory BatchOperationState({
     @Default(BatchOperationStep.zeroPlaytime) BatchOperationStep currentStep,
     @Default([]) List<GameSelectionItem> zeroPlaytimeGames,
@@ -89,7 +90,7 @@ class BatchOperationState with _$BatchOperationState {
 
 /// 批量操作结果
 @freezed
-class BatchOperationResult with _$BatchOperationResult {
+abstract class BatchOperationResult with _$BatchOperationResult {
   const factory BatchOperationResult({
     required int successCount,
     required int failureCount,

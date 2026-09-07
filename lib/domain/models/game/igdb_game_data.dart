@@ -5,7 +5,7 @@ part 'igdb_game_data.g.dart';
 
 /// IGDB 游戏数据模型 - 来自 IGDB API，同步时可被替换
 @freezed
-class IgdbGameData with _$IgdbGameData {
+abstract class IgdbGameData with _$IgdbGameData {
   const factory IgdbGameData({
     required int steamId,
     required String name,
@@ -38,7 +38,7 @@ class IgdbGameData with _$IgdbGameData {
 
 /// IGDB 年龄分级
 @freezed
-class IgdbAgeRating with _$IgdbAgeRating {
+abstract class IgdbAgeRating with _$IgdbAgeRating {
   const factory IgdbAgeRating({
     required String organization,
     required String rating,
@@ -51,7 +51,7 @@ class IgdbAgeRating with _$IgdbAgeRating {
 
 /// IGDB Artwork 图片
 @freezed
-class IgdbArtwork with _$IgdbArtwork {
+abstract class IgdbArtwork with _$IgdbArtwork {
   const factory IgdbArtwork({
     required String imageId,
     required String url,
@@ -66,7 +66,7 @@ class IgdbArtwork with _$IgdbArtwork {
 
 /// IGDB Screenshot 截图
 @freezed
-class IgdbScreenshot with _$IgdbScreenshot {
+abstract class IgdbScreenshot with _$IgdbScreenshot {
   const factory IgdbScreenshot({
     required String imageId,
     required String url,

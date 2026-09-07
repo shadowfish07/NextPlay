@@ -230,8 +230,7 @@ class FAQSheet extends StatelessWidget {
                 children: const [
                   _FAQItem(
                     question: '如何获取 Steam API Key？',
-                    answer:
-                        '访问 https://steamcommunity.com/dev/apikey，使用 Steam 账户登录，填写域名（可填 localhost），同意条款即可获得。',
+                    answer: '访问 https://steamcommunity.com/dev/apikey，使用 Steam 账户登录，填写域名（可填 localhost），同意条款即可获得。',
                   ),
                   _FAQItem(
                     question: '如何获取 Steam ID？',
@@ -290,8 +289,7 @@ class PrivacyPolicySheet extends StatelessWidget {
                 children: const [
                   _GuideSection(
                     title: '数据收集',
-                    content:
-                        'NextPlay 只收集您明确提供的 Steam API Key 和 Steam ID，用于连接您的 Steam 账户。',
+                    content: 'NextPlay 只收集您明确提供的 Steam API Key 和 Steam ID，用于连接您的 Steam 账户。',
                   ),
                   _GuideSection(
                     title: '数据使用',

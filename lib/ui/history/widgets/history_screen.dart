@@ -1,8 +1,11 @@
 import 'history_heatmap.dart';
+
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../../data/service/playtime_history_service.dart';
 import '../../../domain/models/history/playtime_history.dart';
 import '../../core/app_keys.dart';
@@ -221,9 +224,8 @@ class _HistoryScreenState extends State<HistoryScreen>
                     const SizedBox(height: 24),
                     Text(
                       widget.appId == null ? '时间花在哪里' : '这段时间',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context).textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     if (data.games.isEmpty)

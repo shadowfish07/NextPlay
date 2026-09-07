@@ -4,7 +4,7 @@ part 'game_activity_stats.freezed.dart';
 
 /// 游戏活动统计数据
 @freezed
-class GameActivityStats with _$GameActivityStats {
+abstract class GameActivityStats with _$GameActivityStats {
   const factory GameActivityStats({
     /// 今日游玩的游戏数量
     required int todayGamesCount,

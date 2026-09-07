@@ -260,27 +260,24 @@ void main() {
     },
   );
 
-  test(
-    'localized Chinese multiplayer mode counts toward library multiplayer stats',
-    () async {
-      // Dota 2 使用中文 IGDB 模式名，确保 isMultiplayer 判定不依赖英文关键词
-      dependencies = await createTestDependencies(
-        databaseName: 'game_repository_stats_cn.db',
-        igdbGames: [
-          const IgdbGameData(steamId: 570, name: 'Dota 2', gameModes: ['多人游戏']),
-          ...TestFixtures.igdbGames.sublist(1),
-        ],
-      );
+  test('localized Chinese multiplayer mode counts toward library multiplayer stats', () async {
+    // Dota 2 使用中文 IGDB 模式名，确保 isMultiplayer 判定不依赖英文关键词
+    dependencies = await createTestDependencies(
+      databaseName: 'game_repository_stats_cn.db',
+      igdbGames: [
+        const IgdbGameData(steamId: 570, name: 'Dota 2', gameModes: ['多人游戏']),
+        ...TestFixtures.igdbGames.sublist(1),
+      ],
+    );
 
-      await dependencies.gameRepository.syncGameLibrary(
-        apiKey: TestFixtures.apiKey,
-        steamId: TestFixtures.steamId,
-      );
+    await dependencies.gameRepository.syncGameLibrary(
+      apiKey: TestFixtures.apiKey,
+      steamId: TestFixtures.steamId,
+    );
 
-      final stats = dependencies.gameRepository.getGameLibraryStats();
-      expect(stats['multiplayer'], 1);
-    },
-  );
+    final stats = dependencies.gameRepository.getGameLibraryStats();
+    expect(stats['multiplayer'], 1);
+  });
 
   test('a newer sync cancels an older in-flight sync', () async {
     dependencies = await createTestDependencies(

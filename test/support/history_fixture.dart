@@ -1,5 +1,6 @@
 import 'package:nextplay/data/service/playtime_history_service.dart';
 import 'package:nextplay/domain/models/history/playtime_history.dart';
+
 import 'fake_services.dart';
 
 Map<String, dynamic> historyFixture({int range = 7, int? appId}) {

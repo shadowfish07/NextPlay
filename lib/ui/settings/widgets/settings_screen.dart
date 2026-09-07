@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../view_models/settings_view_model.dart';
 import 'account_section/steam_connection_card.dart';
 import 'account_section/data_sync_card.dart';

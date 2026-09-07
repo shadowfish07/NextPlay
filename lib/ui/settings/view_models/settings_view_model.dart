@@ -71,16 +71,12 @@ class SettingsViewModel extends ChangeNotifier {
   String _igdbLanguage = 'en'; // IGDB 数据语言
 
   SettingsViewModel({
-    required OnboardingRepository onboardingRepository,
-    required GameRepository gameRepository,
-    required SteamValidationService steamValidationService,
-    required ReleaseUpdater releaseUpdater,
-    required SharedPreferences prefs,
-  }) : _onboardingRepository = onboardingRepository,
-       _gameRepository = gameRepository,
-       _steamValidationService = steamValidationService,
-       _releaseUpdater = releaseUpdater,
-       _prefs = prefs {
+    required this._onboardingRepository,
+    required this._gameRepository,
+    required this._steamValidationService,
+    required this._releaseUpdater,
+    required this._prefs,
+  }) {
     _releaseUpdater.addListener(_handleReleaseUpdaterChanged);
     _initializeCommands();
     _loadSettings();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../domain/models/game/game_status.dart';
 import '../../core/ui/game_status_display.dart';
 
@@ -44,14 +45,12 @@ class InlineStatusSelector extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: GameStatusDisplay.getStatusColor(
-              currentStatus,
-            ).withValues(alpha: 0.1),
+            color: GameStatusDisplay.getStatusColor(currentStatus)
+                .withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: GameStatusDisplay.getStatusColor(
-                currentStatus,
-              ).withValues(alpha: 0.3),
+              color: GameStatusDisplay.getStatusColor(currentStatus)
+                  .withValues(alpha: 0.3),
               width: 1,
             ),
           ),

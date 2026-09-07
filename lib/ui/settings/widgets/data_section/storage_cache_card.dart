@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../shared/settings_card.dart';
 import '../../view_models/settings_view_model.dart';
 
@@ -132,9 +133,8 @@ class StorageCacheCard extends StatelessWidget {
               // 导航回引导页面
               Future.delayed(const Duration(milliseconds: 500), () {
                 if (context.mounted) {
-                  Navigator.of(
-                    context,
-                  ).pushNamedAndRemoveUntil('/onboarding', (route) => false);
+                  Navigator.of(context)
+                      .pushNamedAndRemoveUntil('/onboarding', (route) => false);
                 }
               });
             },

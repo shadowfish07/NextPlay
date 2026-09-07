@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_command/flutter_command.dart';
+
 import '../../../data/repository/onboarding/onboarding_repository.dart';
 import '../../../domain/models/onboarding/onboarding_state.dart';
 import '../../../domain/models/onboarding/onboarding_step.dart';
@@ -21,8 +23,7 @@ class OnboardingViewModel extends ChangeNotifier {
   OnboardingState _state = OnboardingState.initial();
   StreamSubscription<OnboardingState>? _stateSubscription;
 
-  OnboardingViewModel({required OnboardingRepository repository})
-    : _repository = repository {
+  OnboardingViewModel({required this._repository}) {
     _initializeCommands();
     _subscribeToRepository();
   }
