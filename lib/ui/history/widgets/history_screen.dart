@@ -348,6 +348,12 @@ class _HistoryScreenState extends State<HistoryScreen>
           if (widget.appId == null)
             TextButton.icon(
               key: AppKeys.historyDistribution,
+              style: TextButton.styleFrom(
+                alignment: Alignment.centerLeft,
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(double.infinity, 48),
+                foregroundColor: colors.onPrimaryContainer,
+              ),
               onPressed: () => _showDistribution(data),
               icon: const Icon(Icons.pie_chart_outline),
               label: const Text('查看分布'),
