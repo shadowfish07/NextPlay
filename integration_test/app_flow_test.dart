@@ -540,6 +540,20 @@ void main() {
       } else {
         final body = jsonDecode(await utf8.decoder.bind(request).join());
         if ((body['events'] as List).any(
+          (e) =>
+              jsonEncode({
+                ...e as Map<String, dynamic>,
+                'account': 'a' * 64,
+                'steamId': TestFixtures.steamId,
+              }).length >
+              256000,
+        )) {
+          request.response.statusCode = 400;
+          request.response.write('{"error":"Event too large"}');
+          await request.response.close();
+          return;
+        }
+        if ((body['events'] as List).any(
               (e) =>
                   e['after'] is Map &&
                   e['after']['user_notes'] == 'automatic mutation acceptance',
@@ -575,8 +589,21 @@ void main() {
       dio: historyTransport,
     );
     try {
+      await historyDatabase.updateUserGameNotes(99999, 'x' * 260000);
       await historySync.start();
       expect(historySync.connected, isTrue);
+      final rejected = await (await historyDatabase.database).query(
+        'history_outbox',
+        where: 'upload_error IS NOT NULL',
+      );
+      expect(rejected, hasLength(1));
+      expect(rejected.single['acknowledged'], 0);
+      expect(
+        (jsonDecode(rejected.single['body'] as String)['after']
+            as Map)['user_notes'],
+        'x' * 260000,
+      );
+
       expect(await historyStorage.read(), isNull);
       expect(
         await historyDatabase.pendingHistory(TestFixtures.steamId),

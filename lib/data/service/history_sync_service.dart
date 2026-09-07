@@ -134,7 +134,16 @@ class HistorySyncService extends ChangeNotifier with WidgetsBindingObserver {
       var bodyBytes = utf8.encode('{"events":[]}').length;
       for (final event in pending) {
         final eventBytes = utf8.encode(jsonEncode(event)).length;
-        if (eventBytes + utf8.encode('{"events":[]}').length > 1000000) {
+        // The server canonicalizes UTF-16 JSON after replacing account with its
+        // configured ID (at most 64 ASCII characters) and adding steamId.
+        // Key sorting does not change length; reserve the maximum ID length.
+        final storedCharacters = jsonEncode({
+          ...event,
+          'account': 'a' * 64,
+          'steamId': bound,
+        }).length;
+        if (storedCharacters > 256000 ||
+            eventBytes + utf8.encode('{"events":[]}').length > 1000000) {
           await database.rejectHistory(
             bound,
             event['id'] as String,

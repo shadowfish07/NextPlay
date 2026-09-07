@@ -215,6 +215,20 @@ void main() {
           batches++;
           final events = (request.data['events'] as List)
               .cast<Map<String, dynamic>>();
+          if (events.any(
+            (event) =>
+                jsonEncode({...event, 'account': 'a' * 64, 'steamId': account})
+                    .length >
+                256000,
+          )) {
+            handler.reject(
+              DioException(
+                requestOptions: request,
+                response: Response(requestOptions: request, statusCode: 400),
+              ),
+            );
+            return;
+          }
           sent.addAll(events);
           handler.resolve(
             Response(
@@ -242,6 +256,28 @@ void main() {
         3,
         '游' * 190000,
       ); // two valid events exceed 1 MB together
+      await db.updateUserGameNotes(5, 'x' * 260000);
+      await db.updateUserGameNotes(6, 'near boundary');
+      // This event fits before the server enriches account/steamId, then exceeds
+      // its per-event cap. Retain it without blocking the following valid event.
+      final raw = await db.database;
+      final boundaryRow = (await raw.query(
+        'history_outbox',
+        orderBy: 'sequence DESC',
+        limit: 1,
+      )).single;
+      final boundary =
+          jsonDecode(boundaryRow['body'] as String) as Map<String, dynamic>;
+      boundary['after']['user_notes'] = '';
+      boundary['after']['user_notes'] =
+          'x' * (255990 - jsonEncode(boundary).length);
+      expect(jsonEncode(boundary).length, 255990);
+      await raw.update(
+        'history_outbox',
+        {'body': jsonEncode(boundary)},
+        where: 'id = ?',
+        whereArgs: [boundaryRow['id']],
+      );
       await db.updateUserGameNotes(4, 'later event');
       sync.addListener(() async {
         if (!sync.busy &&
@@ -264,11 +300,17 @@ void main() {
         'history_outbox',
         where: 'upload_error IS NOT NULL',
       );
-      expect(failed, hasLength(1));
-      expect(failed.single['acknowledged'], 0);
-      expect(failed.single['upload_error'], 'payload_too_large');
+      expect(failed, hasLength(3));
       expect(
-        jsonDecode(failed.single['body'] as String)['after']['user_notes'],
+        failed.every(
+          (row) =>
+              row['acknowledged'] == 0 &&
+              row['upload_error'] == 'payload_too_large',
+        ),
+        isTrue,
+      );
+      expect(
+        jsonDecode(failed.first['body'] as String)['after']['user_notes'],
         '游' * 400000,
       );
       expect(await db.pendingHistory(account), isEmpty);
