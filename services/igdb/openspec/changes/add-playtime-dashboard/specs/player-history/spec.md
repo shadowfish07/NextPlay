@@ -24,3 +24,14 @@ The system SHALL offer a GitHub-like calendar with day cells, weekly columns, mo
 #### Scenario: Unknown versus inactive
 - **WHEN** a day has no observations or only partial coverage
 - **THEN** unknown days have a distinct outline, partial days have a distinct border, and only positive observed increments contribute to the displayed active-day count.
+
+### Requirement: Lifetime playtime distribution
+The dashboard SHALL return every positive-playtime game from the same latest complete library snapshot as the lifetime total, sorted by minutes descending and AppID ascending. The distribution SHALL be independent of the date range and accessed through the lifetime summary.
+
+#### Scenario: Reconcile the total
+- **WHEN** the user opens the distribution
+- **THEN** every game's cumulative minutes and share of the lifetime total are shown, the list scrolls without truncation, and a game opens its history.
+
+#### Scenario: Unavailable or empty distribution
+- **WHEN** the snapshot is absent, any game has unknown minutes, or an older server omits the field
+- **THEN** the client shows unavailable rather than zero; a known snapshot without positive minutes instead shows an empty state.

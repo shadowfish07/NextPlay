@@ -118,12 +118,15 @@ export function dashboard(store: HistoryStore, account: string, timezone: string
     ORDER BY observed DESC,rowid DESC LIMIT 1
   ) SELECT CASE WHEN COUNT(latest.id)=0 THEN NULL
       WHEN COUNT(p.appid)=COUNT(p.minutes) THEN COALESCE(SUM(p.minutes),0) END AS total,
-    MAX(latest.observed) AS observed
+    MAX(latest.observed) AS observed,
+    CASE WHEN COUNT(latest.id)=0 OR COUNT(p.appid)!=COUNT(p.minutes) THEN NULL
+      ELSE json_group_array(json_object('appid',p.appid,'name',COALESCE(json_extract(p.fields,'$.name'),'Game '||p.appid),'minutes',p.minutes)) FILTER (WHERE p.minutes>0) END AS distribution
     FROM latest LEFT JOIN playtime p ON p.observation=latest.id AND p.account=? AND (? IS NULL OR p.appid=?)
-  `).get(account, appid, account, appid, account, appid, appid) as { total: number | null; observed: number | null };
+  `).get(account, appid, account, appid, account, appid, appid) as { total: number | null; observed: number | null; distribution: string | null };
+  const distribution = latest.distribution === null ? null : (JSON.parse(latest.distribution) as { appid: number; name: string; minutes: number }[]).sort((a,b) => b.minutes-a.minutes || a.appid-b.appid);
   const name = appid === null ? null : (store.db.query(`SELECT json_extract(fields,'$.name') AS name FROM playtime WHERE account=? AND appid=? ORDER BY observed DESC,rowid DESC LIMIT 1`).get(account, appid) as {name: string | null} | null)?.name ?? `Game ${appid}`;
   return { timezone, range, appid, name, firstObserved: first.time, lastObserved: latest.observed,
-    total: latest.total, added: days.some(d => d.added !== null) ? days.reduce((n,d) => n+(d.added ?? 0),0) : null,
+    total: latest.total, distribution, added: days.some(d => d.added !== null) ? days.reduce((n,d) => n+(d.added ?? 0),0) : null,
     previousAdded: comparable ? previousCompleted.reduce((n,d) => n+(d.added ?? 0),0) : null,
     comparisonAdded: comparable ? completed.reduce((n,d) => n+(d.added ?? 0),0) : null,
     partial: currentHasGap || completed.some(d => d.quality !== "complete"), days,

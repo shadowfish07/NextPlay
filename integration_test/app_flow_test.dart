@@ -62,6 +62,22 @@ void main() {
     await _tapAndWait(tester, AppKeys.historyEntry);
     await _waitFor(tester, find.byKey(AppKeys.historyDaily));
     expect(find.text('8 小时 40 分钟'), findsOneWidget);
+    await _tapAndWait(tester, AppKeys.historyDistribution);
+    await _waitFor(tester, find.byKey(AppKeys.historyDistributionSheet));
+    expect(find.text('2 小时 · 1.0%'), findsOneWidget);
+    final distributionGame = find.descendant(
+      of: find.byKey(AppKeys.historyDistributionSheet),
+      matching: find.byKey(AppKeys.historyGame(620)),
+    );
+    await tester.tap(distributionGame);
+    await tester.pumpAndSettle();
+    await _waitFor(tester, find.text('游戏游玩记录'));
+    expect(find.byKey(AppKeys.historyDistribution), findsNothing);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await _tapAndWait(tester, AppKeys.historyDistribution);
+    await _tapAndWait(tester, AppKeys.historyDistributionClose);
+    expect(find.byKey(AppKeys.historyDistributionSheet), findsNothing);
     await _tapAndWait(tester, AppKeys.historyHeatmap);
     await _waitFor(tester, find.byKey(AppKeys.historyHeatmapScroll));
     await tester.ensureVisible(find.byKey(AppKeys.historyHeatmapScroll));

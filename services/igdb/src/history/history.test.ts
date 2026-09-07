@@ -223,6 +223,20 @@ test("private routes reject anonymous access and never select account from reque
     if (status === 200) expect((await result.json() as any).firstObserved).toBeNull();
   }
   expect((await rt.handle(new Request("http://local/api/history/dashboard")))!.status).toBe(401);
+  const games = [{appid: 620, name: "Portal 2", playtime_forever: 120}];
+  const at = Date.now();
+  const observation = rt.store.record(account.id, "library", 0, {games}, "complete", at);
+  rt.store.projectLibrary(observation, account.id, games, at);
+  const server = Bun.serve({port: 0, hostname: "127.0.0.1", fetch: async request => (await rt.handle(request)) ?? new Response(null, {status: 404})});
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.port}/api/history/dashboard?range=7&account=bob`, {headers: {Authorization: `Bearer ${account.token}`}});
+    expect(response.status).toBe(200);
+    const body = await response.json() as any;
+    expect(body.total).toBe(120);
+    expect(body.distribution).toEqual([{appid: 620, name: "Portal 2", minutes: 120}]);
+  } finally {
+    await server.stop(true);
+  }
   expect(() =>
     loadAccounts({
       NEXTPLAY_HISTORY_ACCOUNTS: JSON.stringify([
@@ -479,4 +493,33 @@ test("dashboard aggregates more than one thousand hourly game rows and compares 
     expect(bounded.games).toHaveLength(4);
     expect(resultQueries).toBeLessThanOrEqual(2);
   }
+});
+
+
+test("lifetime distribution reconciles with the latest library, independent of range", () => {
+  const s = store();
+  const at = Date.parse("2026-09-08T04:00:00Z");
+  const sample = (games: any[], time = at, who = "alice") => {
+    const id = s.record(who, "library", 0, {games}, "complete", time);
+    s.projectLibrary(id, who, games, time);
+  };
+  const games = Array.from({length: 1100}, (_, i) => ({appid: i + 1, name: `Game ${i+1}`, playtime_forever: i}));
+  sample(games, at - HOUR);
+  sample(games);
+  s.register("bob");
+  sample([{appid: 1, playtime_forever: 999999}], at, "bob");
+  const result = dashboard(s, "alice", "Asia/Shanghai", 7, null, at);
+  expect(result.distribution).toHaveLength(1099);
+  expect(result.distribution![0]).toEqual({appid: 1100, name: "Game 1100", minutes: 1099});
+  expect(result.distribution!.reduce((sum, game) => sum + game.minutes, 0)).toBe(result.total);
+  expect(dashboard(s, "alice", "Asia/Shanghai", 30, null, at).distribution).toEqual(result.distribution);
+  expect(dashboard(s, "alice", "Asia/Shanghai", 7, 2, at).distribution).toEqual([{appid: 2, name: "Game 2", minutes: 1}]);
+  sample([{appid: 2, playtime_forever: 5}], at + HOUR);
+  expect(dashboard(s, "alice", "UTC", 7, null, at + HOUR).distribution).toEqual([{appid: 2, name: "Game 2", minutes: 5}]);
+  sample([{appid: 2}], at + 2 * HOUR);
+  expect(dashboard(s, "alice", "UTC", 7, null, at + 2 * HOUR).distribution).toBeNull();
+  sample([], at + 3 * HOUR);
+  expect(dashboard(s, "alice", "UTC", 7, null, at + 3 * HOUR).distribution).toEqual([]);
+  s.register("empty-distribution");
+  expect(dashboard(s, "empty-distribution", "UTC", 7, null, at).distribution).toBeNull();
 });
