@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'dart:async';
 
 import 'package:dio/dio.dart';
@@ -175,6 +176,104 @@ void main() {
     } finally {
       if (!release.isCompleted) release.complete();
       await sync.close();
+      await db.close();
+      await dir.delete(recursive: true);
+    }
+  });
+  test('UTF-8 batches fit the server limit and oversized events survive without blocking', () async {
+    final dir = await Directory.systemTemp.createTemp('history-size-');
+    const account = 'alice';
+    final db = GameDatabaseService(
+      databaseName: '${dir.path}/db',
+      historyAccount: () => account,
+    );
+    final dio = Dio();
+    final sent = <Map<String, dynamic>>[];
+    var batches = 0;
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (request, handler) {
+          if (request.path.endsWith('/session')) {
+            handler.resolve(
+              Response(
+                requestOptions: request,
+                data: {'steamId': account, 'token': 'a' * 32},
+              ),
+            );
+            return;
+          }
+          final body = utf8.encode(jsonEncode(request.data));
+          if (body.length > 1000000) {
+            handler.reject(
+              DioException(
+                requestOptions: request,
+                response: Response(requestOptions: request, statusCode: 413),
+              ),
+            );
+            return;
+          }
+          batches++;
+          final events = (request.data['events'] as List)
+              .cast<Map<String, dynamic>>();
+          sent.addAll(events);
+          handler.resolve(
+            Response(
+              requestOptions: request,
+              data: {'accepted': events.map((event) => event['id']).toList()},
+            ),
+          );
+        },
+      ),
+    );
+    final sync = HistorySyncService(
+      database: db,
+      account: () => account,
+      apiKeyStorage: FakeApiKeyStorage(value: 'key'),
+      dio: dio,
+    );
+    final drained = Completer<void>();
+    try {
+      await db.updateUserGameNotes(
+        1,
+        '游' * 400000,
+      ); // one event exceeds 1 MB in UTF-8
+      await db.updateUserGameNotes(2, '游' * 190000);
+      await db.updateUserGameNotes(
+        3,
+        '游' * 190000,
+      ); // two valid events exceed 1 MB together
+      await db.updateUserGameNotes(4, 'later event');
+      sync.addListener(() async {
+        if (!sync.busy &&
+            (await db.pendingHistory(account)).isEmpty &&
+            !drained.isCompleted) {
+          drained.complete();
+        }
+      });
+      await sync.start();
+      await drained.future.timeout(const Duration(seconds: 5));
+      expect(batches, greaterThanOrEqualTo(2));
+      expect(
+        sent.where((e) => (e['after'] is Map) && e['after']['app_id'] == 4),
+        hasLength(1),
+      );
+      await sync.close();
+      await db.close();
+      final reopened = await db.database;
+      final failed = await reopened.query(
+        'history_outbox',
+        where: 'upload_error IS NOT NULL',
+      );
+      expect(failed, hasLength(1));
+      expect(failed.single['acknowledged'], 0);
+      expect(failed.single['upload_error'], 'payload_too_large');
+      expect(
+        jsonDecode(failed.single['body'] as String)['after']['user_notes'],
+        '游' * 400000,
+      );
+      expect(await db.pendingHistory(account), isEmpty);
+    } finally {
+      if (!drained.isCompleted) await sync.close();
       await db.close();
       await dir.delete(recursive: true);
     }

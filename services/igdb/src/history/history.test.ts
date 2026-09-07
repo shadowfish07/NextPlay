@@ -413,4 +413,9 @@ test("dashboard aggregates more than one thousand hourly game rows and compares 
   expect(result.previousAdded).toBe(4 * 6 * 24);
   expect(result.comparisonAdded).toBe(result.previousAdded);
   expect(result.games).toHaveLength(4);
+  expect(result.partial).toBe(false);
+  expect(result.days.at(-1)?.quality).toBe("partial"); // an unfinished day is distinct from a gap
+  const stale = dashboard(s, "alice", "UTC", 7, null, start + (24 * 17 + 2) * HOUR);
+  expect(stale.partial).toBe(true); // today's real outage must still be visible
+
 });

@@ -14,10 +14,11 @@ class GameDatabaseService {
   });
 
   final String _databaseName;
-  static const int _databaseVersion = 6;
+  static const int _databaseVersion = 7;
   final String Function()? _historyAccount;
 
   Database? _database;
+  Future<Database>? _opening;
   final _historyCommitted = StreamController<void>.broadcast();
 
   /// Emitted only after a transaction durably adds history to the outbox.
@@ -25,8 +26,18 @@ class GameDatabaseService {
 
   /// 获取数据库实例
   Future<Database> get database async {
-    _database ??= await _initDatabase();
-    return _database!;
+    final account = _historyAccount?.call() ?? '';
+    final Database db;
+    try {
+      db = _database ??= await (_opening ??= _initDatabase());
+    } catch (_) {
+      _opening = null;
+      rethrow;
+    }
+    if (_historyAccount != null) {
+      await db.transaction((txn) => _activateAccount(txn, account));
+    }
+    return db;
   }
 
   /// 初始化数据库
@@ -136,7 +147,13 @@ class GameDatabaseService {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     AppLogger.info('Upgrading database from v$oldVersion to v$newVersion');
 
-    if (oldVersion < 6) await _createHistoryTables(db);
+    if (oldVersion < 6) {
+      await _createHistoryTables(db);
+    } else if (oldVersion < 7) {
+      await db.execute(
+        'ALTER TABLE history_outbox ADD COLUMN upload_error TEXT',
+      );
+    }
 
     // v1 -> v2: 添加本地化名字、artworks、开发商、发行商字段
     if (oldVersion < 2) {
@@ -189,6 +206,7 @@ class GameDatabaseService {
     if (_database != null) {
       await _database!.close();
       _database = null;
+      _opening = null;
       AppLogger.info('Database closed');
     }
   }
@@ -575,7 +593,7 @@ class GameDatabaseService {
     await db.execute('''CREATE TABLE history_outbox (
       sequence INTEGER PRIMARY KEY AUTOINCREMENT,
       id TEXT NOT NULL UNIQUE, account TEXT NOT NULL, body TEXT NOT NULL,
-      acknowledged INTEGER NOT NULL DEFAULT 0
+      acknowledged INTEGER NOT NULL DEFAULT 0, upload_error TEXT
     )''');
     await db.insert('history_meta', {
       'key': 'device',
@@ -583,15 +601,61 @@ class GameDatabaseService {
     });
   }
 
+  /// Switches private working tables atomically, preserving the previous account.
+  /// Existing v6 data belongs to its recorded baseline owner, never the next login.
+  Future<void> _activateAccount(Transaction txn, String account) async {
+    Future<String?> meta(String key) async {
+      final rows = await txn.query(
+        'history_meta',
+        where: 'key = ?',
+        whereArgs: [key],
+      );
+      return rows.isEmpty ? null : rows.single['value'] as String;
+    }
+
+    Future<void> save(String key, String value) => txn
+        .insert('history_meta', {
+          'key': key,
+          'value': value,
+        }, conflictAlgorithm: ConflictAlgorithm.replace)
+        .then((_) {});
+    final legacyOwner = await meta('baseline');
+    if (legacyOwner != null && await meta('baseline:$legacyOwner') == null) {
+      await save('baseline:$legacyOwner', '1');
+    }
+    final active = await meta('active_account') ?? legacyOwner;
+    if (active == account) return;
+    const tables = ['user_game_data', 'play_queue', 'steam_games'];
+    if (active != null) {
+      final snapshot = <String, Object?>{};
+      for (final table in tables) {
+        snapshot[table] = await txn.query(table);
+      }
+      await save('account_state:$active', jsonEncode(snapshot));
+      final saved = await meta('account_state:$account');
+      final restored = saved == null
+          ? <String, dynamic>{}
+          : jsonDecode(saved) as Map<String, dynamic>;
+      for (final table in tables) {
+        await txn.delete(table);
+        for (final row in (restored[table] as List? ?? [])) {
+          await txn.insert(table, Map<String, Object?>.from(row as Map));
+        }
+      }
+    }
+    await save('active_account', account);
+  }
+
   Future<void> initializeHistory() => _historyMutation((_) async {});
 
   Future<void> _historyMutation(
     Future<void> Function(Transaction) action,
   ) async {
+    final account = _historyAccount?.call() ?? '';
     final db = await database;
     var appended = false;
     await db.transaction((txn) async {
-      final account = _historyAccount?.call() ?? '';
+      if (_historyAccount != null) await _activateAccount(txn, account);
       if (account.isEmpty) {
         await action(txn);
         return;
@@ -604,7 +668,7 @@ class GameDatabaseService {
       final baseline = await txn.query(
         'history_meta',
         where: 'key = ?',
-        whereArgs: ['baseline'],
+        whereArgs: ['baseline:$account'],
       );
       if (baseline.isEmpty) {
         appended = true;
@@ -619,7 +683,10 @@ class GameDatabaseService {
           queueBefore,
           null,
         );
-        await txn.insert('history_meta', {'key': 'baseline', 'value': account});
+        await txn.insert('history_meta', {
+          'key': 'baseline:$account',
+          'value': '1',
+        });
       }
       await action(txn);
       final after = await txn.query('user_game_data', orderBy: 'app_id');
@@ -699,7 +766,7 @@ class GameDatabaseService {
     final db = await database;
     final rows = await db.query(
       'history_outbox',
-      where: 'account = ? AND acknowledged = 0',
+      where: 'account = ? AND acknowledged = 0 AND upload_error IS NULL',
       whereArgs: [account],
       orderBy: 'sequence',
       limit: 20,
@@ -707,6 +774,17 @@ class GameDatabaseService {
     return rows
         .map((row) => jsonDecode(row['body'] as String) as Map<String, dynamic>)
         .toList();
+  }
+
+  /// Retains unsendable events for recovery while allowing later events to sync.
+  Future<void> rejectHistory(String account, String id, String reason) async {
+    final db = await database;
+    await db.update(
+      'history_outbox',
+      {'upload_error': reason},
+      where: 'account = ? AND id = ? AND acknowledged = 0',
+      whereArgs: [account, id],
+    );
   }
 
   Future<void> acknowledgeHistory(String account, List<String> ids) async {

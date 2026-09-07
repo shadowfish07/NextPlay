@@ -3,7 +3,7 @@ import type { HistoryStore } from "./store";
 const DAY = 86_400_000;
 const GAP = 90 * 60_000;
 const formatters = new Map<string, Intl.DateTimeFormat>();
-// Date-only ISO keys sort chronologically, including across year boundaries.
+/** Returns an account-local ISO date key, ordered chronologically across years. */
 export function historyDay(time: number, timezone: string): string {
   let formatter = formatters.get(timezone);
   if (!formatter) {
@@ -18,6 +18,7 @@ const shift = (date: string, days: number) => new Date(Date.parse(date) + days *
 type Sample = { observed: number; quality: string; minutes: number | null; added: number | null; invalid: number };
 type GameDay = { date: string; appid: number; name: string; added: number };
 
+/** Aggregates observed playtime without treating baselines or gaps as activity. */
 export function dashboard(store: HistoryStore, account: string, timezone: string, range: number, appid: number | null, now = Date.now()) {
   // Aggregate inside SQLite: the response never ships hourly rows for every game.
 
@@ -59,11 +60,12 @@ export function dashboard(store: HistoryStore, account: string, timezone: string
   }
   // The current day is still in progress. A stale collector cannot imply zero today.
   const current = byDay.get(today)!;
-  if (current.quality === "complete") current.quality = "partial";
   if (previous !== null && now - previous > GAP) {
     const last = byDay.get(historyDay(previous, timezone));
     if (last) last.quality = "partial";
   }
+  const currentHasGap = current.quality !== "complete";
+  if (current.quality === "complete") current.quality = "partial";
   const gameDays: GameDay[] = [];
   // Bun SQLite has no JavaScript scalar-function API. Resolve civil-day
   // boundaries with Intl, then let indexed SQL aggregate each day's games.
@@ -80,8 +82,9 @@ export function dashboard(store: HistoryStore, account: string, timezone: string
     SUM(CASE WHEN quality='observed_interval' THEN delta ELSE 0 END) AS added,
     MAX(observed) AS latest FROM playtime WHERE account=? AND observed>=? AND observed<? AND observed<=?
     AND (? IS NULL OR appid=?) GROUP BY appid HAVING added>0`);
-  let dayStart = boundary(previousStart);
+  let dayStart = boundary(start);
   for (const date of byDay.keys()) {
+    if (date < start) continue;
     const dayEnd = boundary(shift(date, 1));
     const rows = query.all(account, dayStart, dayEnd, now, appid, appid) as Omit<GameDay, "date">[];
     gameDays.push(...rows.map(row => ({...row, date})));
@@ -108,7 +111,7 @@ export function dashboard(store: HistoryStore, account: string, timezone: string
     total: latest.total, added: days.some(d => d.added !== null) ? days.reduce((n,d) => n+(d.added ?? 0),0) : null,
     previousAdded: comparable ? previousCompleted.reduce((n,d) => n+(d.added ?? 0),0) : null,
     comparisonAdded: comparable ? completed.reduce((n,d) => n+(d.added ?? 0),0) : null,
-    partial: days.some(d => d.quality !== "complete"), days,
+    partial: currentHasGap || completed.some(d => d.quality !== "complete"), days,
     games: [...ranking.values()].sort((a,b) => b.added-a.added || a.appid-b.appid),
   };
 }

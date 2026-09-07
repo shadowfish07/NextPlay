@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
@@ -128,7 +129,25 @@ class HistorySyncService extends ChangeNotifier with WidgetsBindingObserver {
         throw const FormatException('Invalid history session');
       }
       _connection = {'account': bound};
-      final events = await database.pendingHistory(bound);
+      final pending = await database.pendingHistory(bound);
+      final events = <Map<String, dynamic>>[];
+      var bodyBytes = utf8.encode('{"events":[]}').length;
+      for (final event in pending) {
+        final eventBytes = utf8.encode(jsonEncode(event)).length;
+        if (eventBytes + utf8.encode('{"events":[]}').length > 1000000) {
+          await database.rejectHistory(
+            bound,
+            event['id'] as String,
+            'payload_too_large',
+          );
+          madeProgress = true;
+          continue;
+        }
+        final nextBytes = bodyBytes + eventBytes + (events.isEmpty ? 0 : 1);
+        if (nextBytes > 1000000) break;
+        events.add(event);
+        bodyBytes = nextBytes;
+      }
       if (_disposed || account() != bound) return;
       if (events.isNotEmpty) {
         final response = await _dio.post(
@@ -142,7 +161,7 @@ class HistorySyncService extends ChangeNotifier with WidgetsBindingObserver {
           throw const FormatException('Unexpected event acknowledgment');
         }
         await database.acknowledgeHistory(bound, accepted);
-        madeProgress = accepted.isNotEmpty;
+        madeProgress = madeProgress || accepted.isNotEmpty;
       }
       final remaining = await database.pendingHistory(bound);
       hasMore = remaining.isNotEmpty;

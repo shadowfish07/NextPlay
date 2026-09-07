@@ -334,6 +334,7 @@ class _HistoryScreenState extends State<HistoryScreen>
             const SizedBox(height: 8),
             Text(
               '已结束日期较前期${data.comparisonAdded! >= data.previousAdded! ? '多' : '少'} ${historyDuration((data.comparisonAdded! - data.previousAdded!).abs())}',
+              style: TextStyle(color: colors.onPrimaryContainer),
             ),
           ],
           const Padding(

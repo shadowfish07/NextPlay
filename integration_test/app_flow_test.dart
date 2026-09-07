@@ -132,6 +132,58 @@ void main() {
     await dependencies.dispose();
   });
 
+  testWidgets('isolates account history through an Android SQLite upgrade', (
+    tester,
+  ) async {
+    final dependencies = await createTestDependencies(
+      databaseName: 'nextplay_account_upgrade_e2e.db',
+      preferences: {'steam_id': 'alice'},
+    );
+    final db = dependencies.gameDatabaseService;
+    final prefs = dependencies.sharedPreferences;
+    try {
+      await db.updateUserGameNotes(1, 'alice-private');
+      await db.addToPlayQueue(1);
+      final sqlite = await db.database;
+      await sqlite.delete('history_meta', where: "key != 'device'");
+      await sqlite.insert('history_meta', {
+        'key': 'baseline',
+        'value': 'alice',
+      });
+      await sqlite.execute(
+        'ALTER TABLE history_outbox DROP COLUMN upload_error',
+      );
+      await sqlite.execute('PRAGMA user_version = 6');
+      await db.close();
+      await prefs.setString('steam_id', 'bob');
+      await db.updateUserGameNotes(1, 'bob-private');
+      expect(await db.getPlayQueue(), isEmpty);
+      final events = await db.pendingHistory('bob');
+      expect(jsonEncode(events), isNot(contains('alice-private')));
+      expect(events.where((e) => e['type'] == 'queue_baseline'), hasLength(1));
+      await db.rejectHistory(
+        'bob',
+        events.last['id'] as String,
+        'payload_too_large',
+      );
+      await db.close();
+      final retained = await (await db.database).query(
+        'history_outbox',
+        where: 'upload_error IS NOT NULL',
+      );
+      expect(retained.single['acknowledged'], 0);
+      expect(retained.single['body'], contains('bob-private'));
+      await prefs.setString('steam_id', 'alice');
+      expect(
+        (await db.getOrCreateUserGameData(1))['user_notes'],
+        'alice-private',
+      );
+      expect(await db.getPlayQueue(), [1]);
+    } finally {
+      await dependencies.dispose();
+    }
+  });
+
   testWidgets('migrates a released API key with Android secure storage', (
     tester,
   ) async {
