@@ -21,7 +21,19 @@ void main() {
       await tester.pumpAndSettle();
       expect(service.requests.last, (7, null));
       expect(find.text('8 小时 40 分钟'), findsOneWidget);
+      expect(find.textContaining('按采样差值'), findsNothing);
+      expect(find.textContaining('Asia/Shanghai'), findsNothing);
+      await tester.tap(find.byKey(AppKeys.historyInfo));
+      await tester.pumpAndSettle();
+      expect(find.byKey(AppKeys.historyInfoSheet), findsOneWidget);
+      expect(find.textContaining('Asia/Shanghai'), findsOneWidget);
+      await tester.tap(find.byKey(AppKeys.historyInfoClose));
+      await tester.pumpAndSettle();
+      expect(find.byKey(AppKeys.historyInfoSheet), findsNothing);
+
       await tester.tap(find.byKey(AppKeys.historyCumulative));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(AppKeys.historyDay('2026-09-07')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(AppKeys.historyDay('2026-09-07')));
       await tester.pumpAndSettle();

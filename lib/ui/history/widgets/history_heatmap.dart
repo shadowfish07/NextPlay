@@ -76,7 +76,7 @@ class HistoryHeatmap extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          '${days.first.date} 至 ${days.last.date} · 横向滑动查看更早日期',
+          '${days.first.date} 至 ${days.last.date}',
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 16),
@@ -163,13 +163,7 @@ class HistoryHeatmap extends StatelessWidget {
                 ),
               ),
             const Text('多', style: TextStyle(fontSize: 12)),
-            const Text('最高一档 ≥ 2 小时', style: TextStyle(fontSize: 12)),
           ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '空心：暂无数据 · 彩色边框：记录不完整',
-          style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
     );

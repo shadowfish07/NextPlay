@@ -143,11 +143,6 @@ class _HistoryScreenState extends State<HistoryScreen>
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: 12),
-                          Text(
-                            '数据会在后台自动记录。开始积累后，你可以在这里查看时长的变化。',
-                            textAlign: TextAlign.center,
-                          ),
                         ],
                       ),
                     ),
@@ -166,11 +161,22 @@ class _HistoryScreenState extends State<HistoryScreen>
                       ),
                     _summary(data),
                     const SizedBox(height: 24),
-                    Text(
-                      '时长趋势',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '时长趋势',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        IconButton(
+                          key: AppKeys.historyInfo,
+                          tooltip: '记录说明',
+                          onPressed: () => _showInfo(data.timezone),
+                          icon: const Icon(Icons.info_outline_rounded),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     SegmentedButton<String>(
@@ -212,24 +218,6 @@ class _HistoryScreenState extends State<HistoryScreen>
                         cumulative: _cumulative,
                         onDay: (day) => _showDay(day, data),
                       ),
-                    const SizedBox(height: 10),
-                    Text(
-                      _chart == 'calendar'
-                          ? '颜色越亮，游玩越久 · 点击格子查看当天游戏'
-                          : _cumulative
-                          ? '每日最后一次有效记录 · 点击日期查看明细'
-                          : '按采样差值估算 · 点击柱状图查看当天游戏',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _chart == 'calendar'
-                          ? '按采样差值估算，日期按 ${data.timezone}。'
-                          : '浅色表示记录不完整，— 表示暂无数据。日期按 ${data.timezone}。',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
                     const SizedBox(height: 24),
                     Text(
                       widget.appId == null ? '时间花在哪里' : '这段时间',
@@ -249,26 +237,72 @@ class _HistoryScreenState extends State<HistoryScreen>
                         data.added ?? 0,
                         canOpen: widget.appId == null,
                       ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Text(
-                        '记录从首次采集开始，无法还原此前每天的游玩情况。跨越采集缺口的增量和时长修正不计入每日新增。',
-                        style: TextStyle(fontSize: 12, height: 1.6),
-                      ),
-                    ),
                   ],
                 );
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showInfo(String timezone) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * .75,
+          ),
+          child: ListView(
+            key: AppKeys.historyInfoSheet,
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '记录说明',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  IconButton(
+                    key: AppKeys.historyInfoClose,
+                    tooltip: '关闭说明',
+                    onPressed: () => Navigator.pop(sheetContext),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '时长与日期',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text('每日新增按采样差值估算，累计时长取当天最后一次有效记录。日期使用 $timezone 时区。'),
+              const SizedBox(height: 20),
+              const Text(
+                '日历与图例',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '日历每格代表一天，可横向查看其他日期，点击日期查看当天游戏。色阶对应的新增时长依次为 0、1–29、30–59、60–119、至少 120 分钟。空心格表示暂无数据，彩色边框表示记录不完整。柱状图和曲线的浅色部分也表示记录不完整，— 表示暂无数据。',
+              ),
+              const SizedBox(height: 20),
+              const Text('记录范围', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text(
+                '记录从首次采集开始，无法还原此前每天的游玩情况。跨越采集缺口的增量和时长修正不计入每日新增；部分记录只反映已观测到的时长。',
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -306,8 +340,8 @@ class _HistoryScreenState extends State<HistoryScreen>
           const SizedBox(height: 10),
           Text(
             data.added == null
-                ? '记录积累中，首次时长作为起点'
-                : '玩过 ${data.games.length} 款游戏${data.partial ? ' · 含未完整记录的日期' : ''}',
+                ? '记录积累中'
+                : '玩过 ${data.games.length} 款游戏${data.partial ? ' · 部分记录' : ''}',
             style: TextStyle(color: colors.onPrimaryContainer),
           ),
           if (data.previousAdded != null && data.comparisonAdded != null) ...[

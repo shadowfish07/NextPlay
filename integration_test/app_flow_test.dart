@@ -56,6 +56,13 @@ void main() {
     await _tapAndWait(tester, AppKeys.historyHeatmap);
     await _waitFor(tester, find.byKey(AppKeys.historyHeatmapScroll));
     await tester.ensureVisible(find.byKey(AppKeys.historyHeatmapScroll));
+    expect(find.textContaining('按采样差值'), findsNothing);
+    expect(find.textContaining('点击格子'), findsNothing);
+    await _tapAndWait(tester, AppKeys.historyInfo);
+    await _waitFor(tester, find.byKey(AppKeys.historyInfoSheet));
+    await _tapAndWait(tester, AppKeys.historyInfoClose);
+    expect(find.byKey(AppKeys.historyInfoSheet), findsNothing);
+
     await tester.drag(
       find.byKey(AppKeys.historyHeatmapScroll),
       const Offset(160, 0),
@@ -84,7 +91,12 @@ void main() {
     await _waitFor(tester, find.text('游戏游玩记录'));
     await _waitFor(tester, find.text('Portal 2'));
     await _tapAndWait(tester, AppKeys.historyCumulative);
-    expect(find.textContaining('每日最后一次有效记录'), findsOneWidget);
+    expect(
+      tester
+          .widget<SegmentedButton<String>>(find.byType(SegmentedButton<String>))
+          .selected,
+      {'cumulative'},
+    );
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(find.text('游玩记录'), findsOneWidget);
