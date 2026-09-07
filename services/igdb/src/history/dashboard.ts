@@ -22,18 +22,18 @@ type GameDay = { date: string; appid: number; name: string; added: number };
 export function dashboard(store: HistoryStore, account: string, timezone: string, range: number, appid: number | null, now = Date.now()) {
   // Aggregate inside SQLite: the response never ships hourly rows for every game.
 
-  const first = store.db.query(`SELECT MIN(observed) AS time FROM playtime WHERE account=? AND (? IS NULL OR appid=?)`).get(account, appid, appid) as { time: number | null };
+  const first = store.db.query(`SELECT MIN(o.observed) AS time FROM observations o WHERE o.account=? AND o.source='library' AND o.quality='complete' AND (? IS NULL OR EXISTS (SELECT 1 FROM playtime p WHERE p.observation=o.id AND p.appid=?))`).get(account, appid, appid) as { time: number | null };
   const today = historyDay(now, timezone);
   const start = range === 0 ? (first.time === null ? today : historyDay(first.time, timezone)) : shift(today, 1 - range);
   const previousStart = range === 0 ? start : shift(start, -range);
   const lower = Date.parse(previousStart) - DAY; // covers all timezone offsets and one preceding observation
   const samples = store.db.query(`SELECT o.observed,o.quality,
-    CASE WHEN o.quality='complete' AND COUNT(p.appid)=COUNT(p.minutes) THEN SUM(p.minutes) END AS minutes,
+    CASE WHEN o.quality='complete' AND COUNT(p.appid)=COUNT(p.minutes) AND (? IS NULL OR COUNT(p.appid)>0) THEN COALESCE(SUM(p.minutes),0) END AS minutes,
     SUM(CASE WHEN p.quality='observed_interval' THEN p.delta END) AS added,
     SUM(CASE WHEN p.quality IS NOT NULL AND p.quality!='observed_interval' THEN 1 ELSE 0 END) AS invalid
     FROM observations o LEFT JOIN playtime p ON p.observation=o.id AND (? IS NULL OR p.appid=?)
     WHERE o.account=? AND o.source='library' AND o.observed>=? AND o.observed<=?
-    GROUP BY o.id ORDER BY o.observed,o.rowid`).all(appid, appid, account, lower, now) as Sample[];
+    GROUP BY o.id ORDER BY o.observed,o.rowid`).all(appid, appid, appid, account, lower, now) as Sample[];
   const byDay = new Map<string, { date: string; added: number | null; total: number | null; quality: string; games: GameDay[] }>();
   for (let date = previousStart; date <= today; date = shift(date, 1)) {
     byDay.set(date, { date, added: null, total: null, quality: "missing", games: [] });
@@ -112,7 +112,15 @@ export function dashboard(store: HistoryStore, account: string, timezone: string
   // Compare completed days with the immediately preceding equal-length window.
   const completed = days.slice(0, -1), previousCompleted = prior.slice(1);
   const comparable = range > 0 && completed.length > 0 && completed.every(d => d.quality === "complete") && previousCompleted.every(d => d.quality === "complete");
-  const latest = store.db.query(`SELECT CASE WHEN COUNT(*)=COUNT(minutes) THEN SUM(minutes) END AS total,MAX(observed) AS observed FROM playtime WHERE account=? AND (? IS NULL OR appid=?) AND observation=(SELECT id FROM observations WHERE account=? AND source='library' AND quality='complete' AND (? IS NULL OR EXISTS (SELECT 1 FROM playtime candidate WHERE candidate.observation=observations.id AND candidate.account=? AND candidate.appid=?)) ORDER BY observed DESC,rowid DESC LIMIT 1)`).get(account, appid, appid, account, appid, account, appid) as { total: number | null; observed: number | null };
+  const latest = store.db.query(`WITH latest AS (
+    SELECT id,observed FROM observations WHERE account=? AND source='library' AND quality='complete'
+      AND (? IS NULL OR EXISTS (SELECT 1 FROM playtime candidate WHERE candidate.observation=observations.id AND candidate.account=? AND candidate.appid=?))
+    ORDER BY observed DESC,rowid DESC LIMIT 1
+  ) SELECT CASE WHEN COUNT(latest.id)=0 THEN NULL
+      WHEN COUNT(p.appid)=COUNT(p.minutes) THEN COALESCE(SUM(p.minutes),0) END AS total,
+    MAX(latest.observed) AS observed
+    FROM latest LEFT JOIN playtime p ON p.observation=latest.id AND p.account=? AND (? IS NULL OR p.appid=?)
+  `).get(account, appid, account, appid, account, appid, appid) as { total: number | null; observed: number | null };
   const name = appid === null ? null : (store.db.query(`SELECT json_extract(fields,'$.name') AS name FROM playtime WHERE account=? AND appid=? ORDER BY observed DESC,rowid DESC LIMIT 1`).get(account, appid) as {name: string | null} | null)?.name ?? `Game ${appid}`;
   return { timezone, range, appid, name, firstObserved: first.time, lastObserved: latest.observed,
     total: latest.total, added: days.some(d => d.added !== null) ? days.reduce((n,d) => n+(d.added ?? 0),0) : null,

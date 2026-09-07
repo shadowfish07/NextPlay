@@ -407,6 +407,24 @@ test("dashboard retains baseline, gaps, corrections, timezone dates and account 
   const currentLibrary = dashboard(s, "alice", "Asia/Shanghai", 7, null, latestAt);
   expect(currentLibrary.total).toBe(55);
   expect(currentLibrary.lastObserved).toBe(latestAt);
+  const emptyAt = latestAt + HOUR;
+  const empty = s.record("alice", "library", 0, { games: [] }, "complete", emptyAt);
+  s.projectLibrary(empty, "alice", [], emptyAt);
+  const emptyLibrary = dashboard(s, "alice", "Asia/Shanghai", 7, null, emptyAt);
+  expect(emptyLibrary.total).toBe(0);
+  expect(emptyLibrary.lastObserved).toBe(emptyAt);
+  expect(emptyLibrary.days.at(-1)?.total).toBe(0);
+  expect(dashboard(s, "alice", "Asia/Shanghai", 7, 620, emptyAt).total).toBe(215);
+  s.register("empty");
+  expect(dashboard(s, "empty", "UTC", 0, null, emptyAt).total).toBeNull();
+  expect(dashboard(s, "empty", "UTC", 0, null, emptyAt).lastObserved).toBeNull();
+  const firstEmpty = s.record("empty", "library", 0, { games: [] }, "complete", start);
+  s.projectLibrary(firstEmpty, "empty", [], start);
+  const onlyEmpty = dashboard(s, "empty", "UTC", 0, null, emptyAt);
+  expect(onlyEmpty.firstObserved).toBe(start);
+  expect(onlyEmpty.lastObserved).toBe(start);
+  expect(onlyEmpty.total).toBe(0);
+
 
 });
 
