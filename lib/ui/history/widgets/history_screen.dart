@@ -63,6 +63,43 @@ class _HistoryScreenState extends State<HistoryScreen>
       appBar: AppBar(title: Text(widget.appId == null ? '游玩记录' : '游戏游玩记录')),
       body: Column(
         children: [
+          FutureBuilder<PlaytimeHistory>(
+            future: _data,
+            builder: (context, snapshot) {
+              final data = snapshot.data;
+              if (data == null || data.firstObserved == null) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '历史总览',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          Text('历史总时长  ${historyDuration(data.total)}'),
+                        ],
+                      ),
+                    ),
+                    if (widget.appId == null)
+                      TextButton.icon(
+                        key: AppKeys.historyDistribution,
+                        onPressed: () => _showDistribution(data),
+                        icon: const Icon(Icons.pie_chart_outline),
+                        label: const Text('查看分布'),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
             child: Row(
@@ -345,27 +382,6 @@ class _HistoryScreenState extends State<HistoryScreen>
               style: TextStyle(color: colors.onPrimaryContainer),
             ),
           ],
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 14),
-            child: Divider(),
-          ),
-          Text(
-            '历史总时长  ${historyDuration(data.total)}',
-            style: TextStyle(color: colors.onPrimaryContainer),
-          ),
-          if (widget.appId == null)
-            TextButton.icon(
-              key: AppKeys.historyDistribution,
-              style: TextButton.styleFrom(
-                alignment: Alignment.centerLeft,
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(double.infinity, 48),
-                foregroundColor: colors.onPrimaryContainer,
-              ),
-              onPressed: () => _showDistribution(data),
-              icon: const Icon(Icons.pie_chart_outline),
-              label: const Text('查看分布'),
-            ),
         ],
       ),
     );
