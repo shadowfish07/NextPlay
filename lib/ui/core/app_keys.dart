@@ -17,6 +17,7 @@ abstract final class AppKeys {
   static const historyEmpty = Key('history.empty');
   static const historyDaily = Key('history.daily');
   static const historyCumulative = Key('history.cumulative');
+  static const historyDayDetails = Key('history.dayDetails');
   static const historyDaySheet = Key('history.daySheet');
   static ValueKey<String> historyRange(int days) =>
       ValueKey('history.range.$days');

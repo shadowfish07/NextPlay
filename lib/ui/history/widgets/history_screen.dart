@@ -22,6 +22,7 @@ class _HistoryScreenState extends State<HistoryScreen>
     with WidgetsBindingObserver {
   late int _range;
   String _chart = 'daily';
+  String? _selectedDate;
   bool get _cumulative => _chart == 'cumulative';
   late Future<PlaytimeHistory> _data;
   @override
@@ -35,6 +36,7 @@ class _HistoryScreenState extends State<HistoryScreen>
   }
 
   void _reload() {
+    _selectedDate = null;
     _data = context.read<PlaytimeHistoryService>().load(
       range: _range,
       appId: widget.appId,
@@ -151,6 +153,9 @@ class _HistoryScreenState extends State<HistoryScreen>
                     ),
                   );
                 }
+                final selectedDay = data.days
+                    .where((day) => day.date == _selectedDate)
+                    .firstOrNull;
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
                   children: [
@@ -203,6 +208,7 @@ class _HistoryScreenState extends State<HistoryScreen>
                       selected: {_chart},
                       onSelectionChanged: (value) => setState(() {
                         _chart = value.first;
+                        if (_chart == 'calendar') _selectedDate = null;
                       }),
                     ),
                     const SizedBox(height: 16),
@@ -215,26 +221,32 @@ class _HistoryScreenState extends State<HistoryScreen>
                       _HistoryChart(
                         days: data.days,
                         cumulative: _cumulative,
-                        onDay: (day) => _showDay(day, data),
+                        selectedDate: _selectedDate,
+                        onDay: (day) =>
+                            setState(() => _selectedDate = day.date),
                       ),
                     const SizedBox(height: 24),
-                    Text(
-                      widget.appId == null ? '时间花在哪里' : '这段时间',
-                      style: Theme.of(context).textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    if (data.games.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24),
-                        child: Text('这段时间还没有记录到新增游玩时长。'),
+                    if (selectedDay != null)
+                      _dayDetails(selectedDay)
+                    else ...[
+                      Text(
+                        widget.appId == null ? '时间花在哪里' : '这段时间',
+                        style: Theme.of(context).textTheme.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                    for (final game in data.games)
-                      _gameTile(
-                        game,
-                        data.added ?? 0,
-                        canOpen: widget.appId == null,
-                      ),
+                      const SizedBox(height: 8),
+                      if (data.games.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Text('这段时间还没有记录到新增游玩时长。'),
+                        ),
+                      for (final game in data.games)
+                        _gameTile(
+                          game,
+                          data.added ?? 0,
+                          canOpen: widget.appId == null,
+                        ),
+                    ],
                   ],
                 );
               },
@@ -494,6 +506,37 @@ class _HistoryScreenState extends State<HistoryScreen>
     );
   }
 
+  Widget _dayDetails(HistoryDay day) {
+    return Column(
+      key: AppKeys.historyDayDetails,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                day.date,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            TextButton(
+              onPressed: () => setState(() => _selectedDate = null),
+              child: const Text('查看整段时间'),
+            ),
+          ],
+        ),
+        Text('当天新增 ${historyDuration(day.added)}'),
+        if (day.quality != 'complete') const Text('当天记录不完整'),
+        const SizedBox(height: 8),
+        if (day.games.isEmpty) Text(day.added == 0 ? '当天没有新增游玩时长' : '暂无当天游玩记录'),
+        for (final game in [
+          ...day.games,
+        ]..sort((a, b) => b.added.compareTo(a.added)))
+          _gameTile(game, day.added ?? 0, canOpen: widget.appId == null),
+      ],
+    );
+  }
+
   void _showDay(HistoryDay day, PlaytimeHistory data) {
     showModalBottomSheet<void>(
       context: context,
@@ -551,16 +594,42 @@ class _HistoryChart extends StatelessWidget {
   const _HistoryChart({
     required this.days,
     required this.cumulative,
+    required this.selectedDate,
     required this.onDay,
   });
   final List<HistoryDay> days;
   final bool cumulative;
+  final String? selectedDate;
   final ValueChanged<HistoryDay> onDay;
   @override
   Widget build(BuildContext context) {
     final values = days.map((d) => cumulative ? d.total : d.added).toList();
     final maxValue = values.fold<int>(1, (m, v) => math.max(m, v ?? 0));
     final colors = Theme.of(context).colorScheme;
+    final labels = values
+        .map(
+          (value) =>
+              historyDuration(value)
+                  .replaceAll(' 小时', '时')
+                  .replaceAll(' 分钟', '分')
+                  .replaceAll(' ', ''),
+        )
+        .toList();
+    final labelStyle = Theme.of(context).textTheme.labelSmall!;
+    final textScaler = MediaQuery.textScalerOf(context);
+    var labelWidth = 44.0;
+    var labelHeight = 0.0;
+    for (final label in labels) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: labelStyle),
+        textDirection: Directionality.of(context),
+        textScaler: textScaler,
+      )..layout();
+      labelWidth = math.max(labelWidth, painter.width + 12);
+      labelHeight = math.max(labelHeight, painter.height);
+      painter.dispose();
+    }
+    final chartHeight = 152 + labelHeight + 8;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -571,21 +640,24 @@ class _HistoryChart extends StatelessWidget {
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
-            final width = math.max(constraints.maxWidth, days.length * 44.0);
+            final width = math.max(
+              constraints.maxWidth,
+              days.length * labelWidth,
+            );
             final cell = width / math.max(days.length, 1);
             return SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               reverse: true,
               child: SizedBox(
                 width: width,
-                height: 188,
+                height: chartHeight + textScaler.scale(10) * 1.5 + 20,
                 child: Stack(
                   children: [
                     if (cumulative)
                       Positioned(
                         left: 0,
                         right: 0,
-                        top: 0,
+                        top: labelHeight + 8,
                         height: 152,
                         child: CustomPaint(
                           painter: _TrendPainter(
@@ -606,57 +678,96 @@ class _HistoryChart extends StatelessWidget {
                               label:
                                   '${days[i].date} ${historyDuration(values[i])}${days[i].quality == 'complete' ? '' : ' 记录不完整'}',
                               button: true,
+                              selected: days[i].date == selectedDate,
                               child: InkWell(
                                 key: AppKeys.historyDay(days[i].date),
                                 onTap: () => onDay(days[i]),
-                                child: Column(
-                                  children: [
-                                    SizedBox(
-                                      height: 152,
-                                      child: Align(
-                                        alignment: Alignment.bottomCenter,
-                                        child: values[i] == null
-                                            ? const Padding(
-                                                padding: EdgeInsets.only(
-                                                  bottom: 8,
-                                                ),
-                                                child: Text('—'),
-                                              )
-                                            : cumulative
-                                            ? const SizedBox.expand()
-                                            : Container(
-                                                width: math.min(28, cell - 12),
-                                                height: math.max(
-                                                  3,
-                                                  144 * values[i]! / maxValue,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      days[i].quality ==
-                                                          'complete'
-                                                      ? colors.primary
-                                                      : colors.primary
-                                                            .withValues(
-                                                              alpha: .35,
-                                                            ),
-                                                  borderRadius:
-                                                      const BorderRadius.vertical(
-                                                        top: Radius.circular(5),
-                                                      ),
-                                                ),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: days[i].date == selectedDate
+                                        ? colors.primary.withValues(alpha: .08)
+                                        : null,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      SizedBox(
+                                        height: chartHeight,
+                                        child: Stack(
+                                          children: [
+                                            Positioned(
+                                              left: 0,
+                                              right: 0,
+                                              bottom: values[i] == null
+                                                  ? 8
+                                                  : (cumulative
+                                                            ? 4 +
+                                                                  140 *
+                                                                      values[i]! /
+                                                                      maxValue
+                                                            : math.max(
+                                                                3,
+                                                                144 *
+                                                                    values[i]! /
+                                                                    maxValue,
+                                                              )) +
+                                                        6,
+                                              child: Text(
+                                                labels[i],
+                                                textAlign: TextAlign.center,
+                                                style: labelStyle,
                                               ),
+                                            ),
+                                            Align(
+                                              alignment: Alignment.bottomCenter,
+                                              child: values[i] == null
+                                                  ? const SizedBox.shrink()
+                                                  : cumulative
+                                                  ? const SizedBox.expand()
+                                                  : Container(
+                                                      width: math.min(
+                                                        28,
+                                                        cell - 12,
+                                                      ),
+                                                      height: math.max(
+                                                        3,
+                                                        144 *
+                                                            values[i]! /
+                                                            maxValue,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            days[i].quality ==
+                                                                'complete'
+                                                            ? colors.primary
+                                                            : colors.primary
+                                                                  .withValues(
+                                                                    alpha: .35,
+                                                                  ),
+                                                        borderRadius:
+                                                            const BorderRadius.vertical(
+                                                              top:
+                                                                  Radius.circular(
+                                                                    5,
+                                                                  ),
+                                                            ),
+                                                      ),
+                                                    ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      days[i].date
-                                          .substring(5)
-                                          .replaceAll('-', '/'),
-                                      style: const TextStyle(fontSize: 10),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.clip,
-                                    ),
-                                  ],
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        days[i].date
+                                            .substring(5)
+                                            .replaceAll('-', '/'),
+                                        style: const TextStyle(fontSize: 10),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.clip,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),

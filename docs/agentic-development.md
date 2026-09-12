@@ -95,6 +95,8 @@ Automation identifiers live in `lib/ui/core/app_keys.dart` and use dotted names:
 - action: `onboarding.next`, `settings.sync`;
 - entity: `library.item.<steamAppId>`, `discover.recommendation.<steamAppId>`.
 
+`history.dayDetails` identifies the inline game breakdown selected from a trend bar or point. `history.daySheet` remains the calendar day sheet. Trend values are always visible; selecting a day replaces the range breakdown below the chart, and changing the range clears the selection.
+
 Treat an existing identifier as a public compatibility contract. Prefer visible text and semantics for human/ADB launcher assertions; use `AppKeys` from Flutter widget and integration tests.
 
 ## Human handoff boundaries

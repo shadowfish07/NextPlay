@@ -111,9 +111,11 @@ void main() {
     await _tapAndWait(tester, AppKeys.historyRange(7));
     await _waitFor(tester, find.byKey(AppKeys.historyDaily));
     await _tapAndWait(tester, AppKeys.historyDay('2026-09-07'));
-    await _waitFor(tester, find.byKey(AppKeys.historyDaySheet));
+    await _waitFor(tester, find.byKey(AppKeys.historyDayDetails));
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text('1时10分'), findsOneWidget);
     final dayGame = find.descendant(
-      of: find.byKey(AppKeys.historyDaySheet),
+      of: find.byKey(AppKeys.historyDayDetails),
       matching: find.byKey(AppKeys.historyGame(620)),
     );
     await tester.ensureVisible(dayGame);
