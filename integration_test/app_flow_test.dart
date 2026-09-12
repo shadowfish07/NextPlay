@@ -89,10 +89,8 @@ void main() {
     await tester.ensureVisible(find.byKey(AppKeys.historyHeatmapScroll));
     expect(find.textContaining('按采样差值'), findsNothing);
     expect(find.textContaining('点击格子'), findsNothing);
-    await _tapAndWait(tester, AppKeys.historyInfo);
-    await _waitFor(tester, find.byKey(AppKeys.historyInfoSheet));
-    await _tapAndWait(tester, AppKeys.historyInfoClose);
-    expect(find.byKey(AppKeys.historyInfoSheet), findsNothing);
+    expect(find.byKey(AppKeys.historyInfo), findsNothing);
+    expect(find.text('记录说明'), findsNothing);
 
     await tester.drag(
       find.byKey(AppKeys.historyHeatmapScroll),

@@ -207,22 +207,10 @@ class _HistoryScreenState extends State<HistoryScreen>
                       ),
                     _summary(data),
                     const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '时长趋势',
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        IconButton(
-                          key: AppKeys.historyInfo,
-                          tooltip: '记录说明',
-                          onPressed: () => _showInfo(data.timezone),
-                          icon: const Icon(Icons.info_outline_rounded),
-                        ),
-                      ],
+                    Text(
+                      '时长趋势',
+                      style: Theme.of(context).textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
                     SegmentedButton<String>(
@@ -291,50 +279,6 @@ class _HistoryScreenState extends State<HistoryScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showInfo(String timezone) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(sheetContext).height * .75,
-          ),
-          child: ListView(
-            key: AppKeys.historyInfoSheet,
-            shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '记录说明',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  IconButton(
-                    key: AppKeys.historyInfoClose,
-                    tooltip: '关闭说明',
-                    onPressed: () => Navigator.pop(sheetContext),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text('每日新增按采样估算，日期使用 $timezone。'),
-              const SizedBox(height: 12),
-              const Text('空心或 — 表示暂无数据。'),
-              const SizedBox(height: 12),
-              const Text('新增和趋势仅展示开始采集后的记录；历史总时长和分布来自最近一次完整游戏库采集，不受日期筛选影响。'),
-            ],
-          ),
-        ),
       ),
     );
   }

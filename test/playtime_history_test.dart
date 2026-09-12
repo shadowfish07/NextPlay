@@ -154,13 +154,8 @@ void main() {
       expect(find.byKey(AppKeys.historyDistributionSheet), findsNothing);
       expect(find.textContaining('按采样差值'), findsNothing);
       expect(find.textContaining('Asia/Shanghai'), findsNothing);
-      await tester.tap(find.byKey(AppKeys.historyInfo));
-      await tester.pumpAndSettle();
-      expect(find.byKey(AppKeys.historyInfoSheet), findsOneWidget);
-      expect(find.textContaining('Asia/Shanghai'), findsOneWidget);
-      await tester.tap(find.byKey(AppKeys.historyInfoClose));
-      await tester.pumpAndSettle();
-      expect(find.byKey(AppKeys.historyInfoSheet), findsNothing);
+      expect(find.byKey(AppKeys.historyInfo), findsNothing);
+      expect(find.text('记录说明'), findsNothing);
 
       await tester.tap(find.byKey(AppKeys.historyCumulative));
       await tester.pumpAndSettle();
