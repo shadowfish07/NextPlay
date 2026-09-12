@@ -1,4 +1,5 @@
 import 'history_heatmap.dart';
+import 'history_trend_scale.dart';
 
 import 'dart:math' as math;
 
@@ -621,6 +622,7 @@ class _HistoryChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final values = days.map((d) => cumulative ? d.total : d.added).toList();
     final maxValue = values.fold<int>(1, (m, v) => math.max(m, v ?? 0));
+    final trendScale = HistoryTrendScale(values);
     final colors = Theme.of(context).colorScheme;
     final labels = values
         .map(
@@ -650,7 +652,9 @@ class _HistoryChart extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '最高 ${historyDuration(values.every((v) => v == null) ? null : values.whereType<int>().fold<int>(0, math.max))}',
+          cumulative
+              ? '范围 ${historyDuration(trendScale.minimum)} – ${historyDuration(trendScale.maximum)}'
+              : '最高 ${historyDuration(trendScale.maximum)}',
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 12),
@@ -680,7 +684,7 @@ class _HistoryChart extends StatelessWidget {
                             values,
                             days,
                             colors.primary,
-                            maxValue,
+                            trendScale,
                           ),
                         ),
                       ),
@@ -719,8 +723,10 @@ class _HistoryChart extends StatelessWidget {
                                                   : (cumulative
                                                             ? 4 +
                                                                   140 *
-                                                                      values[i]! /
-                                                                      maxValue
+                                                                      trendScale
+                                                                          .fraction(
+                                                                            values[i]!,
+                                                                          )
                                                             : math.max(
                                                                 3,
                                                                 144 *
@@ -802,11 +808,11 @@ class _HistoryChart extends StatelessWidget {
 }
 
 class _TrendPainter extends CustomPainter {
-  _TrendPainter(this.values, this.days, this.color, this.maximum);
+  _TrendPainter(this.values, this.days, this.color, this.scale);
   final List<HistoryDay> days;
   final List<int?> values;
   final Color color;
-  final int maximum;
+  final HistoryTrendScale scale;
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
@@ -822,7 +828,7 @@ class _TrendPainter extends CustomPainter {
       }
       final point = Offset(
         (i + .5) * size.width / values.length,
-        size.height - 4 - value / maximum * (size.height - 12),
+        size.height - 4 - scale.fraction(value) * (size.height - 12),
       );
       paint.color =
           days[i].quality == 'complete' &&
@@ -837,5 +843,9 @@ class _TrendPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _TrendPainter oldDelegate) =>
-      oldDelegate.values != values || oldDelegate.color != color;
+      oldDelegate.values != values ||
+      oldDelegate.days != days ||
+      oldDelegate.color != color ||
+      oldDelegate.scale.minimum != scale.minimum ||
+      oldDelegate.scale.maximum != scale.maximum;
 }
