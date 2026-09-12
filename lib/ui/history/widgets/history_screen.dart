@@ -329,7 +329,7 @@ class _HistoryScreenState extends State<HistoryScreen>
               const SizedBox(height: 16),
               Text('每日新增按采样估算，日期使用 $timezone。'),
               const SizedBox(height: 12),
-              const Text('空心或 — 表示暂无数据，描边或淡色表示记录不完整。'),
+              const Text('空心或 — 表示暂无数据。'),
               const SizedBox(height: 12),
               const Text('新增和趋势仅展示开始采集后的记录；历史总时长和分布来自最近一次完整游戏库采集，不受日期筛选影响。'),
             ],
@@ -371,9 +371,7 @@ class _HistoryScreenState extends State<HistoryScreen>
           ),
           const SizedBox(height: 10),
           Text(
-            data.added == null
-                ? '记录积累中'
-                : '玩过 ${data.games.length} 款游戏${data.partial ? ' · 部分记录' : ''}',
+            data.added == null ? '记录积累中' : '玩过 ${data.games.length} 款游戏',
             style: TextStyle(color: colors.onPrimaryContainer),
           ),
           if (data.previousAdded != null && data.comparisonAdded != null) ...[
@@ -543,7 +541,6 @@ class _HistoryScreenState extends State<HistoryScreen>
           ],
         ),
         Text('当天新增 ${historyDuration(day.added)}'),
-        if (day.quality != 'complete') const Text('当天记录不完整'),
         const SizedBox(height: 8),
         if (day.games.isEmpty) Text(day.added == 0 ? '当天没有新增游玩时长' : '暂无当天游玩记录'),
         for (final game in [
@@ -573,11 +570,6 @@ class _HistoryScreenState extends State<HistoryScreen>
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Text('累计 ${historyDuration(day.total)}'),
-              if (day.quality != 'complete')
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Text('当天记录不完整，不能据此判断完整游玩时长。'),
-                ),
               const SizedBox(height: 16),
               if (day.games.isEmpty)
                 Text(day.added == 0 ? '已观测时段内没有新增时长。' : '暂无可分配到当天的新增记录。'),
@@ -696,7 +688,7 @@ class _HistoryChart extends StatelessWidget {
                             width: cell,
                             child: Semantics(
                               label:
-                                  '${days[i].date} ${historyDuration(values[i])}${days[i].quality == 'complete' ? '' : ' 记录不完整'}',
+                                  '${days[i].date} ${historyDuration(values[i])}',
                               button: true,
                               selected: days[i].date == selectedDate,
                               child: InkWell(

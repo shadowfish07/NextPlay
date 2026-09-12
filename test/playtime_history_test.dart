@@ -170,7 +170,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(AppKeys.historyDayDetails), findsOneWidget);
       expect(find.byType(BottomSheet), findsNothing);
-      expect(find.textContaining('当天记录不完整'), findsOneWidget);
+      expect(find.textContaining('不完整'), findsNothing);
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(AppKeys.historyRange(30)));
       await tester.pumpAndSettle();

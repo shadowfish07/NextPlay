@@ -42,7 +42,7 @@ class HistoryHeatmap extends StatelessWidget {
       final missing = day.added == null;
       final color = missing ? colors.surface : levels[intensity(day.added!)];
       final label =
-          '${day.date} · ${missing ? '暂无数据' : historyDuration(day.added)}${!missing && day.quality != 'complete' ? ' · 记录不完整' : ''}';
+          '${day.date} · ${missing ? '暂无数据' : historyDuration(day.added)}';
       return Tooltip(
         message: label,
         child: Semantics(
