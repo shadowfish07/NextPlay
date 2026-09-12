@@ -33,7 +33,7 @@ void main() {
     }
   });
 
-  testWidgets('large cumulative totals display growth and an accurate range', (
+  testWidgets('trend charts retain values without summary rows', (
     tester,
   ) async {
     final service = FakePlaytimeHistoryService()
@@ -59,7 +59,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(AppKeys.historyCumulative));
     await tester.pumpAndSettle();
-    expect(find.text('范围 10000 小时 – 10001 小时'), findsOneWidget);
+    expect(find.textContaining('范围 '), findsNothing);
     final low = tester.getTopLeft(find.text('10000时')).dy;
     final middle = tester.getTopLeft(find.text('10000时30分')).dy;
     final high = tester.getTopLeft(find.text('10001时')).dy;
@@ -68,7 +68,8 @@ void main() {
     await tester.ensureVisible(find.byKey(AppKeys.historyDaily));
     await tester.tap(find.byKey(AppKeys.historyDaily));
     await tester.pumpAndSettle();
-    expect(find.text('最高 30 分钟'), findsOneWidget);
+    expect(find.textContaining('最高 '), findsNothing);
+    expect(find.text('30分'), findsNWidgets(3));
     expect(tester.takeException(), isNull);
   });
 }

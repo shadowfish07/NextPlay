@@ -643,13 +643,6 @@ class _HistoryChart extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          cumulative
-              ? '范围 ${historyDuration(trendScale.minimum)} – ${historyDuration(trendScale.maximum)}'
-              : '最高 ${historyDuration(trendScale.maximum)}',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
             final width = math.max(
