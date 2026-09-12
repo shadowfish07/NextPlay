@@ -78,7 +78,13 @@ void main() {
     await _tapAndWait(tester, AppKeys.historyDistribution);
     await _tapAndWait(tester, AppKeys.historyDistributionClose);
     expect(find.byKey(AppKeys.historyDistributionSheet), findsNothing);
-    await _tapAndWait(tester, AppKeys.historyHeatmap);
+    await tester.tap(find.byKey(AppKeys.historyHeatmap));
+    await tester.pump();
+    expect(find.byKey(AppKeys.historyLoading), findsNothing);
+    expect(
+      tester.widget<ChoiceChip>(find.byKey(AppKeys.historyRange(7))).selected,
+      isTrue,
+    );
     await _waitFor(tester, find.byKey(AppKeys.historyHeatmapScroll));
     await tester.ensureVisible(find.byKey(AppKeys.historyHeatmapScroll));
     expect(find.textContaining('按采样差值'), findsNothing);

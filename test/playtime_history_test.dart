@@ -109,7 +109,7 @@ void main() {
       await tester.ensureVisible(find.byKey(AppKeys.historyHeatmap));
       await tester.tap(find.byKey(AppKeys.historyHeatmap));
       await tester.pumpAndSettle();
-      expect(service.requests.last, (365, null));
+      expect(service.requests.last, (30, null));
       expect(find.byKey(AppKeys.historyHeatmapScroll), findsOneWidget);
       await tester.ensureVisible(find.byKey(AppKeys.historyHeatmapScroll));
       final today = find.byKey(AppKeys.historyDay('2026-09-07'));

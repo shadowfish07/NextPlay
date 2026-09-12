@@ -203,10 +203,6 @@ class _HistoryScreenState extends State<HistoryScreen>
                       selected: {_chart},
                       onSelectionChanged: (value) => setState(() {
                         _chart = value.first;
-                        if (_chart == 'calendar' && _range != 365) {
-                          _range = 365;
-                          _reload();
-                        }
                       }),
                     ),
                     const SizedBox(height: 16),
