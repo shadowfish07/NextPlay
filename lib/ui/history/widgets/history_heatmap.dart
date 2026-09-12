@@ -58,8 +58,6 @@ class HistoryHeatmap extends StatelessWidget {
                 borderRadius: BorderRadius.circular(3),
                 border: missing
                     ? Border.all(color: colors.outlineVariant)
-                    : day.quality != 'complete'
-                    ? Border.all(color: colors.tertiary, width: 1.5)
                     : null,
               ),
             ),
