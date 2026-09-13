@@ -80,6 +80,10 @@ class _HistoryScreenState extends State<HistoryScreen>
           FutureBuilder<PlaytimeHistory>(
             future: _data,
             builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done ||
+                  snapshot.hasError) {
+                return const SizedBox.shrink();
+              }
               final data = snapshot.data;
               if (data == null || data.firstObserved == null) {
                 return const SizedBox.shrink();
