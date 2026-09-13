@@ -1,3 +1,4 @@
+import { HistoryDiagnostics } from "./diagnostics";
 import { statfsSync } from "node:fs";
 import { HistoryStore, sanitize, type Job } from "./store";
 
@@ -25,6 +26,7 @@ const methods: Record<string, string> = {
 export class CollectionError extends Error {}
 export class HistoryCollector {
   secrets: string[] = [];
+  readonly diagnostics: HistoryDiagnostics;
   metadata?: (source: string, target: number) => Promise<unknown>;
   private timer?: ReturnType<typeof setTimeout>;
   private stopped = false;
@@ -36,6 +38,7 @@ export class HistoryCollector {
     readonly fetcher: Fetcher = fetch,
     readonly minFreeBytes = 512 * 1024 * 1024,
   ) {
+    this.diagnostics = new HistoryDiagnostics(store.root);
     for (const account of accounts) {
       store.register(account.id);
       store.bind(account.id, account.steamId);
@@ -137,12 +140,23 @@ export class HistoryCollector {
     if (job.source === "schema" || job.source === "achievements")
       url.searchParams.set("l", "english");
     let response: Response;
+    const requestStarted = Date.now();
     try {
       response = await this.fetcher(url, {
         signal: AbortSignal.timeout(30_000),
         redirect: "error",
       });
-    } catch {
+    } catch (error) {
+      this.diagnostics.network(
+        job.source,
+        job.target,
+        job.attempts,
+        Date.now() - requestStarted,
+        error,
+        this.accounts
+          .flatMap(a => [a.id, a.steamId, a.apiKey, a.token])
+          .concat(this.secrets),
+      );
       throw new CollectionError("network_error");
     }
     if (!response.ok) throw new CollectionError(`http_${response.status}`);
@@ -253,6 +267,7 @@ export class HistoryCollector {
     })();
   }
   async tick(now = Date.now()) {
+    this.diagnostics.maintain(now);
     if (now - this.lastScheduled >= 60000) {
       this.schedule(now);
       this.lastScheduled = now;

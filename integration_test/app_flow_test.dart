@@ -78,15 +78,19 @@ void main() {
     await _tapAndWait(tester, AppKeys.historyDistribution);
     await _tapAndWait(tester, AppKeys.historyDistributionClose);
     expect(find.byKey(AppKeys.historyDistributionSheet), findsNothing);
-    await _tapAndWait(tester, AppKeys.historyHeatmap);
+    await tester.tap(find.byKey(AppKeys.historyHeatmap));
+    await tester.pump();
+    expect(find.byKey(AppKeys.historyLoading), findsNothing);
+    expect(
+      tester.widget<ChoiceChip>(find.byKey(AppKeys.historyRange(7))).selected,
+      isTrue,
+    );
     await _waitFor(tester, find.byKey(AppKeys.historyHeatmapScroll));
     await tester.ensureVisible(find.byKey(AppKeys.historyHeatmapScroll));
     expect(find.textContaining('按采样差值'), findsNothing);
     expect(find.textContaining('点击格子'), findsNothing);
-    await _tapAndWait(tester, AppKeys.historyInfo);
-    await _waitFor(tester, find.byKey(AppKeys.historyInfoSheet));
-    await _tapAndWait(tester, AppKeys.historyInfoClose);
-    expect(find.byKey(AppKeys.historyInfoSheet), findsNothing);
+    expect(find.byKey(AppKeys.historyInfo), findsNothing);
+    expect(find.text('记录说明'), findsNothing);
 
     await tester.drag(
       find.byKey(AppKeys.historyHeatmapScroll),
@@ -105,9 +109,11 @@ void main() {
     await _tapAndWait(tester, AppKeys.historyRange(7));
     await _waitFor(tester, find.byKey(AppKeys.historyDaily));
     await _tapAndWait(tester, AppKeys.historyDay('2026-09-07'));
-    await _waitFor(tester, find.byKey(AppKeys.historyDaySheet));
+    await _waitFor(tester, find.byKey(AppKeys.historyDayDetails));
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text('1时10分'), findsOneWidget);
     final dayGame = find.descendant(
-      of: find.byKey(AppKeys.historyDaySheet),
+      of: find.byKey(AppKeys.historyDayDetails),
       matching: find.byKey(AppKeys.historyGame(620)),
     );
     await tester.ensureVisible(dayGame);

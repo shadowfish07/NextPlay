@@ -1,4 +1,6 @@
 import 'history_heatmap.dart';
+import 'history_trend_scale.dart';
+import '../view_models/history_selection_view_model.dart';
 
 import 'dart:math' as math;
 
@@ -9,6 +11,7 @@ import 'package:provider/provider.dart';
 import '../../../data/service/playtime_history_service.dart';
 import '../../../domain/models/history/playtime_history.dart';
 import '../../core/app_keys.dart';
+import '../../core/history_theme.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key, this.appId, this.initialRange = 7});
@@ -20,8 +23,10 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen>
     with WidgetsBindingObserver {
+  HistoryTheme get metrics => HistoryTheme.of(context);
   late int _range;
   String _chart = 'daily';
+  final _selection = HistorySelectionViewModel();
   bool get _cumulative => _chart == 'cumulative';
   late Future<PlaytimeHistory> _data;
   @override
@@ -35,6 +40,7 @@ class _HistoryScreenState extends State<HistoryScreen>
   }
 
   void _reload() {
+    _selection.selectDate.execute(null);
     _data = context.read<PlaytimeHistoryService>().load(
       range: _range,
       appId: widget.appId,
@@ -51,18 +57,69 @@ class _HistoryScreenState extends State<HistoryScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _selection.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: _selection,
+      child: Consumer<HistorySelectionViewModel>(
+        builder: (context, selection, child) => _buildScreen(context),
+      ),
+    );
+  }
+
+  Widget _buildScreen(BuildContext context) {
     return Scaffold(
       key: AppKeys.historyScreen,
       appBar: AppBar(title: Text(widget.appId == null ? '游玩记录' : '游戏游玩记录')),
       body: Column(
         children: [
+          FutureBuilder<PlaytimeHistory>(
+            future: _data,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done ||
+                  snapshot.hasError) {
+                return const SizedBox.shrink();
+              }
+              final data = snapshot.data;
+              if (data == null || data.firstObserved == null) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: metrics.headerPadding,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '历史总览',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          SizedBox(height: metrics.gapXs),
+                          Text('历史总时长  ${historyDuration(data.total)}'),
+                        ],
+                      ),
+                    ),
+                    if (widget.appId == null)
+                      TextButton.icon(
+                        key: AppKeys.historyDistribution,
+                        onPressed: () => _showDistribution(data),
+                        icon: const Icon(Icons.pie_chart_outline),
+                        label: const Text('查看分布'),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+            padding: metrics.headerPadding,
             child: Row(
               children: [
                 for (final range in [7, 30, 365, 0])
@@ -110,14 +167,14 @@ class _HistoryScreenState extends State<HistoryScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.cloud_off_outlined, size: 40),
-                          const SizedBox(height: 16),
+                          SizedBox(height: metrics.gapLg),
                           const Text(
                             '暂时无法读取游玩记录',
                             style: TextStyle(fontSize: 18),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: metrics.gapSm),
                           const Text('请稍后重试，已记录的数据会保留。'),
-                          const SizedBox(height: 16),
+                          SizedBox(height: metrics.gapLg),
                           FilledButton.tonal(
                             key: AppKeys.historyRetry,
                             onPressed: () => setState(_reload),
@@ -151,8 +208,11 @@ class _HistoryScreenState extends State<HistoryScreen>
                     ),
                   );
                 }
+                final selectedDay = data.days
+                    .where((day) => day.date == _selection.selectedDate)
+                    .firstOrNull;
                 return ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                  padding: metrics.contentPadding,
                   children: [
                     if (data.name != null)
                       Padding(
@@ -163,25 +223,13 @@ class _HistoryScreenState extends State<HistoryScreen>
                         ),
                       ),
                     _summary(data),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '时长趋势',
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        IconButton(
-                          key: AppKeys.historyInfo,
-                          tooltip: '记录说明',
-                          onPressed: () => _showInfo(data.timezone),
-                          icon: const Icon(Icons.info_outline_rounded),
-                        ),
-                      ],
+                    SizedBox(height: metrics.sectionGap),
+                    Text(
+                      '时长趋势',
+                      style: Theme.of(context).textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: metrics.gapMd),
                     SegmentedButton<String>(
                       showSelectedIcon: false,
                       segments: const [
@@ -203,92 +251,47 @@ class _HistoryScreenState extends State<HistoryScreen>
                       selected: {_chart},
                       onSelectionChanged: (value) => setState(() {
                         _chart = value.first;
-                        if (_chart == 'calendar' && _range != 365) {
-                          _range = 365;
-                          _reload();
+                        if (_chart == 'calendar') {
+                          _selection.selectDate.execute(null);
                         }
                       }),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: metrics.gapLg),
                     if (_chart == 'calendar')
                       HistoryHeatmap(
                         days: data.days,
                         onDay: (day) => _showDay(day, data),
                       )
                     else
-                      _HistoryChart(
-                        days: data.days,
-                        cumulative: _cumulative,
-                        onDay: (day) => _showDay(day, data),
+                      _HistoryChart(days: data.days, cumulative: _cumulative),
+                    SizedBox(height: metrics.sectionGap),
+                    if (selectedDay != null)
+                      _dayDetails(selectedDay)
+                    else ...[
+                      Text(
+                        widget.appId == null ? '时间花在哪里' : '这段时间',
+                        style: Theme.of(context).textTheme.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                    const SizedBox(height: 24),
-                    Text(
-                      widget.appId == null ? '时间花在哪里' : '这段时间',
-                      style: Theme.of(context).textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    if (data.games.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24),
-                        child: Text('这段时间还没有记录到新增游玩时长。'),
-                      ),
-                    for (final game in data.games)
-                      _gameTile(
-                        game,
-                        data.added ?? 0,
-                        canOpen: widget.appId == null,
-                      ),
+                      SizedBox(height: metrics.gapSm),
+                      if (data.games.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Text('这段时间还没有记录到新增游玩时长。'),
+                        ),
+                      for (final game in data.games)
+                        _gameTile(
+                          game,
+                          data.added ?? 0,
+                          canOpen: widget.appId == null,
+                        ),
+                    ],
                   ],
                 );
               },
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showInfo(String timezone) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(sheetContext).height * .75,
-          ),
-          child: ListView(
-            key: AppKeys.historyInfoSheet,
-            shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '记录说明',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  IconButton(
-                    key: AppKeys.historyInfoClose,
-                    tooltip: '关闭说明',
-                    onPressed: () => Navigator.pop(sheetContext),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text('每日新增按采样估算，日期使用 $timezone。'),
-              const SizedBox(height: 12),
-              const Text('空心或 — 表示暂无数据，描边或淡色表示记录不完整。'),
-              const SizedBox(height: 12),
-              const Text('新增和趋势仅展示开始采集后的记录；历史总时长和分布来自最近一次完整游戏库采集，不受日期筛选影响。'),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -315,7 +318,7 @@ class _HistoryScreenState extends State<HistoryScreen>
             data.partial ? '这段时间 · 已记录新增' : '这段时间 · 新增游玩',
             style: TextStyle(color: colors.onPrimaryContainer),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: metrics.gapMd),
           Text(
             historyDuration(data.added),
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -325,39 +328,16 @@ class _HistoryScreenState extends State<HistoryScreen>
           ),
           const SizedBox(height: 10),
           Text(
-            data.added == null
-                ? '记录积累中'
-                : '玩过 ${data.games.length} 款游戏${data.partial ? ' · 部分记录' : ''}',
+            data.added == null ? '记录积累中' : '玩过 ${data.games.length} 款游戏',
             style: TextStyle(color: colors.onPrimaryContainer),
           ),
           if (data.previousAdded != null && data.comparisonAdded != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: metrics.gapSm),
             Text(
               '已结束日期较前期${data.comparisonAdded! >= data.previousAdded! ? '多' : '少'} ${historyDuration((data.comparisonAdded! - data.previousAdded!).abs())}',
               style: TextStyle(color: colors.onPrimaryContainer),
             ),
           ],
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 14),
-            child: Divider(),
-          ),
-          Text(
-            '历史总时长  ${historyDuration(data.total)}',
-            style: TextStyle(color: colors.onPrimaryContainer),
-          ),
-          if (widget.appId == null)
-            TextButton.icon(
-              key: AppKeys.historyDistribution,
-              style: TextButton.styleFrom(
-                alignment: Alignment.centerLeft,
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(double.infinity, 48),
-                foregroundColor: colors.onPrimaryContainer,
-              ),
-              onPressed: () => _showDistribution(data),
-              icon: const Icon(Icons.pie_chart_outline),
-              label: const Text('查看分布'),
-            ),
         ],
       ),
     );
@@ -458,7 +438,7 @@ class _HistoryScreenState extends State<HistoryScreen>
       key: AppKeys.historyGame(game.appId),
       contentPadding: EdgeInsets.zero,
       leading: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(metrics.selectionRadius),
         child: Image.network(
           'https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/header.jpg',
           width: 64,
@@ -498,6 +478,36 @@ class _HistoryScreenState extends State<HistoryScreen>
     );
   }
 
+  Widget _dayDetails(HistoryDay day) {
+    return Column(
+      key: AppKeys.historyDayDetails,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                day.date,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            TextButton(
+              onPressed: () => _selection.selectDate.execute(null),
+              child: const Text('查看整段时间'),
+            ),
+          ],
+        ),
+        Text('当天新增 ${historyDuration(day.added)}'),
+        SizedBox(height: metrics.gapSm),
+        if (day.games.isEmpty) Text(day.added == 0 ? '当天没有新增游玩时长' : '暂无当天游玩记录'),
+        for (final game in [
+          ...day.games,
+        ]..sort((a, b) => b.added.compareTo(a.added)))
+          _gameTile(game, day.added ?? 0, canOpen: widget.appId == null),
+      ],
+    );
+  }
+
   void _showDay(HistoryDay day, PlaytimeHistory data) {
     showModalBottomSheet<void>(
       context: context,
@@ -511,18 +521,13 @@ class _HistoryScreenState extends State<HistoryScreen>
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
             children: [
               Text(day.date, style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: 8),
+              SizedBox(height: metrics.gapSm),
               Text(
                 '已记录新增 ${historyDuration(day.added)}',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Text('累计 ${historyDuration(day.total)}'),
-              if (day.quality != 'complete')
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Text('当天记录不完整，不能据此判断完整游玩时长。'),
-                ),
-              const SizedBox(height: 16),
+              SizedBox(height: metrics.gapLg),
               if (day.games.isEmpty)
                 Text(day.added == 0 ? '已观测时段内没有新增时长。' : '暂无可分配到当天的新增记录。'),
               for (final game in [
@@ -552,51 +557,76 @@ class _HistoryScreenState extends State<HistoryScreen>
 }
 
 class _HistoryChart extends StatelessWidget {
-  const _HistoryChart({
-    required this.days,
-    required this.cumulative,
-    required this.onDay,
-  });
+  const _HistoryChart({required this.days, required this.cumulative});
   final List<HistoryDay> days;
   final bool cumulative;
-  final ValueChanged<HistoryDay> onDay;
   @override
   Widget build(BuildContext context) {
+    final metrics = HistoryTheme.of(context);
+    final selection = context.watch<HistorySelectionViewModel>();
     final values = days.map((d) => cumulative ? d.total : d.added).toList();
     final maxValue = values.fold<int>(1, (m, v) => math.max(m, v ?? 0));
+    final trendScale = HistoryTrendScale(values);
     final colors = Theme.of(context).colorScheme;
+    final labels = values
+        .map(
+          (value) =>
+              historyDuration(value)
+                  .replaceAll(' 小时', '时')
+                  .replaceAll(' 分钟', '分')
+                  .replaceAll(' ', ''),
+        )
+        .toList();
+    final labelStyle = Theme.of(context).textTheme.labelSmall!;
+    final textScaler = MediaQuery.textScalerOf(context);
+    var labelWidth = metrics.cellWidth;
+    var labelHeight = 0.0;
+    for (final label in labels) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: labelStyle),
+        textDirection: Directionality.of(context),
+        textScaler: textScaler,
+      )..layout();
+      labelWidth = math.max(labelWidth, painter.width + metrics.gapMd);
+      labelHeight = math.max(labelHeight, painter.height);
+      painter.dispose();
+    }
+    final chartHeight = metrics.chartHeight + labelHeight + metrics.gapSm;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '最高 ${historyDuration(values.every((v) => v == null) ? null : values.whereType<int>().fold<int>(0, math.max))}',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
-            final width = math.max(constraints.maxWidth, days.length * 44.0);
+            final width = math.max(
+              constraints.maxWidth,
+              days.length * labelWidth,
+            );
             final cell = width / math.max(days.length, 1);
             return SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               reverse: true,
               child: SizedBox(
                 width: width,
-                height: 188,
+                height:
+                    chartHeight +
+                    textScaler.scale(metrics.dateFontSize) *
+                        metrics.dateLineHeight +
+                    metrics.gapXl,
                 child: Stack(
                   children: [
                     if (cumulative)
                       Positioned(
                         left: 0,
                         right: 0,
-                        top: 0,
-                        height: 152,
+                        top: labelHeight + metrics.gapSm,
+                        height: metrics.chartHeight,
                         child: CustomPaint(
                           painter: _TrendPainter(
                             values,
                             days,
                             colors.primary,
-                            maxValue,
+                            trendScale,
+                            metrics,
                           ),
                         ),
                       ),
@@ -608,59 +638,109 @@ class _HistoryChart extends StatelessWidget {
                             width: cell,
                             child: Semantics(
                               label:
-                                  '${days[i].date} ${historyDuration(values[i])}${days[i].quality == 'complete' ? '' : ' 记录不完整'}',
+                                  '${days[i].date} ${historyDuration(values[i])}',
                               button: true,
+                              selected: days[i].date == selection.selectedDate,
                               child: InkWell(
                                 key: AppKeys.historyDay(days[i].date),
-                                onTap: () => onDay(days[i]),
-                                child: Column(
-                                  children: [
-                                    SizedBox(
-                                      height: 152,
-                                      child: Align(
-                                        alignment: Alignment.bottomCenter,
-                                        child: values[i] == null
-                                            ? const Padding(
-                                                padding: EdgeInsets.only(
-                                                  bottom: 8,
-                                                ),
-                                                child: Text('—'),
-                                              )
-                                            : cumulative
-                                            ? const SizedBox.expand()
-                                            : Container(
-                                                width: math.min(28, cell - 12),
-                                                height: math.max(
-                                                  3,
-                                                  144 * values[i]! / maxValue,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      days[i].quality ==
-                                                          'complete'
-                                                      ? colors.primary
-                                                      : colors.primary
-                                                            .withValues(
-                                                              alpha: .35,
-                                                            ),
-                                                  borderRadius:
-                                                      const BorderRadius.vertical(
-                                                        top: Radius.circular(5),
-                                                      ),
-                                                ),
+                                onTap: () =>
+                                    selection.selectDate.execute(days[i].date),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color:
+                                        days[i].date == selection.selectedDate
+                                        ? colors.primary.withValues(
+                                            alpha: metrics.selectionAlpha,
+                                          )
+                                        : null,
+                                    borderRadius: BorderRadius.circular(
+                                      metrics.selectionRadius,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      SizedBox(
+                                        height: chartHeight,
+                                        child: Stack(
+                                          children: [
+                                            Positioned(
+                                              left: 0,
+                                              right: 0,
+                                              bottom: values[i] == null
+                                                  ? metrics.gapSm
+                                                  : (cumulative
+                                                            ? metrics.trendBottom +
+                                                                  metrics.trendSpan *
+                                                                      trendScale
+                                                                          .fraction(
+                                                                            values[i]!,
+                                                                          )
+                                                            : math.max(
+                                                                metrics
+                                                                    .minimumBarHeight,
+                                                                metrics.barHeight *
+                                                                    values[i]! /
+                                                                    maxValue,
+                                                              )) +
+                                                        metrics.labelGap,
+                                              child: Text(
+                                                labels[i],
+                                                textAlign: TextAlign.center,
+                                                style: labelStyle,
                                               ),
+                                            ),
+                                            Align(
+                                              alignment: Alignment.bottomCenter,
+                                              child: values[i] == null
+                                                  ? const SizedBox.shrink()
+                                                  : cumulative
+                                                  ? const SizedBox.expand()
+                                                  : Container(
+                                                      width: math.min(
+                                                        metrics.barWidth,
+                                                        cell - metrics.gapMd,
+                                                      ),
+                                                      height: math.max(
+                                                        metrics
+                                                            .minimumBarHeight,
+                                                        metrics.barHeight *
+                                                            values[i]! /
+                                                            maxValue,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            days[i].quality ==
+                                                                'complete'
+                                                            ? colors.primary
+                                                            : colors.primary
+                                                                  .withValues(
+                                                                    alpha: metrics
+                                                                        .partialAlpha,
+                                                                  ),
+                                                        borderRadius:
+                                                            BorderRadius.vertical(
+                                                              top: Radius.circular(
+                                                                metrics
+                                                                    .barRadius,
+                                                              ),
+                                                            ),
+                                                      ),
+                                                    ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      days[i].date
-                                          .substring(5)
-                                          .replaceAll('-', '/'),
-                                      style: const TextStyle(fontSize: 10),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.clip,
-                                    ),
-                                  ],
+                                      SizedBox(height: metrics.gapMd),
+                                      Text(
+                                        days[i].date
+                                            .substring(5)
+                                            .replaceAll('-', '/'),
+                                        style: metrics.dateStyle,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.clip,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -679,16 +759,17 @@ class _HistoryChart extends StatelessWidget {
 }
 
 class _TrendPainter extends CustomPainter {
-  _TrendPainter(this.values, this.days, this.color, this.maximum);
+  _TrendPainter(this.values, this.days, this.color, this.scale, this.metrics);
+  final HistoryTheme metrics;
   final List<HistoryDay> days;
   final List<int?> values;
   final Color color;
-  final int maximum;
+  final HistoryTrendScale scale;
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 2.5
+      ..strokeWidth = metrics.trendStroke
       ..style = PaintingStyle.stroke;
     Offset? previous;
     for (var i = 0; i < values.length; i++) {
@@ -699,20 +780,27 @@ class _TrendPainter extends CustomPainter {
       }
       final point = Offset(
         (i + .5) * size.width / values.length,
-        size.height - 4 - value / maximum * (size.height - 12),
+        size.height -
+            metrics.trendBottom -
+            scale.fraction(value) * (size.height - metrics.trendInset),
       );
       paint.color =
           days[i].quality == 'complete' &&
               (i == 0 || days[i - 1].quality == 'complete')
           ? color
-          : color.withValues(alpha: .35);
+          : color.withValues(alpha: metrics.partialAlpha);
       if (previous != null) canvas.drawLine(previous, point, paint);
-      canvas.drawCircle(point, 3, Paint()..color = color);
+      canvas.drawCircle(point, metrics.pointRadius, Paint()..color = color);
       previous = point;
     }
   }
 
   @override
   bool shouldRepaint(covariant _TrendPainter oldDelegate) =>
-      oldDelegate.values != values || oldDelegate.color != color;
+      oldDelegate.metrics != metrics ||
+      oldDelegate.values != values ||
+      oldDelegate.days != days ||
+      oldDelegate.color != color ||
+      oldDelegate.scale.minimum != scale.minimum ||
+      oldDelegate.scale.maximum != scale.maximum;
 }

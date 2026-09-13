@@ -726,8 +726,21 @@ account; fake-remote tests do not establish live connectivity.
 
 The app opens this read-only view from the library or a game's details, supports range selection, daily bars/cumulative curves and day-to-game drilldown, and reloads on foreground entry. No manual collection controls are added. Baselines, counter corrections and gap-spanning deltas are excluded from daily increments; missing days remain null. Partial days show only recorded increments. The summary `partial` flag signals actual missing or unreliable coverage; today remaining in progress alone does not set it, but a gap today still does. An unsampled new day remains unknown at day level without marking the summary partial while the last observation is still within the normal 90-minute collection interval. Per-game daily aggregation uses one indexed SQL join with account-local date boundaries for the requested window, excluding the comparison window; query count does not grow with the number of dates. `comparisonAdded`/`previousAdded` compare completed dates (excluding today) with the immediately preceding equal-length window, and are null unless both are covered. Screenshots/tests use explicit fixture services; production always reads the existing authorized backend.
 
-The playtime calendar uses one square per civil day, Monday-to-Sunday rows and horizontally scrollable weeks. Selecting the calendar opens the past 365 days. Green intensity represents observed minutes (0, 1–29, 30–59, 60–119, ≥120); missing observations are outlined and incomplete days have a separate border. Selecting a square opens the existing daily breakdown.
+The playtime calendar uses one square per civil day, Monday-to-Sunday rows and horizontally scrollable weeks. Switching between daily, cumulative and calendar views preserves the selected range (7 days, 30 days, one year or all recorded dates). Green intensity represents observed minutes (0, 1–29, 30–59, 60–119, ≥120); missing observations are outlined; partial days use their recorded minutes without a separate border or incomplete-record notice. Selecting a square opens the existing daily breakdown.
 
 ### 游玩记录累计分布
 
 `GET /api/history/dashboard` 的 `distribution` 字段返回与 `total` 相同的最新完整游戏库快照中所有正时长游戏：`{appid, name, minutes}`，按分钟降序、AppID 升序排列，不受 `range` 影响。分钟之和等于 `total`；没有时长时为空数组，无快照或快照包含缺失时长时为 `null`。使用 `appid` 时只返回该游戏。旧客户端可以忽略此新增字段；新客户端连接旧服务时将缺失字段视为暂不可用。
+
+### Collector network diagnostics
+
+Fetch exceptions keep the existing `network_error` job status. Details are written
+under `NEXTPLAY_HISTORY_DIR/diagnostics/network.jsonl`: UTC time, source, AppID,
+attempt number, request duration, and bounded error name/code/errno/syscall/cause.
+Messages, stacks, request URLs, account identifiers and credentials are omitted.
+Logs rotate at 1 MiB per file, retain at most 7 files (including the active file),
+and expire after 7 days without modification. Cleanup runs on errors and hourly
+while the collector is running, including periods without errors. Directories use
+0700 and files use 0600 permissions. Logging failures do not interrupt retries;
+a generic warning is emitted at most once per hour. These local diagnostic files
+are separate from the durable collection history and are not archived to OneDrive.
