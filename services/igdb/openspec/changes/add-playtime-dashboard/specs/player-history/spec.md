@@ -15,15 +15,15 @@ The system SHALL display collected daily increments, cumulative snapshots, perio
 - **THEN** no previous account's results are displayed and a retryable read error is shown.
 
 ### Requirement: Playtime calendar
-The system SHALL offer a GitHub-like calendar with day cells, weekly columns, month labels and a 365-day range, reusing the authenticated observations.
+The system SHALL offer a GitHub-like calendar with day cells, weekly columns, month labels and the selected 7-day, 30-day, 365-day or all-history range, reusing the authenticated observations.
 
 #### Scenario: Calendar exploration
 - **WHEN** the user selects the calendar
-- **THEN** the page selects the past year, colors cells by observed minutes and opens the existing day breakdown on tap.
+- **THEN** the page preserves the selected range without reloading solely for a view switch, colors cells by observed minutes and opens the existing day breakdown on tap.
 
 #### Scenario: Unknown versus inactive
 - **WHEN** a day has no observations or only partial coverage
-- **THEN** unknown days have a distinct outline, partial days have a distinct border, and only positive observed increments contribute to the displayed active-day count.
+- **THEN** unknown days have a distinct outline, partial days display observed minutes without a separate border or incomplete-record notice, and only positive observed increments contribute to the displayed active-day count.
 
 ### Requirement: Lifetime playtime distribution
 The dashboard SHALL return every positive-playtime game from the same latest complete library snapshot as the lifetime total, sorted by minutes descending and AppID ascending. The distribution SHALL be independent of the date range and accessed through the lifetime summary.
