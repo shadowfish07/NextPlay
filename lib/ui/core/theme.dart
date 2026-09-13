@@ -1,3 +1,5 @@
+import 'history_theme.dart';
+
 import 'package:flutter/material.dart';
 
 class AppTheme {
@@ -30,6 +32,7 @@ class AppTheme {
   // Enhanced light theme for consistency
   static ThemeData get lightTheme {
     return ThemeData(
+      extensions: const [HistoryTheme()],
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
         seedColor: _primarySeedColor,
@@ -76,6 +79,7 @@ class AppTheme {
     );
 
     return ThemeData(
+      extensions: const [HistoryTheme()],
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: _gamingSurface,

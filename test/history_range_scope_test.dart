@@ -1,3 +1,5 @@
+import 'support/test_app.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nextplay/data/service/playtime_history_service.dart';
@@ -41,5 +43,6 @@ void main() {
       isTrue,
     );
     expect(tester.takeException(), isNull);
+    await disposeTestApp(tester);
   });
 }

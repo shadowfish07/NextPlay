@@ -1,3 +1,5 @@
+import 'support/test_app.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -71,5 +73,6 @@ void main() {
     expect(find.textContaining('最高 '), findsNothing);
     expect(find.text('30分'), findsNWidgets(3));
     expect(tester.takeException(), isNull);
+    await disposeTestApp(tester);
   });
 }

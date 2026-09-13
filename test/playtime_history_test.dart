@@ -1,3 +1,5 @@
+import 'support/test_app.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -75,6 +77,7 @@ void main() {
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
+    await disposeTestApp(tester);
   });
 
   testWidgets(
@@ -123,7 +126,7 @@ void main() {
         expect(tester.takeException(), isNull);
         await tester.tap(find.byKey(AppKeys.historyDistributionClose));
         await tester.pumpAndSettle();
-        await tester.pumpWidget(const SizedBox.shrink());
+        await disposeTestApp(tester);
         service.dispose();
       }
     },
@@ -194,6 +197,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(AppKeys.historyEmpty), findsOneWidget);
       expect(find.byKey(AppKeys.historySync), findsNothing);
+      await disposeTestApp(tester);
     },
   );
 }
