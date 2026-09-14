@@ -30,6 +30,7 @@ class _HistoryScreenState extends State<HistoryScreen>
   bool get _cumulative => _chart == 'cumulative';
   late Future<PlaytimeHistory> _data;
   bool _retainContent = false;
+  bool _canRetainContent = false;
   @override
   void initState() {
     super.initState();
@@ -41,7 +42,8 @@ class _HistoryScreenState extends State<HistoryScreen>
   }
 
   void _reload({bool retainContent = false}) {
-    _retainContent = retainContent;
+    if (!retainContent) _canRetainContent = false;
+    _retainContent = retainContent && _canRetainContent;
     _selection.selectDate.execute(null);
     _data = context.read<PlaytimeHistoryService>().load(
       range: _range,
@@ -49,6 +51,15 @@ class _HistoryScreenState extends State<HistoryScreen>
     );
     // The next frame attaches FutureBuilder; handle early failures meanwhile.
     _data.ignore();
+    final request = _data;
+    request.then(
+      (_) {
+        if (mounted && identical(_data, request)) _canRetainContent = true;
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (mounted && identical(_data, request)) _canRetainContent = false;
+      },
+    );
   }
 
   @override
