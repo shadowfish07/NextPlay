@@ -29,6 +29,8 @@ class _HistoryScreenState extends State<HistoryScreen>
   final _selection = HistorySelectionViewModel();
   bool get _cumulative => _chart == 'cumulative';
   late Future<PlaytimeHistory> _data;
+  bool _retainContent = false;
+  bool _canRetainContent = false;
   @override
   void initState() {
     super.initState();
@@ -39,7 +41,9 @@ class _HistoryScreenState extends State<HistoryScreen>
     _reload();
   }
 
-  void _reload() {
+  void _reload({bool retainContent = false}) {
+    if (!retainContent) _canRetainContent = false;
+    _retainContent = retainContent && _canRetainContent;
     _selection.selectDate.execute(null);
     _data = context.read<PlaytimeHistoryService>().load(
       range: _range,
@@ -47,6 +51,17 @@ class _HistoryScreenState extends State<HistoryScreen>
     );
     // The next frame attaches FutureBuilder; handle early failures meanwhile.
     _data.ignore();
+    final request = _data;
+    request.then(
+      (data) {
+        if (mounted && identical(_data, request)) {
+          _canRetainContent = data.firstObserved != null;
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (mounted && identical(_data, request)) _canRetainContent = false;
+      },
+    );
   }
 
   @override
@@ -80,7 +95,8 @@ class _HistoryScreenState extends State<HistoryScreen>
           FutureBuilder<PlaytimeHistory>(
             future: _data,
             builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done ||
+              if ((snapshot.connectionState != ConnectionState.done &&
+                      !_retainContent) ||
                   snapshot.hasError) {
                 return const SizedBox.shrink();
               }
@@ -108,7 +124,10 @@ class _HistoryScreenState extends State<HistoryScreen>
                     if (widget.appId == null)
                       TextButton.icon(
                         key: AppKeys.historyDistribution,
-                        onPressed: () => _showDistribution(data),
+                        onPressed:
+                            snapshot.connectionState == ConnectionState.done
+                            ? () => _showDistribution(data)
+                            : null,
                         icon: const Icon(Icons.pie_chart_outline),
                         label: const Text('查看分布'),
                       ),
@@ -139,10 +158,13 @@ class _HistoryScreenState extends State<HistoryScreen>
                         ),
                         selected: _range == range,
                         showCheckmark: false,
-                        onSelected: (_) => setState(() {
-                          _range = range;
-                          _reload();
-                        }),
+                        onSelected: (_) {
+                          if (_range == range) return;
+                          setState(() {
+                            _range = range;
+                            _reload(retainContent: true);
+                          });
+                        },
                       ),
                     ),
                   ),
@@ -153,7 +175,8 @@ class _HistoryScreenState extends State<HistoryScreen>
             child: FutureBuilder<PlaytimeHistory>(
               future: _data,
               builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
+                if (snapshot.connectionState != ConnectionState.done &&
+                    (!_retainContent || !snapshot.hasData)) {
                   return const Center(
                     key: AppKeys.historyLoading,
                     child: CircularProgressIndicator(),
@@ -211,81 +234,107 @@ class _HistoryScreenState extends State<HistoryScreen>
                 final selectedDay = data.days
                     .where((day) => day.date == _selection.selectedDate)
                     .firstOrNull;
-                return ListView(
-                  padding: metrics.contentPadding,
+                return Stack(
                   children: [
-                    if (data.name != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          data.name!,
-                          style: Theme.of(context).textTheme.titleLarge,
+                    IgnorePointer(
+                      ignoring:
+                          snapshot.connectionState != ConnectionState.done,
+                      child: ListView(
+                        padding: metrics.contentPadding,
+                        children: [
+                          if (data.name != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Text(
+                                data.name!,
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                            ),
+                          _summary(data),
+                          SizedBox(height: metrics.sectionGap),
+                          Text(
+                            '时长趋势',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: metrics.gapMd),
+                          SegmentedButton<String>(
+                            showSelectedIcon: false,
+                            segments: const [
+                              ButtonSegment(
+                                value: 'daily',
+                                label: Text('每日新增', key: AppKeys.historyDaily),
+                                icon: Icon(Icons.bar_chart),
+                              ),
+                              ButtonSegment(
+                                value: 'cumulative',
+                                label: Text(
+                                  '累计时长',
+                                  key: AppKeys.historyCumulative,
+                                ),
+                                icon: Icon(Icons.show_chart),
+                              ),
+                              ButtonSegment(
+                                value: 'calendar',
+                                label: Text(
+                                  '游玩日历',
+                                  key: AppKeys.historyHeatmap,
+                                ),
+                              ),
+                            ],
+                            selected: {_chart},
+                            onSelectionChanged: (value) => setState(() {
+                              _chart = value.first;
+                              if (_chart == 'calendar') {
+                                _selection.selectDate.execute(null);
+                              }
+                            }),
+                          ),
+                          SizedBox(height: metrics.gapLg),
+                          if (_chart == 'calendar')
+                            HistoryHeatmap(
+                              days: data.days,
+                              onDay: (day) => _showDay(day, data),
+                            )
+                          else
+                            _HistoryChart(
+                              days: data.days,
+                              cumulative: _cumulative,
+                            ),
+                          SizedBox(height: metrics.sectionGap),
+                          if (selectedDay != null)
+                            _dayDetails(selectedDay)
+                          else ...[
+                            Text(
+                              widget.appId == null ? '时间花在哪里' : '这段时间',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: metrics.gapSm),
+                            if (data.games.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 24),
+                                child: Text('这段时间还没有记录到新增游玩时长。'),
+                              ),
+                            for (final game in data.games)
+                              _gameTile(
+                                game,
+                                data.added ?? 0,
+                                canOpen: widget.appId == null,
+                              ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (snapshot.connectionState != ConnectionState.done)
+                      const Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: LinearProgressIndicator(
+                          key: AppKeys.historyRefreshing,
                         ),
                       ),
-                    _summary(data),
-                    SizedBox(height: metrics.sectionGap),
-                    Text(
-                      '时长趋势',
-                      style: Theme.of(context).textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: metrics.gapMd),
-                    SegmentedButton<String>(
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(
-                          value: 'daily',
-                          label: Text('每日新增', key: AppKeys.historyDaily),
-                          icon: Icon(Icons.bar_chart),
-                        ),
-                        ButtonSegment(
-                          value: 'cumulative',
-                          label: Text('累计时长', key: AppKeys.historyCumulative),
-                          icon: Icon(Icons.show_chart),
-                        ),
-                        ButtonSegment(
-                          value: 'calendar',
-                          label: Text('游玩日历', key: AppKeys.historyHeatmap),
-                        ),
-                      ],
-                      selected: {_chart},
-                      onSelectionChanged: (value) => setState(() {
-                        _chart = value.first;
-                        if (_chart == 'calendar') {
-                          _selection.selectDate.execute(null);
-                        }
-                      }),
-                    ),
-                    SizedBox(height: metrics.gapLg),
-                    if (_chart == 'calendar')
-                      HistoryHeatmap(
-                        days: data.days,
-                        onDay: (day) => _showDay(day, data),
-                      )
-                    else
-                      _HistoryChart(days: data.days, cumulative: _cumulative),
-                    SizedBox(height: metrics.sectionGap),
-                    if (selectedDay != null)
-                      _dayDetails(selectedDay)
-                    else ...[
-                      Text(
-                        widget.appId == null ? '时间花在哪里' : '这段时间',
-                        style: Theme.of(context).textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: metrics.gapSm),
-                      if (data.games.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Text('这段时间还没有记录到新增游玩时长。'),
-                        ),
-                      for (final game in data.games)
-                        _gameTile(
-                          game,
-                          data.added ?? 0,
-                          canOpen: widget.appId == null,
-                        ),
-                    ],
                   ],
                 );
               },

@@ -174,6 +174,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(service.requests.last, (30, null));
       await tester.ensureVisible(find.byKey(AppKeys.historyHeatmap));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(AppKeys.historyHeatmap));
       await tester.pumpAndSettle();
       expect(service.requests.last, (30, null));

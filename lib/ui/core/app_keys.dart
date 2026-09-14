@@ -13,6 +13,7 @@ abstract final class AppKeys {
   static const historyEntry = Key('history.entry');
   static const historyScreen = Key('history.screen');
   static const historyLoading = Key('history.loading');
+  static const historyRefreshing = Key('history.refreshing');
   static const historyRetry = Key('history.retry');
   static const historyEmpty = Key('history.empty');
   static const historyDaily = Key('history.daily');
