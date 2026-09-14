@@ -329,7 +329,9 @@ class _HistoryScreenState extends State<HistoryScreen>
                         top: 0,
                         left: 0,
                         right: 0,
-                        child: LinearProgressIndicator(),
+                        child: LinearProgressIndicator(
+                          key: AppKeys.historyRefreshing,
+                        ),
                       ),
                   ],
                 );
