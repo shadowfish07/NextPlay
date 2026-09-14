@@ -53,8 +53,10 @@ class _HistoryScreenState extends State<HistoryScreen>
     _data.ignore();
     final request = _data;
     request.then(
-      (_) {
-        if (mounted && identical(_data, request)) _canRetainContent = true;
+      (data) {
+        if (mounted && identical(_data, request)) {
+          _canRetainContent = data.firstObserved != null;
+        }
       },
       onError: (Object error, StackTrace stackTrace) {
         if (mounted && identical(_data, request)) _canRetainContent = false;

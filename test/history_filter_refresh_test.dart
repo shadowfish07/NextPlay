@@ -142,6 +142,34 @@ void main() {
     });
   }
 
+  for (final appId in [null, 620]) {
+    testWidgets('empty history shows progress on range changes $appId', (
+      tester,
+    ) async {
+      final service = _DelayedHistory()..empty = true;
+      await _pumpHistory(tester, service, appId);
+      expect(find.byKey(AppKeys.historyEmpty), findsOneWidget);
+      for (final range in [30, 365]) {
+        final pending = service.pending[range] = Completer<PlaytimeHistory>();
+        await tester.tap(find.byKey(AppKeys.historyRange(range)));
+        await tester.pump();
+        expect(find.byKey(AppKeys.historyLoading), findsOneWidget);
+        expect(find.byKey(AppKeys.historyEmpty), findsNothing);
+        final result = historyFixture(range: range, appId: appId);
+        if (range == 30) result['firstObserved'] = null;
+        pending.complete(PlaytimeHistory.fromJson(result));
+        await tester.pumpAndSettle();
+        expect(find.byKey(AppKeys.historyLoading), findsNothing);
+        if (range == 30) {
+          expect(find.byKey(AppKeys.historyEmpty), findsOneWidget);
+        } else {
+          expect(find.text('历史总览'), findsOneWidget);
+        }
+      }
+      await disposeTestApp(tester);
+    });
+  }
+
   testWidgets('failed range request clears stale data and can retry', (
     tester,
   ) async {
